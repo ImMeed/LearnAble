@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# Env
+.env
+
+# VS Code
+.vscode/
+
+plan.md
+summary.md
+phase1.md
+phase2.md
+phase3.md
+phase4.md
+phase5.md
+phase6.md
+phase7.md
+phase8.md
+phase9.md
+phase10.md
+.github

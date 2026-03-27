@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: learnable-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: learnable
+      POSTGRES_PASSWORD: learnable
+      POSTGRES_DB: learnable
+    ports:
+      - "5433:5432"
+    volumes:
+      - learnable_pg_data:/var/lib/postgresql/data
+
+volumes:
+  learnable_pg_data:

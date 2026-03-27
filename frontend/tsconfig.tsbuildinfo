@@ -1,0 +1,1 @@
+{"root":["./src/main.tsx","./src/api/client.ts","./src/app/i18n.ts","./src/app/locale.ts","./src/app/router.tsx","./src/features/accessibility/accessibilitypanel.tsx","./src/features/accessibility/languageswitcher.tsx","./src/pages/ar/homepage.tsx","./src/state/auth.ts"],"version":"5.9.3"}
