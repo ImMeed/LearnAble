@@ -35,6 +35,25 @@ export default function LandingPage() {
     </button>
   </div>
 </section>
+<section style={{ padding: "60px 20px" }}>
+  <h3 style={{ textAlign: "center", fontSize: "28px" }}>
+    Key Features
+  </h3>
+
+  <div style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "20px",
+    marginTop: "40px"
+  }}>
+    <div>ADHD Tools</div>
+    <div>Dyslexia Design</div>
+    <div>AI Assistant</div>
+    <div>Gamification</div>
+    <div>Collaboration</div>
+    <div>Mental Health</div>
+  </div>
+</section>
       </main>
     </div>
   );
