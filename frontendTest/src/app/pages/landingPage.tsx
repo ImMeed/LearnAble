@@ -11,12 +11,30 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <section>
-          <h2>Learn differently. Succeed confidently.</h2>
-          <p>
-            An inclusive learning platform designed for students with dyslexia and ADHD.
-          </p>
-        </section>
+        <section style={{ textAlign: "center", padding: "100px 20px" }}>
+  <h2 style={{ fontSize: "48px", fontWeight: "bold", lineHeight: "1.2" }}>
+    Learn differently.<br />Succeed confidently.
+  </h2>
+
+  <p style={{
+    marginTop: "20px",
+    fontSize: "18px",
+    maxWidth: "600px",
+    marginInline: "auto"
+  }}>
+    An inclusive learning platform designed specifically for students with dyslexia and ADHD.
+  </p>
+
+  <div style={{ marginTop: "30px" }}>
+    <button style={{ padding: "12px 24px", marginRight: "10px" }}>
+      Sign In
+    </button>
+
+    <button style={{ padding: "12px 24px" }}>
+      Get Started Free
+    </button>
+  </div>
+</section>
       </main>
     </div>
   );
