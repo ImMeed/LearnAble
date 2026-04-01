@@ -17,8 +17,14 @@ from app.modules.teacher.router import router as teacher_router
 from app.modules.users.router import router as users_router
 from app.modules.call.router import router as call_router
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 
 def create_app() -> FastAPI:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    )
+
     app = FastAPI(
         title="LearnAble API",
         version="0.1.0",

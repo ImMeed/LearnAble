@@ -1,32 +1,61 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { SignalingMessage } from "./types";
+import { SignalingMessage, RemoteMediaState } from "./types";
+import { getSession } from "../state/auth";
+
+interface IncomingSignalPayload {
+  data: any;
+  id: number;
+}
 
 interface UseSignalingReturn {
   sendMessage: (msg: object) => void;
-  lastMessage: SignalingMessage | null;
   isConnected: boolean;
+  isReconnecting: boolean;
   isInitiator: boolean | null;
+  peerJoined: boolean;
+  peerLeft: boolean;
+  roomFull: boolean;
+  incomingSignal: IncomingSignalPayload | null;
   connectionError: string | null;
+  remoteMediaState: RemoteMediaState | null;
 }
+
+const MAX_RECONNECT_ATTEMPTS = 5;
 
 export function useSignaling(roomId: string | undefined): UseSignalingReturn {
   const wsRef = useRef<WebSocket | null>(null);
-  const [lastMessage, setLastMessage] = useState<SignalingMessage | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isInitiator, setIsInitiator] = useState<boolean | null>(null);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const signalIdRef = useRef<number>(0);
 
-  useEffect(() => {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [isInitiator, setIsInitiator] = useState<boolean | null>(null);
+  const [peerJoined, setPeerJoined] = useState(false);
+  const [peerLeft, setPeerLeft] = useState(false);
+  const [roomFull, setRoomFull] = useState(false);
+  const [incomingSignal, setIncomingSignal] = useState<IncomingSignalPayload | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [remoteMediaState, setRemoteMediaState] = useState<RemoteMediaState | null>(null);
+
+  const reconnectAttemptRef = useRef(0);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intentionalCloseRef = useRef(false);
+  const isReconnectingRef = useRef(false);
+
+  const connect = useCallback(() => {
     if (!roomId) return;
 
-    // Use environment variable or fallback to localhost
     const host = window.location.hostname;
-    const wsUrl = `ws://${host}:8000/ws/call/${roomId}`;
-    
+    const session = getSession();
+    const tokenParam = session?.accessToken ? `?token=${session.accessToken}` : "";
+    const wsUrl = `ws://${host}:8000/ws/call/${roomId}${tokenParam}`;
+
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
+      reconnectAttemptRef.current = 0;
+      isReconnectingRef.current = false;
+      setIsReconnecting(false);
       setIsConnected(true);
       setConnectionError(null);
     };
@@ -34,13 +63,33 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
     ws.onmessage = (event) => {
       try {
         const message: SignalingMessage = JSON.parse(event.data);
-        setLastMessage(message);
 
-        if (message.type === "joined") {
-          setIsInitiator(message.initiator ?? false);
-        } else if (message.type === "room_full") {
-          setConnectionError("Room is full.");
-          ws.close();
+        switch (message.type) {
+          case "joined":
+            setIsInitiator(message.initiator ?? false);
+            setIsConnected(true);
+            break;
+          case "peer_joined":
+            setPeerJoined(true);
+            break;
+          case "peer_left":
+            setPeerLeft(true);
+            break;
+          case "room_full":
+            setRoomFull(true);
+            break;
+          case "media_state":
+            setRemoteMediaState({
+              video: message.video ?? true,
+              audio: message.audio ?? true,
+            });
+            break;
+          case "offer":
+          case "answer":
+          case "ice":
+            signalIdRef.current += 1;
+            setIncomingSignal({ data: message, id: signalIdRef.current });
+            break;
         }
       } catch (err) {
         console.error("Failed to parse signaling message", err);
@@ -48,19 +97,62 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
     };
 
     ws.onerror = () => {
-      setConnectionError("WebSocket connection error.");
+      if (!isReconnectingRef.current) {
+        setConnectionError("CONNECTION_ERROR");
+      }
       setIsConnected(false);
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       setIsConnected(false);
-    };
 
-    return () => {
-      ws.close();
-      wsRef.current = null;
+      if (event.code === 4001) {
+        setConnectionError("AUTH_REQUIRED");
+        return;
+      }
+
+      if (
+        event.code !== 1000 &&
+        event.code !== 1001 &&
+        !intentionalCloseRef.current
+      ) {
+        attemptReconnect();
+      }
     };
   }, [roomId]);
+
+  const attemptReconnect = useCallback(() => {
+    if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      setConnectionError("CONNECTION_LOST");
+      isReconnectingRef.current = false;
+      setIsReconnecting(false);
+      return;
+    }
+
+    isReconnectingRef.current = true;
+    setIsReconnecting(true);
+    const delay = Math.pow(2, reconnectAttemptRef.current) * 1000;
+    reconnectAttemptRef.current += 1;
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      connect();
+    }, delay);
+  }, [connect]);
+
+  useEffect(() => {
+    connect();
+
+    return () => {
+      intentionalCloseRef.current = true;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+        wsRef.current.close(1000);
+      }
+      wsRef.current = null;
+    };
+  }, [connect]);
 
   const sendMessage = useCallback((msg: object) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -72,9 +164,14 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
 
   return {
     sendMessage,
-    lastMessage,
     isConnected,
+    isReconnecting,
     isInitiator,
+    peerJoined,
+    peerLeft,
+    roomFull,
+    incomingSignal,
     connectionError,
+    remoteMediaState,
   };
 }

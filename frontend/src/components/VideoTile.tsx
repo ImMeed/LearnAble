@@ -6,9 +6,11 @@ interface VideoTileProps {
   label?: string;
   variant: "main" | "pip";
   isCamOff?: boolean;
+  // remoteMuted: show a mic-off badge overlay on the tile
+  remoteMuted?: boolean;
 }
 
-export default function VideoTile({ stream, muted, label, variant, isCamOff }: VideoTileProps) {
+export default function VideoTile({ stream, muted, label, variant, isCamOff, remoteMuted }: VideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -23,6 +25,9 @@ export default function VideoTile({ stream, muted, label, variant, isCamOff }: V
   }, [stream]);
 
   const showPlaceholder = !stream || isCamOff;
+  // Only show the "camera is off" tag when the cam was explicitly turned off
+  // (stream exists but isCamOff is true), not when there's simply no stream yet.
+  const camExplicitlyOff = !!stream && !!isCamOff;
 
   return (
     <div className={`video-tile video-tile--${variant}`}>
@@ -33,10 +38,25 @@ export default function VideoTile({ stream, muted, label, variant, isCamOff }: V
         muted={muted}
         style={{ display: showPlaceholder ? "none" : "block" }}
       />
+
       {showPlaceholder && (
         <div className="video-tile__placeholder">
-          <span className="video-tile__placeholder-icon">👤</span>
-          {label && <span>{label}</span>}
+          <div className="video-tile__avatar">
+            <span className="video-tile__avatar-icon">👤</span>
+          </div>
+          {label && <span className="video-tile__label">{label}</span>}
+          {camExplicitlyOff && (
+            <div className="video-tile__cam-off-tag">
+              <span>📷</span>
+              <span>Camera off</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {remoteMuted && (
+        <div className="video-tile__muted-badge" title="Microphone off">
+          🔇
         </div>
       )}
     </div>

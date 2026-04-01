@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import { useTranslation } from "react-i18next";
 import { useSignaling } from "../hooks/useSignaling";
 import { useWebRTC } from "../hooks/useWebRTC";
 import { CallState } from "../hooks/types";
+import { useConnectionQuality } from "../hooks/useConnectionQuality";
+import { ConnectionBadge } from "../components/ConnectionBadge";
 import VideoTile from "../components/VideoTile";
 import CallControls from "../components/CallControls";
 import "./CallPage.css";
@@ -19,17 +22,35 @@ export function CallRedirect() {
 export default function CallPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [callState, setCallState] = useState<CallState>("idle");
   const [copied, setCopied] = useState(false);
+  
+  const actionBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Redirect if no roomId
   useEffect(() => {
     if (!roomId) {
       navigate(`/call/${uuidv4()}`, { replace: true });
     }
   }, [roomId, navigate]);
 
-  // Hooks
+  // Viewport enforcement for mobile
+  useEffect(() => {
+    let meta = document.querySelector('meta[name="viewport"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "viewport";
+      document.head.appendChild(meta);
+    }
+    const originalContent = meta.content;
+    meta.content = "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no";
+
+    return () => {
+      if (meta) meta.content = originalContent;
+    };
+  }, []);
+
+  const signaling = useSignaling(roomId);
   const {
     localStream,
     mediaError,
@@ -38,46 +59,101 @@ export default function CallPage() {
     toggleMute,
     toggleCamera,
     stopAllTracks,
-  } = useWebRTC();
+    remoteStream,
+    peerConnected,
+    peerError,
+    destroyPeer,
+    peerRef,
+  } = useWebRTC({
+    isInitiator: signaling.isInitiator,
+    peerJoined: signaling.peerJoined,
+    incomingSignal: signaling.incomingSignal,
+    sendMessage: signaling.sendMessage,
+  });
 
-  const {
-    lastMessage,
-    isConnected,
-    connectionError,
-  } = useSignaling(roomId);
+  const connectionQuality = useConnectionQuality({ peerRef, peerConnected });
 
-  // ── State machine transitions ──
+  const { isConnected, isReconnecting, peerLeft, roomFull, connectionError, remoteMediaState } = signaling;
+
+  // Broadcast local media state to peer whenever cam/mute changes OR peer first connects
+  const prevPeerConnected = useRef(false);
+  const prevIsCamOff = useRef(isCamOff);
+  const prevIsMuted = useRef(isMuted);
   useEffect(() => {
-    if (mediaError) {
-      setCallState("error");
-      return;
+    const peerJustConnected = peerConnected && !prevPeerConnected.current;
+    const stateChanged = prevIsCamOff.current !== isCamOff || prevIsMuted.current !== isMuted;
+
+    prevPeerConnected.current = peerConnected;
+    prevIsCamOff.current = isCamOff;
+    prevIsMuted.current = isMuted;
+
+    if (peerConnected && (peerJustConnected || stateChanged)) {
+      signaling.sendMessage({ type: "media_state", video: !isCamOff, audio: !isMuted });
     }
-    if (connectionError === "Room is full.") {
+  }, [isCamOff, isMuted, peerConnected, signaling]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "m" || e.key === "M") toggleMute();
+      if (e.key === "v" || e.key === "V") toggleCamera();
+      if (e.key === "Escape") {
+        destroyPeer();
+        stopAllTracks();
+        navigate("/");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleMute, toggleCamera, destroyPeer, stopAllTracks, navigate]);
+
+  useEffect(() => {
+    if (roomFull) {
       setCallState("room_full");
-      return;
-    }
-    if (localStream && callState === "idle") {
+    } else if (mediaError) {
+      setCallState("error");
+    } else if (peerLeft) {
+      setCallState("peer_left");
+    } else if (peerError || connectionError) {
+      setCallState("error");
+    } else if (peerConnected) {
+      setCallState("connected");
+    } else if (localStream && isConnected) {
       setCallState("waiting");
+    } else {
+      setCallState("idle");
     }
-  }, [localStream, mediaError, connectionError]);
+  }, [roomFull, mediaError, peerLeft, peerError, connectionError, peerConnected, localStream, isConnected]);
 
   useEffect(() => {
-    if (!lastMessage) return;
-
-    if (lastMessage.type === "peer_joined" || lastMessage.type === "offer") {
-      setCallState("connected");
-    } else if (lastMessage.type === "peer_left") {
-      setCallState("peer_left");
+    if (peerLeft) {
+      destroyPeer();
     }
-  }, [lastMessage]);
+  }, [peerLeft, destroyPeer]);
 
-  // ── End call ──
-  const handleEndCall = () => {
+  // Auto-focus action button on error states for accessibility
+  useEffect(() => {
+    if (["room_full", "peer_left", "error"].includes(callState)) {
+      actionBtnRef.current?.focus();
+    }
+  }, [callState]);
+
+  const handleEndCall = useCallback(() => {
+    destroyPeer();
     stopAllTracks();
     navigate("/");
-  };
+  }, [destroyPeer, stopAllTracks, navigate]);
 
-  // ── Copy room link ──
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      destroyPeer();
+      stopAllTracks();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [destroyPeer, stopAllTracks]);
+
   const handleCopyLink = () => {
     const link = window.location.href;
     navigator.clipboard.writeText(link).then(() => {
@@ -88,18 +164,31 @@ export default function CallPage() {
 
   if (!roomId) return null;
 
-  // ── Render based on callState ──
   return (
     <div className="call-page">
-      {/* ── IDLE: Getting camera ready ── */}
-      {callState === "idle" && (
-        <div className="call-overlay">
-          <div className="call-spinner" />
-          <p>Getting your camera ready…</p>
+      {/* Live region for status changes */}
+      <div role="status" aria-live="polite" className="sr-only">
+        {callState === "waiting" && t("call.waitingForPeer")}
+        {callState === "connected" && t("call.connected")}
+        {callState === "peer_left" && t("call.peerLeft")}
+      </div>
+
+      {isReconnecting && (
+        <div className="call-reconnecting-banner">
+          <div className="call-spinner call-spinner--small" />
+          <span>{t("call.reconnecting")}</span>
         </div>
       )}
 
-      {/* ── WAITING: Alone in room ── */}
+      {callState === "connected" && <ConnectionBadge quality={connectionQuality} />}
+
+      {callState === "idle" && (
+        <div className="call-overlay">
+          <div className="call-spinner" />
+          <p>{t("call.gettingCamera")}</p>
+        </div>
+      )}
+
       {callState === "waiting" && (
         <>
           <VideoTile stream={null} muted={false} label="Remote" variant="main" />
@@ -109,19 +198,42 @@ export default function CallPage() {
             <div className="call-overlay__card">
               <div className="call-overlay__title">
                 <span className="call-pulse-dot" />
-                Waiting for someone to join…
+                {t("call.waitingForPeer")}
               </div>
               <p className="call-overlay__text">
-                Share the link below to invite someone to your call.
+                {t("call.shareLink")}
               </p>
               <div className="call-waiting__link-box">
                 <span>{window.location.href}</span>
                 <button className="call-waiting__copy-btn" onClick={handleCopyLink}>
-                  {copied ? "Copied!" : "Copy"}
+                  {copied ? t("call.linkCopied") : t("call.copyLink")}
                 </button>
               </div>
             </div>
           </div>
+
+          <CallControls
+            isMuted={isMuted}
+            isCamOff={isCamOff}
+            onToggleMute={toggleMute}
+            onToggleCam={toggleCamera}
+            onEndCall={handleEndCall}
+            disabled={true}
+          />
+        </>
+      )}
+
+      {callState === "connected" && (
+        <>
+          <VideoTile
+            stream={remoteStream}
+            muted={false}
+            label={t("call.peer")}
+            variant="main"
+            isCamOff={remoteMediaState ? !remoteMediaState.video : false}
+            remoteMuted={remoteMediaState ? !remoteMediaState.audio : false}
+          />
+          <VideoTile stream={localStream} muted={true} label={t("call.you")} variant="pip" isCamOff={isCamOff} />
 
           <CallControls
             isMuted={isMuted}
@@ -134,74 +246,70 @@ export default function CallPage() {
         </>
       )}
 
-      {/* ── CONNECTED: Both peers in call ── */}
-      {callState === "connected" && (
-        <>
-          {/* Remote stream will be wired in Phase 03 — shows placeholder for now */}
-          <VideoTile stream={null} muted={false} label="Remote" variant="main" />
-          <VideoTile stream={localStream} muted={true} label="You" variant="pip" isCamOff={isCamOff} />
-
-          <CallControls
-            isMuted={isMuted}
-            isCamOff={isCamOff}
-            onToggleMute={toggleMute}
-            onToggleCam={toggleCamera}
-            onEndCall={handleEndCall}
-          />
-        </>
-      )}
-
-      {/* ── ROOM FULL ── */}
       {callState === "room_full" && (
         <div className="call-overlay">
           <div className="call-overlay__card">
-            <div className="call-overlay__title">This call is already in progress</div>
+            <div className="call-overlay__title">{t("call.roomFull")}</div>
             <p className="call-overlay__text">
-              The maximum number of participants has been reached.
+              {t("call.roomFullDesc")}
             </p>
-            <button className="call-overlay__btn" onClick={() => navigate("/")}>
-              Return Home
+            <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate("/")}>
+              {t("call.returnHome")}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── PEER LEFT ── */}
       {callState === "peer_left" && (
         <div className="call-overlay">
           <div className="call-overlay__card">
-            <div className="call-overlay__title">The other participant has left the call</div>
+            <div className="call-overlay__title">{t("call.peerLeft")}</div>
             <p className="call-overlay__text">
-              The call has ended because the other person disconnected.
+              {t("call.peerLeft")}
             </p>
-            <button className="call-overlay__btn" onClick={() => navigate("/")}>
-              Return Home
+            <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate("/")}>
+              {t("call.returnHome")}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── ERROR ── */}
       {callState === "error" && (
         <div className="call-overlay">
           <div className="call-overlay__card">
             <div className="call-overlay__title">
-              {mediaError === "CAMERA_DENIED"
-                ? "Camera access denied"
+              {connectionError === "AUTH_REQUIRED"
+                ? t("call.authRequired")
+                : connectionError === "CONNECTION_LOST"
+                ? t("call.connectionLost")
+                : mediaError === "CAMERA_DENIED"
+                ? t("call.cameraDenied")
                 : mediaError === "NO_DEVICE"
-                ? "No camera found"
-                : "Something went wrong"}
+                ? t("call.noDevice")
+                : t("call.genericError")}
             </div>
             <p className="call-overlay__text">
-              {mediaError === "CAMERA_DENIED"
-                ? "Camera access was denied. Please enable camera permissions in your browser settings."
+              {connectionError === "AUTH_REQUIRED"
+                ? t("call.authRequired")
+                : connectionError === "CONNECTION_LOST"
+                ? t("call.connectionLost")
+                : mediaError === "CAMERA_DENIED"
+                ? t("call.cameraDenied")
                 : mediaError === "NO_DEVICE"
-                ? "No camera or microphone was found on your device."
-                : "Something went wrong. Please try again."}
+                ? t("call.noDevice")
+                : peerError
+                ? `Connection error: ${peerError}`
+                : t("call.genericError")}
             </p>
-            <button className="call-overlay__btn" onClick={() => navigate("/")}>
-              Return Home
-            </button>
+            {connectionError === "AUTH_REQUIRED" ? (
+              <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate("/")}>
+                {t("call.signIn")}
+              </button>
+            ) : (
+              <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate("/")}>
+                {t("call.returnHome")}
+              </button>
+            )}
           </div>
         </div>
       )}

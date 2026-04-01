@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 interface CallControlsProps {
   isMuted: boolean;
@@ -17,14 +18,16 @@ export default function CallControls({
   onEndCall,
   disabled = false,
 }: CallControlsProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="call-controls">
       <button
         className={`call-controls__btn ${isMuted ? "call-controls__btn--muted" : "call-controls__btn--active"}`}
         onClick={onToggleMute}
         disabled={disabled}
-        aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
-        title={isMuted ? "Unmute" : "Mute"}
+        aria-label={t(isMuted ? "call.unmute" : "call.mute")}
+        title={t(isMuted ? "call.unmute" : "call.mute")}
       >
         {isMuted ? "🔇" : "🎤"}
       </button>
@@ -33,8 +36,8 @@ export default function CallControls({
         className={`call-controls__btn ${isCamOff ? "call-controls__btn--muted" : "call-controls__btn--active"}`}
         onClick={onToggleCam}
         disabled={disabled}
-        aria-label={isCamOff ? "Turn camera on" : "Turn camera off"}
-        title={isCamOff ? "Camera On" : "Camera Off"}
+        aria-label={t(isCamOff ? "call.cameraOn" : "call.cameraOff")}
+        title={t(isCamOff ? "call.cameraOn" : "call.cameraOff")}
       >
         {isCamOff ? "📷" : "📹"}
       </button>
@@ -42,8 +45,8 @@ export default function CallControls({
       <button
         className="call-controls__btn call-controls__btn--danger"
         onClick={onEndCall}
-        aria-label="End call"
-        title="End Call"
+        aria-label={t("call.endCall")}
+        title={t("call.endCall")}
       >
         ✕
       </button>
