@@ -15,11 +15,15 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-i18next": "^15.4.1",
-    "react-router-dom": "^7.4.0"
+    "react-router-dom": "^7.4.0",
+    "simple-peer": "^9.11.0",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@types/simple-peer": "^9.11.9",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.8.2",
     "vite": "^6.2.2"

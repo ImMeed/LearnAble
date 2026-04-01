@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+
+
 from app.core.i18n import get_request_locale, resolve_request_locale, translate
 from app.modules.ai.router import router as ai_router
 from app.modules.auth.router import router as auth_router
@@ -13,7 +15,8 @@ from app.modules.quiz.router import router as quiz_router
 from app.modules.study.router import router as study_router
 from app.modules.teacher.router import router as teacher_router
 from app.modules.users.router import router as users_router
-
+from app.modules.call.router import router as call_router
+from fastapi.middleware.cors import CORSMiddleware
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -32,6 +35,15 @@ def create_app() -> FastAPI:
     app.include_router(notifications_router)
     app.include_router(ai_router)
     app.include_router(teacher_router)
+    app.include_router(call_router)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3001", "http://localhost:5173"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.middleware("http")
     async def locale_middleware(request: Request, call_next):
@@ -78,3 +90,4 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+

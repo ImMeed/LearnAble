@@ -21,7 +21,7 @@ docker compose up -d
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:asgi_app --reload
 ```
 
 3. Run frontend:
