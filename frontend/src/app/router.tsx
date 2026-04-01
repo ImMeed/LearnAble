@@ -2,9 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { HomePage } from "../pages/ar/HomePage";
-import VideoCall from "../pages/VideoCall";
 import CallPage, { CallRedirect } from "../pages/CallPage";
-
 
 function PlaceholderPage({ titleKey }: { titleKey: string }) {
   const { t } = useTranslation();
@@ -33,8 +31,5 @@ export const router = createBrowserRouter([
   { path: "/en/quizzes", element: <PlaceholderPage titleKey="nav.quizzes" /> },
   { path: "/en/games", element: <PlaceholderPage titleKey="nav.games" /> },
   { path: "/en/library", element: <PlaceholderPage titleKey="nav.library" /> },
-  { path: "/ar/videocall", element: <VideoCall /> },
-  { path: "/en/videocall", element: <VideoCall /> },
-  { path: "/videocall", element: <VideoCall /> },
   { path: "*", element: <main className="page"><section className="card"><h2>404</h2><p>Page not found</p></section></main> },
 ]);

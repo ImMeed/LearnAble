@@ -47,6 +47,9 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def locale_middleware(request: Request, call_next):
+        # Skip locale resolution for WebSocket upgrade requests
+        if request.url.path.startswith("/ws/"):
+            return await call_next(request)
         request.state.locale = resolve_request_locale(request)
         response = await call_next(request)
         response.headers["Content-Language"] = get_request_locale(request)
