@@ -3,6 +3,8 @@ from pydantic import BaseModel, EmailStr, Field
 from app.core.roles import UserRole
 
 
+# ── Registration / Login ──────────────────────────────────────────────────────
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
@@ -18,3 +20,38 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     role: UserRole
+    totp_required: bool = False  # True when 2FA is enabled — frontend must ask for OTP
+
+
+# ── Two-Factor Authentication ─────────────────────────────────────────────────
+
+class Enable2FAResponse(BaseModel):
+    """Returned when a user starts 2FA setup — contains QR code to scan."""
+    qr_code_base64: str   # PNG image encoded as base64 string
+    secret: str           # Raw secret — shown once so user can enter manually
+
+
+class Verify2FARequest(BaseModel):
+    """User submits the 6-digit code from their authenticator app."""
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class Verify2FAResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    role: UserRole
+
+
+class LoginWithOTPRequest(BaseModel):
+    """Second step of login when 2FA is enabled."""
+    email: EmailStr
+    otp_code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+# ── Lockout ───────────────────────────────────────────────────────────────────
+
+class LockoutResponse(BaseModel):
+    """Returned when an account is locked after too many failed attempts."""
+    code: str = "ACCOUNT_LOCKED"
+    message: str
+    retry_after_seconds: int

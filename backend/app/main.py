@@ -1,7 +1,10 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core.config import settings
 from app.core.i18n import get_request_locale, resolve_request_locale, translate
 from app.modules.ai.router import router as ai_router
 from app.modules.auth.router import router as auth_router
@@ -15,6 +18,19 @@ from app.modules.teacher.router import router as teacher_router
 from app.modules.users.router import router as users_router
 
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        if settings.app_env == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="LearnAble API",
@@ -22,6 +38,19 @@ def create_app() -> FastAPI:
         description="Arabic-first learning platform API.",
     )
 
+    # ── CORS ──────────────────────────────────────────────────────────────────
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.get_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # ── Security headers ──────────────────────────────────────────────────────
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(study_router)
@@ -33,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(ai_router)
     app.include_router(teacher_router)
 
+    # ── Existing middleware ───────────────────────────────────────────────────
     @app.middleware("http")
     async def locale_middleware(request: Request, call_next):
         request.state.locale = resolve_request_locale(request)
@@ -40,6 +70,7 @@ def create_app() -> FastAPI:
         response.headers["Content-Language"] = get_request_locale(request)
         return response
 
+    # ── Exception handlers ────────────────────────────────────────────────────
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
         locale = get_request_locale(request)
