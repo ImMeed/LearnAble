@@ -54,6 +54,39 @@ void i18n.use(initReactI18next).init({
             fair: "الاتصال: متوسط",
             poor: "الاتصال: ضعيف"
           }
+        },
+        attention: {
+          rolePicker: {
+            title: "من أنت؟",
+            teacher: "أنا معلم",
+            student: "أنا طالب",
+          },
+          overlay: {
+            highFocus: "تركيز عالٍ",
+            moderateFocus: "تركيز متوسط",
+            lowFocus: "تركيز منخفض",
+            waitingData: "…في انتظار بيانات الطالب",
+            noData: "لا تتوفر بيانات انتباه",
+            unavailable: "تتبع الانتباه غير متاح",
+            details: "تفاصيل",
+          },
+          alert: {
+            title: "يبدو أن الطالب مشتت",
+            body: "انخفض التركيز عن المستوى المطلوب",
+            dismiss: "تجاهل",
+          },
+          panel: {
+            title: "مخطط الانتباه",
+            back: "رجوع →",
+            collecting: "…جمع البيانات",
+            legendHigh: "تركيز عالٍ",
+            legendModerate: "متوسط",
+            legendLow: "منخفض",
+          },
+          consent: {
+            tracking: "تتبع الانتباه نشط",
+          },
+          tabInactive: "علامة تبويب الطالب غير نشطة",
         }
       },
     },
@@ -101,6 +134,39 @@ void i18n.use(initReactI18next).init({
             fair: "Connection: Fair",
             poor: "Connection: Poor"
           }
+        },
+        attention: {
+          rolePicker: {
+            title: "Who are you?",
+            teacher: "I'm a Teacher",
+            student: "I'm a Student",
+          },
+          overlay: {
+            highFocus: "High Focus",
+            moderateFocus: "Moderate Focus",
+            lowFocus: "Low Focus",
+            waitingData: "Waiting for student data…",
+            noData: "No attention data available",
+            unavailable: "Attention tracking unavailable",
+            details: "Details",
+          },
+          alert: {
+            title: "Student appears distracted",
+            body: "Focus dropped below threshold",
+            dismiss: "Dismiss",
+          },
+          panel: {
+            title: "Attention Timeline",
+            back: "← Back",
+            collecting: "Collecting data…",
+            legendHigh: "High Focus",
+            legendModerate: "Moderate",
+            legendLow: "Low",
+          },
+          consent: {
+            tracking: "Attention tracking is active",
+          },
+          tabInactive: "Student tab inactive",
         }
       },
     },

@@ -9,6 +9,9 @@ import { useConnectionQuality } from "../hooks/useConnectionQuality";
 import { ConnectionBadge } from "../components/ConnectionBadge";
 import VideoTile from "../components/VideoTile";
 import CallControls from "../components/CallControls";
+import RolePickerScreen from '../features/attention/components/RolePickerScreen';
+import type { UserRole } from '../features/attention/types/attention';
+import { useAttentionProcessor } from '../features/attention/hooks/useAttentionProcessor';
 import "./CallPage.css";
 
 export function CallRedirect() {
@@ -25,6 +28,7 @@ export default function CallPage() {
   const { t } = useTranslation();
   const [callState, setCallState] = useState<CallState>("idle");
   const [copied, setCopied] = useState(false);
+  const [role, setRole] = useState<UserRole | null>(null);
   
   const actionBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -162,6 +166,17 @@ export default function CallPage() {
     });
   };
 
+  // Show the role picker once the room is joined, until the user picks a role
+  const showRolePicker =
+    role === null &&
+    (callState === "waiting" || callState === "connected");
+
+  // Mount attention processor on the student side only
+  useAttentionProcessor({
+    localStream,
+    enabled: role === 'student' && !!localStream,
+  });
+
   if (!roomId) return null;
 
   return (
@@ -172,6 +187,10 @@ export default function CallPage() {
         {callState === "connected" && t("call.connected")}
         {callState === "peer_left" && t("call.peerLeft")}
       </div>
+
+      {showRolePicker && (
+        <RolePickerScreen onSelectRole={setRole} />
+      )}
 
       {isReconnecting && (
         <div className="call-reconnecting-banner">
