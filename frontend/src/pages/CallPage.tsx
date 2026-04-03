@@ -15,6 +15,7 @@ import { useAttentionProcessor } from '../features/attention/hooks/useAttentionP
 import { useAttentionReceiver } from '../features/attention/hooks/useAttentionReceiver';
 import AttentionOverlay from '../features/attention/components/AttentionOverlay';
 import DistractionAlert from '../features/attention/components/DistractionAlert';
+import AttentionPanel from '../features/attention/components/AttentionPanel';
 import "./CallPage.css";
 
 export function CallRedirect() {
@@ -274,6 +275,12 @@ export default function CallPage() {
                 hasData={attentionState.hasData}
                 isStale={attentionState.isStale}
                 onDetailsClick={() => setShowAttentionPanel(true)}
+              />
+            )}
+            {role === 'teacher' && showAttentionPanel && (
+              <AttentionPanel
+                timeline={attentionState.timeline}
+                onBack={() => setShowAttentionPanel(false)}
               />
             )}
           </VideoTile>
