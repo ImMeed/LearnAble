@@ -1,0 +1,187 @@
+:root {
+  --background: #fafaf5;
+  --foreground: #2e2e2e;
+  --card: #f7f7f2;
+  --card-foreground: #2e2e2e;
+  --popover: #ffffff;
+  --popover-foreground: #2e2e2e;
+  --primary: #4a90e2;
+  --primary-foreground: #ffffff;
+  --secondary: #6fcf97;
+  --secondary-foreground: #2e2e2e;
+  --accent: #9b8afb;
+  --accent-foreground: #ffffff;
+  --muted: #e8e8e0;
+  --muted-foreground: #6b6b6b;
+  --destructive: #e57373;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --input-background: #ffffff;
+  --switch-background: #d0d0c8;
+  --ring: #4a90e2;
+  --highlight: #fff3b0;
+  --success: #6fcf97;
+  --info: #4a90e2;
+  --warning: #ffd93d;
+  --chart-1: #4a90e2;
+  --chart-2: #6fcf97;
+  --chart-3: #9b8afb;
+  --chart-4: #ffd93d;
+  --chart-5: #e57373;
+  --sidebar: #f7f7f2;
+  --sidebar-foreground: #2e2e2e;
+  --sidebar-primary: #4a90e2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8e8e0;
+  --sidebar-accent-foreground: #2e2e2e;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --sidebar-ring: #4a90e2;
+  --radius: 0.75rem;
+  --font-family: "Lexend", "Inter", "Noto Kufi Arabic", "Tajawal", sans-serif;
+  --font-size: 16px;
+  --letter-spacing: 0em;
+  --line-height: 1.6;
+  --zoom-level: 100%;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+}
+
+html.dark {
+  --background: #1e2a3a;
+  --foreground: #e8e8e0;
+  --card: #2a3a4a;
+  --card-foreground: #e8e8e0;
+  --popover: #2a3a4a;
+  --popover-foreground: #e8e8e0;
+  --primary: #5ba3f5;
+  --primary-foreground: #ffffff;
+  --secondary: #7dd9a8;
+  --secondary-foreground: #1e2a3a;
+  --accent: #ac9bff;
+  --accent-foreground: #ffffff;
+  --muted: #3a4a5a;
+  --muted-foreground: #b0b0a8;
+  --destructive: #e57373;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.05);
+  --input-background: #2a3a4a;
+  --ring: #5ba3f5;
+  --highlight: #6b5b00;
+  --chart-1: #5ba3f5;
+  --chart-2: #7dd9a8;
+  --chart-3: #ac9bff;
+  --chart-4: #ffd93d;
+  --chart-5: #e57373;
+  --sidebar: #2a3a4a;
+  --sidebar-foreground: #e8e8e0;
+  --sidebar-primary: #5ba3f5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #3a4a5a;
+  --sidebar-accent-foreground: #e8e8e0;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #5ba3f5;
+}
+
+html.sepia {
+  --background: #f4ecd8;
+  --foreground: #3a2e1e;
+  --card: #f9f2e3;
+  --card-foreground: #3a2e1e;
+  --popover: #ffffff;
+  --popover-foreground: #3a2e1e;
+  --primary: #8b7355;
+  --primary-foreground: #ffffff;
+  --secondary: #9caf88;
+  --secondary-foreground: #3a2e1e;
+  --accent: #b8a8d8;
+  --accent-foreground: #ffffff;
+  --muted: #e8dfc8;
+  --muted-foreground: #6b5d4d;
+  --border: rgba(0, 0, 0, 0.08);
+  --input-background: #ffffff;
+  --ring: #8b7355;
+}
+
+html.high-contrast {
+  --foreground: #1a1a1a;
+  --muted-foreground: #333333;
+  --border: rgba(0, 0, 0, 0.36);
+}
+
+html.dyslexia-mode {
+  letter-spacing: 0.12em;
+  word-spacing: 0.16em;
+  line-height: 1.8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  letter-spacing: var(--letter-spacing);
+  text-align: var(--text-align, left);
+  zoom: var(--zoom-level);
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  transition: all 150ms ease-in-out;
+}
+
+button:hover,
+a:hover {
+  opacity: 0.9;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 5px;
+  border: 2px solid var(--background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}

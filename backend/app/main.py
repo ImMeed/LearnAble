@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.i18n import get_request_locale, resolve_request_locale, translate
@@ -9,6 +11,7 @@ from app.modules.forum.router import router as forum_router
 from app.modules.gamification.router import router as gamification_router
 from app.modules.library.router import router as library_router
 from app.modules.notifications.router import router as notifications_router
+from app.modules.psychologist.router import router as psychologist_router
 from app.modules.quiz.router import router as quiz_router
 from app.modules.study.router import router as study_router
 from app.modules.teacher.router import router as teacher_router
@@ -32,6 +35,19 @@ def create_app() -> FastAPI:
     app.include_router(notifications_router)
     app.include_router(ai_router)
     app.include_router(teacher_router)
+    app.include_router(psychologist_router)
+
+    # Allow browser clients from local Vite dev servers to call the API.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.middleware("http")
     async def locale_middleware(request: Request, call_next):
@@ -66,7 +82,7 @@ def create_app() -> FastAPI:
                 "code": "VALIDATION_ERROR",
                 "message": translate("VALIDATION_ERROR", locale),
                 "locale": locale,
-                "details": exc.errors(),
+                "details": jsonable_encoder(exc.errors()),
             },
         )
 

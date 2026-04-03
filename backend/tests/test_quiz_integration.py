@@ -8,6 +8,7 @@ from app.core.roles import UserRole
 from app.core.security import create_access_token
 from app.db.base import Base
 from app.db.models.economy import PointTransaction, PointTransactionType, PointsWallet, XpLedger
+from app.db.models.notifications import Notification
 from app.db.models.quiz import Quiz, QuizQuestion
 from app.db.models.users import User
 from app.db.session import get_db_session
@@ -20,7 +21,12 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base.metadata.create_all(bind=engine)
 
 
-def _seed_user_and_quiz(session: Session, initial_points: int) -> tuple[str, UUID, UUID, UUID, UUID]:
+def _seed_user_and_quiz(
+    session: Session,
+    initial_points: int,
+    reward_points: int = 10,
+    reward_xp: int = 20,
+) -> tuple[str, UUID, UUID, UUID, UUID]:
     user = User(
         email=f"student-{uuid4()}@learnable.test",
         password_hash="integration-test-hash",
@@ -35,8 +41,8 @@ def _seed_user_and_quiz(session: Session, initial_points: int) -> tuple[str, UUI
         title_ar="اختبار تكاملي",
         title_en="Integration Quiz",
         difficulty="EASY",
-        reward_points=10,
-        reward_xp=20,
+        reward_points=reward_points,
+        reward_xp=reward_xp,
         is_active=True,
     )
     session.add(quiz)
@@ -141,6 +147,79 @@ def test_quiz_start_submit_and_hint_updates_ledger() -> None:
             session.scalars(select(XpLedger).where(XpLedger.user_id == user_id).order_by(XpLedger.created_at.asc()))
         )
         assert any(entry.xp_delta == 10 and entry.reason == "quiz_submit" for entry in xp_entries)
+    finally:
+        app.dependency_overrides.clear()
+        client.close()
+        session.close()
+
+
+def test_quiz_play_aliases_and_progression_notifications() -> None:
+    session = SessionLocal()
+    client = _make_client(session)
+    try:
+        token, user_id, quiz_id, q1_id, q2_id = _seed_user_and_quiz(
+            session,
+            initial_points=0,
+            reward_points=10,
+            reward_xp=120,
+        )
+        headers = {"Authorization": f"Bearer {token}", "x-lang": "en"}
+
+        init_response = client.post(f"/quizzes/{quiz_id}/play/init", headers=headers)
+        assert init_response.status_code == 200
+        init_data = init_response.json()
+
+        answer_response = client.post(
+            f"/quizzes/{quiz_id}/play/answer",
+            headers=headers,
+            json={
+                "attempt_id": init_data["attempt_id"],
+                "answers": [
+                    {"question_id": str(q1_id), "option_key": "A"},
+                    {"question_id": str(q2_id), "option_key": "A"},
+                ],
+            },
+        )
+        assert answer_response.status_code == 200
+        answer_data = answer_response.json()
+        assert answer_data["correct_answers"] == 2
+        assert answer_data["earned_points"] == 10
+        assert answer_data["earned_xp"] == 120
+        assert answer_data["wallet_balance"] == 10
+
+        progression = answer_data["progression"]
+        assert progression["total_xp"] == 120
+        assert progression["current_level"] == 2
+        assert progression["next_level_xp"] == 200
+        assert progression["leveled_up"] is True
+        assert set(progression["new_badges"]) == {"QUIZ_EXPLORER", "FOCUSED_LEARNER"}
+
+        level_up_notifications = list(
+            session.scalars(
+                select(Notification).where(
+                    Notification.user_id == user_id,
+                    Notification.type == "LEVEL_UP",
+                )
+            )
+        )
+        assert len(level_up_notifications) == 1
+
+        badge_notifications = list(
+            session.scalars(
+                select(Notification).where(
+                    Notification.user_id == user_id,
+                    Notification.type == "BADGE_UNLOCKED",
+                )
+            )
+        )
+        assert len(badge_notifications) == 2
+
+        progression_response = client.get("/gamification/progression/me", headers=headers)
+        assert progression_response.status_code == 200
+        progression_data = progression_response.json()
+        assert progression_data["total_xp"] == 120
+        unlocked_codes = {item["code"] for item in progression_data["badges"] if item["unlocked"]}
+        assert {"QUIZ_EXPLORER", "FOCUSED_LEARNER"}.issubset(unlocked_codes)
     finally:
         app.dependency_overrides.clear()
         client.close()
