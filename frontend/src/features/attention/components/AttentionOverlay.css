@@ -1,0 +1,67 @@
+/* frontend/src/features/attention/components/AttentionOverlay.css */
+
+.attention-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0 0 8px 8px;
+  min-height: 36px;
+  transition: background 0.3s ease;
+}
+
+.attention-overlay--waiting {
+  justify-content: center;
+}
+
+.attention-overlay__waiting-text {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+.attention-overlay__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.3s ease;
+}
+
+.attention-overlay__label {
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 500;
+  flex: 1;
+  transition: color 0.3s ease;
+}
+
+.attention-overlay__score {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.attention-overlay__details-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+  transition: color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.attention-overlay__details-btn:hover {
+  color: #ffffff;
+}
