@@ -12,6 +12,7 @@ import CallControls from "../components/CallControls";
 import RolePickerScreen from '../features/attention/components/RolePickerScreen';
 import type { UserRole } from '../features/attention/types/attention';
 import { useAttentionProcessor } from '../features/attention/hooks/useAttentionProcessor';
+import { useAttentionReceiver } from '../features/attention/hooks/useAttentionReceiver';
 import "./CallPage.css";
 
 export function CallRedirect() {
@@ -175,6 +176,12 @@ export default function CallPage() {
   useAttentionProcessor({
     localStream,
     enabled: role === 'student' && !!localStream,
+    sendMessage: signaling.sendMessage,
+  });
+
+  const attentionState = useAttentionReceiver({
+    incomingMetrics: signaling.incomingAttentionMetrics,
+    enabled: role === 'teacher',
   });
 
   if (!roomId) return null;

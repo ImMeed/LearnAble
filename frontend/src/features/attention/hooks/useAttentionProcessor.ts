@@ -14,6 +14,7 @@ const CANVAS_HEIGHT = 240;
 interface UseAttentionProcessorOptions {
   localStream: MediaStream | null;
   enabled: boolean;   // false when role !== 'student' or stream not ready
+  sendMessage: (msg: object) => void;
 }
 
 interface UseAttentionProcessorReturn {
@@ -24,6 +25,7 @@ interface UseAttentionProcessorReturn {
 export function useAttentionProcessor({
   localStream,
   enabled,
+  sendMessage,
 }: UseAttentionProcessorOptions): UseAttentionProcessorReturn {
   const faceMeshRef = useRef<FaceMesh | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -35,6 +37,7 @@ export function useAttentionProcessor({
   const smoothedScoreRef = useRef<number>(50); // start at 50 — neutral baseline
   const blinkDetectorRef = useRef<BlinkDetector>(new BlinkDetector());
   const latestScoreRef = useRef<AttentionScore | null>(null);
+  const callStartRef = useRef<number>(Date.now());
 
   // ---------- MediaPipe result handler ----------
   const handleResults = useCallback((results: Results) => {
@@ -55,18 +58,28 @@ export function useAttentionProcessor({
     smoothedScoreRef.current = score.smoothed;
     latestScoreRef.current = score;
 
-    // Phase 2: log for verification
-    console.log(
-      '[AttentionProcessor] Score:', score.smoothed,
-      '| Label:', score.label,
-      '| Face:', features.facePresent,
-      '| Yaw:', features.headYaw.toFixed(1),
-      '| Pitch:', features.headPitch.toFixed(1),
-      '| Eye:', features.eyeOpennessRatio.toFixed(3),
-      '| Iris:', features.irisDeviation.toFixed(3),
-      '| BPM:', blinkRate,
-    );
-  }, []);
+    const elapsed = Math.round((Date.now() - callStartRef.current) / 1000);
+
+    const payload = {
+      score: score.smoothed,
+      label: score.label,
+      distraction: false,  // distraction detection is on the teacher side (useAttentionReceiver)
+      signals: {
+        face_present: features.facePresent,
+        head_yaw: parseFloat(features.headYaw.toFixed(1)),
+        head_pitch: parseFloat(features.headPitch.toFixed(1)),
+        eye_openness: parseFloat(features.eyeOpennessRatio.toFixed(3)),
+        blink_rate: blinkRate,
+        iris_deviation: parseFloat(features.irisDeviation.toFixed(3)),
+      },
+      timestamp: elapsed,
+    };
+
+    sendMessage({ type: 'attention_metrics', payload });
+
+    // Keep dev log but at debug level
+    console.debug('[AttentionProcessor] Emitted metrics:', payload);
+  }, [sendMessage]);
 
   // ---------- Frame capture loop ----------
   const captureAndSend = useCallback(() => {
@@ -90,6 +103,8 @@ export function useAttentionProcessor({
     isMountedRef.current = true;
 
     if (!enabled || !localStream) return;
+
+    callStartRef.current = Date.now();
 
     // 1. Create the hidden video element
     const video = document.createElement('video');
@@ -170,7 +185,7 @@ export function useAttentionProcessor({
 
       console.log('[AttentionProcessor] Torn down cleanly');
     };
-  }, [enabled, localStream, handleResults, captureAndSend]);
+  }, [enabled, localStream, handleResults, captureAndSend, sendMessage]);
 
   return { latestScore: latestScoreRef, blinkDetector: blinkDetectorRef };
 }

@@ -6,7 +6,8 @@ export type SignalingMessageType =
   | "offer"
   | "answer"
   | "ice"
-  | "media_state";
+  | "media_state"
+  | "attention_metrics";
 
 export interface SignalingMessage {
   type: SignalingMessageType;

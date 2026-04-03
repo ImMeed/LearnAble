@@ -65,7 +65,7 @@ async def call_websocket(websocket: WebSocket, room_id: str, token: str = Query(
                 message = json.loads(data)
                 msg_type = message.get("type")
 
-                if msg_type in ["offer", "answer", "ice", "media_state"]:
+                if msg_type in ["offer", "answer", "ice", "media_state", "attention_metrics"]:
                     logger.debug("Relaying signal", extra={"room_id": room_id, "type": msg_type})
                     for peer_socket, _ in rooms[room_id]:
                         if peer_socket != websocket:

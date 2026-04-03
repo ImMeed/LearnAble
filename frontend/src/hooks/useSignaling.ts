@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { SignalingMessage, RemoteMediaState } from "./types";
 import { getSession } from "../state/auth";
+import type { AttentionMetrics } from '../features/attention/types/attention';
 
 interface IncomingSignalPayload {
   data: any;
@@ -18,6 +19,7 @@ interface UseSignalingReturn {
   incomingSignal: IncomingSignalPayload | null;
   connectionError: string | null;
   remoteMediaState: RemoteMediaState | null;
+  incomingAttentionMetrics: AttentionMetrics | null;
 }
 
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -35,6 +37,7 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
   const [incomingSignal, setIncomingSignal] = useState<IncomingSignalPayload | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [remoteMediaState, setRemoteMediaState] = useState<RemoteMediaState | null>(null);
+  const [incomingAttentionMetrics, setIncomingAttentionMetrics] = useState<AttentionMetrics | null>(null);
 
   const reconnectAttemptRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,6 +86,9 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
               video: message.video ?? true,
               audio: message.audio ?? true,
             });
+            break;
+          case "attention_metrics":
+            setIncomingAttentionMetrics(message.payload as AttentionMetrics);
             break;
           case "offer":
           case "answer":
@@ -173,5 +179,6 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
     incomingSignal,
     connectionError,
     remoteMediaState,
+    incomingAttentionMetrics,
   };
 }
