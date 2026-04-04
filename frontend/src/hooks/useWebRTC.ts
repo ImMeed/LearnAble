@@ -11,7 +11,7 @@ if (typeof process === 'undefined') {
 
 interface UseWebRTCProps {
   isInitiator: boolean | null;
-  peerJoined: boolean;
+  peerJoinCount: number;
   incomingSignal: { data: any; id: number } | null;
   sendMessage: (msg: object) => void;
 }
@@ -34,7 +34,7 @@ interface UseWebRTCReturn {
 
 export function useWebRTC({
   isInitiator,
-  peerJoined,
+  peerJoinCount,
   incomingSignal,
   sendMessage,
 }: UseWebRTCProps): UseWebRTCReturn {
@@ -140,58 +140,68 @@ export function useWebRTC({
   };
 
   useEffect(() => {
-    if (!localStream || peerRef.current) return;
+    if (!localStream || isInitiator === null) return;
 
     const shouldCreate =
-      isInitiator === true || (peerJoined && isInitiator === false);
+      isInitiator === true || (peerJoinCount > 0 && isInitiator === false);
 
-    if (shouldCreate) {
-      const peer = new Peer({
-        initiator: isInitiator === true,
-        stream: localStream,
-        trickle: true,
-        config: {
-          iceServers: getIceServers(),
-        },
-      });
+    if (!shouldCreate) return;
 
-      peer.on("signal", (signalData: SignalData) => {
-        if (signalData.type === "offer") {
-          sendMessage({ type: "offer", sdp: signalData.sdp, signalData });
-        } else if (signalData.type === "answer") {
-          sendMessage({ type: "answer", sdp: signalData.sdp, signalData });
-        } else if ((signalData as any).candidate) {
-          sendMessage({ type: "ice", candidate: (signalData as any).candidate, signalData });
-        } else {
-          sendMessage({ type: signalData.type, signalData });
-        }
-      });
-
-      peer.on("stream", (stream) => {
-        setRemoteStream(stream);
-      });
-
-      peer.on("connect", () => {
-        setPeerConnected(true);
-      });
-
-      peer.on("close", () => {
-        setRemoteStream(null);
-        setPeerConnected(false);
-      });
-
-      peer.on("error", (err) => {
-        console.error("simple-peer error:", err);
-        setPeerError(err.message);
-      });
-
-      peerRef.current = peer;
-
-      // Drain queue
-      signalQueueRef.current.forEach((s) => peer.signal(s));
-      signalQueueRef.current = [];
+    // Tear down any stale peer before creating a new one
+    if (peerRef.current) {
+      peerRef.current.destroy();
+      peerRef.current = null;
     }
-  }, [localStream, isInitiator, peerJoined, sendMessage]);
+    setPeerError(null);
+    setRemoteStream(null);
+    setPeerConnected(false);
+    signalQueueRef.current = [];
+
+    const peer = new Peer({
+      initiator: isInitiator === true,
+      stream: localStream,
+      trickle: true,
+      config: {
+        iceServers: getIceServers(),
+      },
+    });
+
+    peer.on("signal", (signalData: SignalData) => {
+      if (signalData.type === "offer") {
+        sendMessage({ type: "offer", sdp: signalData.sdp, signalData });
+      } else if (signalData.type === "answer") {
+        sendMessage({ type: "answer", sdp: signalData.sdp, signalData });
+      } else if ((signalData as any).candidate) {
+        sendMessage({ type: "ice", candidate: (signalData as any).candidate, signalData });
+      } else {
+        sendMessage({ type: signalData.type, signalData });
+      }
+    });
+
+    peer.on("stream", (stream) => {
+      setRemoteStream(stream);
+    });
+
+    peer.on("connect", () => {
+      setPeerConnected(true);
+    });
+
+    peer.on("close", () => {
+      setRemoteStream(null);
+      setPeerConnected(false);
+    });
+
+    peer.on("error", (err) => {
+      console.error("simple-peer error:", err);
+      setPeerError(err.message);
+    });
+
+    peerRef.current = peer;
+
+    // Drain any signals that arrived before the peer was ready
+    signalQueueRef.current.forEach((s) => peer.signal(s));
+    signalQueueRef.current = [];
+  }, [localStream, isInitiator, peerJoinCount, sendMessage]);
 
   useEffect(() => {
     if (!incomingSignal) return;

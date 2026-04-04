@@ -7,7 +7,9 @@ import { computeAttentionScore } from '../lib/computeAttentionScore';
 import { BlinkDetector } from '../lib/blinkDetector';
 import { AttentionScore } from '../types/attention';
 
-const FRAME_INTERVAL_MS = 5000;   // sample every 4 seconds
+const FRAME_INTERVAL_NORMAL_MS = 4000;
+const FRAME_INTERVAL_SLOW_MS = 7000;
+const SLOW_THRESHOLD_MS = 500;
 const CANVAS_WIDTH = 320;
 const CANVAS_HEIGHT = 240;
 
@@ -20,6 +22,7 @@ interface UseAttentionProcessorOptions {
 interface UseAttentionProcessorReturn {
   latestScore: React.RefObject<AttentionScore | null>;
   blinkDetector: React.RefObject<BlinkDetector>;
+  loadFailed: React.RefObject<boolean>;
 }
 
 export function useAttentionProcessor({
@@ -38,6 +41,7 @@ export function useAttentionProcessor({
   const blinkDetectorRef = useRef<BlinkDetector>(new BlinkDetector());
   const latestScoreRef = useRef<AttentionScore | null>(null);
   const callStartRef = useRef<number>(Date.now());
+  const loadFailedRef = useRef(false);
 
   // ---------- MediaPipe result handler ----------
   const handleResults = useCallback((results: Results) => {
@@ -61,6 +65,7 @@ export function useAttentionProcessor({
     const elapsed = Math.round((Date.now() - callStartRef.current) / 1000);
 
     const payload = {
+      peerId: 'student-1',
       score: score.smoothed,
       label: score.label,
       distraction: false,  // distraction detection is on the teacher side (useAttentionReceiver)
@@ -91,11 +96,21 @@ export function useAttentionProcessor({
     if (!video || !canvas || !ctx || !faceMesh) return;
     if (video.readyState < 2) return; // not enough data yet (HAVE_CURRENT_DATA = 2)
 
+    const start = performance.now();
     ctx.drawImage(video, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    // faceMesh.send is async — errors are caught by MediaPipe internally
-    faceMesh.send({ image: canvas }).catch((err) => {
-      console.error('[AttentionProcessor] faceMesh.send error:', err);
-    });
+
+    faceMesh.send({ image: canvas })
+      .then(() => {
+        const elapsed = performance.now() - start;
+        if (elapsed > SLOW_THRESHOLD_MS && intervalRef.current !== null) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = setInterval(captureAndSend, FRAME_INTERVAL_SLOW_MS);
+          console.warn('[AttentionProcessor] Slow processing detected — reduced to 7s interval');
+        }
+      })
+      .catch((err) => {
+        console.error('[AttentionProcessor] faceMesh.send error:', err);
+      });
   }, []);
 
   // ---------- Setup & teardown ----------
@@ -115,9 +130,32 @@ export function useAttentionProcessor({
     hiddenVideoRef.current = video;
 
     // Play is required for readyState to advance
-    video.play().catch((err) => {
-      console.warn('[AttentionProcessor] Hidden video play() failed:', err);
+    video.play().catch((err: Error) => {
+      if (err.name === 'NotAllowedError' || err.name === 'NotFoundError') {
+        console.warn('[AttentionProcessor] Camera access unavailable — processor disabled');
+      } else {
+        console.warn('[AttentionProcessor] Hidden video play() failed:', err);
+      }
     });
+
+    const handleVisibilityChange = () => {
+      if (!isMountedRef.current) return;
+
+      if (document.hidden) {
+        if (intervalRef.current !== null) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        console.log('[AttentionProcessor] Tab hidden — paused');
+      } else {
+        if (intervalRef.current === null && faceMeshRef.current) {
+          intervalRef.current = setInterval(captureAndSend, FRAME_INTERVAL_NORMAL_MS);
+          console.log('[AttentionProcessor] Tab visible — resumed');
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // 2. Create the offscreen canvas
     const canvas = document.createElement('canvas');
@@ -150,16 +188,17 @@ export function useAttentionProcessor({
         console.log('[AttentionProcessor] MediaPipe FaceMesh initialized');
 
         // 4. Start the frame loop only after initialization
-        intervalRef.current = setInterval(captureAndSend, FRAME_INTERVAL_MS);
+        intervalRef.current = setInterval(captureAndSend, FRAME_INTERVAL_NORMAL_MS);
       })
       .catch((err) => {
         console.error('[AttentionProcessor] FaceMesh initialization failed:', err);
-        // Phase 6 will add graceful degradation here
+        loadFailedRef.current = true;
       });
 
     // 5. Teardown
     return () => {
       isMountedRef.current = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
 
       if (intervalRef.current !== null) {
         clearInterval(intervalRef.current);
@@ -187,5 +226,5 @@ export function useAttentionProcessor({
     };
   }, [enabled, localStream, handleResults, captureAndSend, sendMessage]);
 
-  return { latestScore: latestScoreRef, blinkDetector: blinkDetectorRef };
+  return { latestScore: latestScoreRef, blinkDetector: blinkDetectorRef, loadFailed: loadFailedRef };
 }

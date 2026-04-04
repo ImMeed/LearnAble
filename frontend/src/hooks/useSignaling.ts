@@ -13,7 +13,7 @@ interface UseSignalingReturn {
   isConnected: boolean;
   isReconnecting: boolean;
   isInitiator: boolean | null;
-  peerJoined: boolean;
+  peerJoinCount: number;
   peerLeft: boolean;
   roomFull: boolean;
   incomingSignal: IncomingSignalPayload | null;
@@ -31,7 +31,7 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [isInitiator, setIsInitiator] = useState<boolean | null>(null);
-  const [peerJoined, setPeerJoined] = useState(false);
+  const [peerJoinCount, setPeerJoinCount] = useState(0);
   const [peerLeft, setPeerLeft] = useState(false);
   const [roomFull, setRoomFull] = useState(false);
   const [incomingSignal, setIncomingSignal] = useState<IncomingSignalPayload | null>(null);
@@ -73,7 +73,8 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
             setIsConnected(true);
             break;
           case "peer_joined":
-            setPeerJoined(true);
+            setPeerJoinCount((c) => c + 1);
+            setPeerLeft(false);   // peer came back — clear the "left" flag
             break;
           case "peer_left":
             setPeerLeft(true);
@@ -103,9 +104,6 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
     };
 
     ws.onerror = () => {
-      if (!isReconnectingRef.current) {
-        setConnectionError("CONNECTION_ERROR");
-      }
       setIsConnected(false);
     };
 
@@ -173,7 +171,7 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
     isConnected,
     isReconnecting,
     isInitiator,
-    peerJoined,
+    peerJoinCount,
     peerLeft,
     roomFull,
     incomingSignal,

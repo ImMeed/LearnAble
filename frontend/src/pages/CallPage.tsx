@@ -72,7 +72,7 @@ export default function CallPage() {
     peerRef,
   } = useWebRTC({
     isInitiator: signaling.isInitiator,
-    peerJoined: signaling.peerJoined,
+    peerJoinCount: signaling.peerJoinCount,
     incomingSignal: signaling.incomingSignal,
     sendMessage: signaling.sendMessage,
   });
@@ -176,7 +176,7 @@ export default function CallPage() {
     (callState === "waiting" || callState === "connected");
 
   // Mount attention processor on the student side only
-  useAttentionProcessor({
+  const { latestScore, blinkDetector, loadFailed } = useAttentionProcessor({
     localStream,
     enabled: role === 'student' && !!localStream,
     sendMessage: signaling.sendMessage,
@@ -262,7 +262,7 @@ export default function CallPage() {
             isCamOff={remoteMediaState ? !remoteMediaState.video : false}
             remoteMuted={remoteMediaState ? !remoteMediaState.audio : false}
           />
-          <VideoTile stream={localStream} muted={true} label={t("call.you")} variant="pip" isCamOff={isCamOff} />
+          <VideoTile stream={localStream} muted={true} label={t("call.you")} variant="pip" isCamOff={isCamOff} consentBadgeLabel={role === 'student' ? t('attention.consent.tracking') : undefined} />
 
           <CallControls
             isMuted={isMuted}
@@ -281,6 +281,7 @@ export default function CallPage() {
             isDistracted={attentionState.isDistracted}
             timeline={attentionState.timeline}
             active={role === 'teacher'}
+            unavailable={loadFailed.current}
           />
         </>
       )}

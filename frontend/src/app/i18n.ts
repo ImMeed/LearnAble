@@ -56,6 +56,10 @@ void i18n.use(initReactI18next).init({
           }
         },
         attention: {
+          widget: {
+            minimize: "تصغير",
+            restore: "استعادة مراقب الانتباه",
+          },
           rolePicker: {
             title: "من أنت؟",
             teacher: "أنا معلم",
@@ -136,6 +140,10 @@ void i18n.use(initReactI18next).init({
           }
         },
         attention: {
+          widget: {
+            minimize: "Minimize",
+            restore: "Restore attention monitor",
+          },
           rolePicker: {
             title: "Who are you?",
             teacher: "I'm a Teacher",

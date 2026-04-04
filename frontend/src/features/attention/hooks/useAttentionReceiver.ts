@@ -56,7 +56,7 @@ export function useAttentionReceiver({
     lastReceivedAtRef.current = Date.now();
     resetStaleTimer();
 
-    if (!hasData) setHasData(true);
+    setHasData(true);
 
     // Update current display values
     setCurrentScore(score);
@@ -91,7 +91,7 @@ export function useAttentionReceiver({
       }
       return next;
     });
-  }, [incomingMetrics, enabled, hasData, resetStaleTimer]);
+  }, [incomingMetrics, enabled, resetStaleTimer]);
 
   // Cleanup stale timer on unmount
   useEffect(() => {

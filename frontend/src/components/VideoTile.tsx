@@ -9,9 +9,10 @@ interface VideoTileProps {
   // remoteMuted: show a mic-off badge overlay on the tile
   remoteMuted?: boolean;
   children?: React.ReactNode;
+  consentBadgeLabel?: string;
 }
 
-export default function VideoTile({ stream, muted, label, variant, isCamOff, remoteMuted, children }: VideoTileProps) {
+export default function VideoTile({ stream, muted, label, variant, isCamOff, remoteMuted, children, consentBadgeLabel }: VideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -58,6 +59,11 @@ export default function VideoTile({ stream, muted, label, variant, isCamOff, rem
       {remoteMuted && (
         <div className="video-tile__muted-badge" title="Microphone off">
           🔇
+        </div>
+      )}
+      {consentBadgeLabel && (
+        <div className="video-tile__consent-badge" title={consentBadgeLabel}>
+          👁
         </div>
       )}
       {children}

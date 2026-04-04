@@ -24,6 +24,7 @@ interface AttentionWidgetProps {
   isDistracted: boolean;
   timeline: AttentionDataPoint[];
   active: boolean; // false = reset and hide
+  unavailable?: boolean;
 }
 
 type WidgetMode = 'compact' | 'expanded' | 'minimized';
@@ -93,6 +94,7 @@ export default function AttentionWidget({
   isDistracted,
   timeline,
   active,
+  unavailable,
 }: AttentionWidgetProps) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<WidgetMode>('compact');
@@ -120,18 +122,25 @@ export default function AttentionWidget({
     : cornerStyles[corner];
 
   // ── Derived values ──
-  const borderColor = isDistracted ? '#ef4444' : (hasData && !isStale ? BORDER_COLOR[currentLabel] : '#4b5563');
-  const scoreColor  = hasData && !isStale ? SCORE_COLOR[currentLabel] : '#6b7280';
+  const borderColor = unavailable
+    ? '#4b5563'
+    : isDistracted
+      ? '#ef4444'
+      : (hasData && !isStale ? BORDER_COLOR[currentLabel] : '#4b5563');
 
-  const labelText = hasData && !isStale
-    ? {
-        high:     t('attention.overlay.highFocus'),
-        moderate: t('attention.overlay.moderateFocus'),
-        low:      t('attention.overlay.lowFocus'),
-      }[currentLabel]
-    : isStale
-      ? t('attention.overlay.noData')
-      : t('attention.overlay.waitingData');
+  const scoreColor  = hasData && !isStale && !unavailable ? SCORE_COLOR[currentLabel] : '#6b7280';
+
+  const labelText = unavailable
+    ? t('attention.overlay.unavailable')
+    : hasData && !isStale
+      ? {
+          high:     t('attention.overlay.highFocus'),
+          moderate: t('attention.overlay.moderateFocus'),
+          low:      t('attention.overlay.lowFocus'),
+        }[currentLabel]
+      : isStale
+        ? t('attention.overlay.noData')
+        : t('attention.overlay.waitingData');
 
   const chartData  = toChartData(timeline);
   const showChart  = timeline.length >= MIN_CHART_POINTS;
@@ -150,11 +159,11 @@ export default function AttentionWidget({
         onClick={() => setMode('compact')}
         title={labelText}
         role="button"
-        aria-label={`${t('attention.overlay.details')} — ${labelText} ${currentScore}%`}
+        aria-label={`${t('attention.widget.restore')} — ${labelText} ${hasData && !isStale && !unavailable ? currentScore + '%' : ''}`}
       >
         <span className="aw-mini__dot" style={{ background: borderColor }} />
         <span className="aw-mini__score" style={{ color: scoreColor }}>
-          {hasData && !isStale ? `${currentScore}%` : '—'}
+          {hasData && !isStale && !unavailable ? `${currentScore}%` : '—'}
         </span>
       </div>
     );
@@ -175,6 +184,7 @@ export default function AttentionWidget({
         className="aw__header"
         onMouseDown={onDragHandleMouseDown}
         title="Drag to move"
+        tabIndex={-1}
       >
         <span className="aw__drag-hint">⠿</span>
         <span className="aw__header-label">{t('attention.panel.title')}</span>
@@ -202,8 +212,8 @@ export default function AttentionWidget({
           <button
             className="aw__icon-btn"
             onClick={() => setMode('minimized')}
-            title="Minimize"
-            aria-label="Minimize attention widget"
+            title={t('attention.widget.minimize')}
+            aria-label={t('attention.widget.minimize')}
           >
             —
           </button>
@@ -213,7 +223,7 @@ export default function AttentionWidget({
       {/* ── Score row ── */}
       <div className="aw__score-row">
         <span className="aw__score" style={{ color: scoreColor }}>
-          {hasData && !isStale ? `${currentScore}%` : '—'}
+          {hasData && !isStale && !unavailable ? `${currentScore}%` : '—'}
         </span>
         <span className="aw__label">{labelText}</span>
       </div>
