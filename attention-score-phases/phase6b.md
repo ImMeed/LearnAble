@@ -5,32 +5,28 @@
 
 **Depends on:** Phase 6a (all polish tasks complete).
 
-**Testing framework:** Vitest (already configured in the project via Vite). For component rendering tests, use `@testing-library/react`. For the E2E test, use two browser windows manually (no automated browser testing in MVP scope).
+**Testing framework:** Vitest (already configured). For component rendering tests, use `@testing-library/react`. For E2E, use two browser windows manually.
+
+> **Architecture note:** `AttentionOverlay.tsx`, `DistractionAlert.tsx`, and `AttentionPanel.tsx` were replaced by the unified `AttentionWidget.tsx`. Component tests reflect this — there are no tests for the old components.
 
 ---
 
-## Setup: Install Testing Dependencies
+## Setup: Current State
 
-If not already installed:
-
-```bash
-npm install --save-dev @testing-library/react @testing-library/user-event jsdom
-```
-
-Add to `vite.config.ts` if not already present:
+Vitest and jsdom are **already installed and configured** — no setup needed. The current `vite.config.ts` already contains:
 
 ```typescript
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+test: {
+  environment: 'jsdom',
+}
+```
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: './src/test-setup.ts',
-  },
-});
+`vitest` and `jsdom` are already in `package.json` devDependencies.
+
+**Install the missing testing libraries:**
+
+```bash
+npm install --save-dev @testing-library/react @testing-library/user-event @testing-library/jest-dom
 ```
 
 Create `frontend/src/test-setup.ts`:
@@ -39,26 +35,33 @@ Create `frontend/src/test-setup.ts`:
 import '@testing-library/jest-dom';
 ```
 
+Add `setupFiles` to the `test` block in `vite.config.ts`:
+
+```typescript
+test: {
+  environment: 'jsdom',
+  globals: true,
+  setupFiles: './src/test-setup.ts',
+},
+```
+
 ---
 
 ## Test File Locations
-
-All test files live alongside the code they test, inside `__tests__/` subdirectories:
 
 ```
 frontend/src/features/attention/
   lib/
     __tests__/
-      computeAttentionScore.test.ts    ← already created in Phase 2
-      extractFeatures.test.ts          ← new in this phase
-      blinkDetector.test.ts            ← new in this phase
+      computeAttentionScore.test.ts   ← ALREADY EXISTS & PASSING (12/12)
+      extractFeatures.test.ts         ← new in this phase
+      blinkDetector.test.ts           ← new in this phase
   hooks/
     __tests__/
-      useAttentionReceiver.test.ts     ← new in this phase
+      useAttentionReceiver.test.ts    ← new in this phase
   components/
     __tests__/
-      AttentionOverlay.test.tsx        ← new in this phase
-      DistractionAlert.test.tsx        ← new in this phase
+      AttentionWidget.test.tsx        ← new in this phase (replaces old Overlay + Alert tests)
 ```
 
 ---
@@ -72,7 +75,7 @@ import { describe, it, expect } from 'vitest';
 import { extractFeatures, noFaceFeatures } from '../extractFeatures';
 import { NormalizedLandmark } from '@mediapipe/face_mesh';
 
-// Build a minimal 478-landmark array with all landmarks at a neutral position (face looking straight)
+// Build a minimal 478-landmark array at a neutral forward-facing position
 function makeNeutralLandmarks(): NormalizedLandmark[] {
   const lm: NormalizedLandmark[] = Array.from({ length: 478 }, () => ({
     x: 0.5,
@@ -80,17 +83,11 @@ function makeNeutralLandmarks(): NormalizedLandmark[] {
     z: 0,
   }));
 
-  // Set specific landmarks to simulate a forward-facing, eyes-open face
-  // Nose tip at center
-  lm[1] = { x: 0.5, y: 0.5, z: 0 };
-  // Left ear (left of nose)
-  lm[234] = { x: 0.2, y: 0.5, z: 0 };
-  // Right ear (right of nose)
-  lm[454] = { x: 0.8, y: 0.5, z: 0 };
-  // Forehead (above nose)
-  lm[10] = { x: 0.5, y: 0.25, z: 0 };
-  // Chin (below nose)
-  lm[152] = { x: 0.5, y: 0.75, z: 0 };
+  lm[1]   = { x: 0.5,  y: 0.5,  z: 0 }; // nose tip
+  lm[234] = { x: 0.2,  y: 0.5,  z: 0 }; // left ear
+  lm[454] = { x: 0.8,  y: 0.5,  z: 0 }; // right ear
+  lm[10]  = { x: 0.5,  y: 0.25, z: 0 }; // forehead
+  lm[152] = { x: 0.5,  y: 0.75, z: 0 }; // chin
 
   // Left eye: open
   lm[159] = { x: 0.35, y: 0.42, z: 0 }; // upper lid
@@ -112,59 +109,43 @@ function makeNeutralLandmarks(): NormalizedLandmark[] {
 }
 
 describe('extractFeatures', () => {
-  it('returns facePresent: true (caller is responsible for setting this)', () => {
-    const lm = makeNeutralLandmarks();
-    const features = extractFeatures(lm);
-    expect(features.facePresent).toBe(true);
+  it('returns facePresent: true', () => {
+    expect(extractFeatures(makeNeutralLandmarks()).facePresent).toBe(true);
   });
 
   it('returns near-zero yaw for a straight-ahead face', () => {
-    const lm = makeNeutralLandmarks();
-    const features = extractFeatures(lm);
-    expect(Math.abs(features.headYaw)).toBeLessThan(5);
+    expect(Math.abs(extractFeatures(makeNeutralLandmarks()).headYaw)).toBeLessThan(5);
   });
 
-  it('returns non-zero yaw when face turns right (right ear further from nose)', () => {
+  it('returns positive yaw when face turns right', () => {
     const lm = makeNeutralLandmarks();
-    // Simulate turning right: move right ear further right
-    lm[454] = { x: 0.9, y: 0.5, z: 0 };
-    const features = extractFeatures(lm);
-    expect(features.headYaw).toBeGreaterThan(0); // positive = turned right
+    lm[454] = { x: 0.9, y: 0.5, z: 0 }; // right ear further right
+    expect(extractFeatures(lm).headYaw).toBeGreaterThan(0);
   });
 
   it('returns near-zero pitch for a straight-ahead face', () => {
-    const lm = makeNeutralLandmarks();
-    const features = extractFeatures(lm);
-    expect(Math.abs(features.headPitch)).toBeLessThan(10);
+    expect(Math.abs(extractFeatures(makeNeutralLandmarks()).headPitch)).toBeLessThan(10);
   });
 
-  it('returns negative pitch when looking down (chin closer to nose)', () => {
+  it('returns negative pitch when looking down', () => {
     const lm = makeNeutralLandmarks();
-    // Simulate looking down: move chin up (closer to nose)
-    lm[152] = { x: 0.5, y: 0.60, z: 0 };
-    const features = extractFeatures(lm);
-    expect(features.headPitch).toBeLessThan(0);
+    lm[152] = { x: 0.5, y: 0.60, z: 0 }; // chin closer to nose
+    expect(extractFeatures(lm).headPitch).toBeLessThan(0);
   });
 
   it('returns positive eyeOpennessRatio for open eyes', () => {
-    const lm = makeNeutralLandmarks();
-    const features = extractFeatures(lm);
-    expect(features.eyeOpennessRatio).toBeGreaterThan(0.05);
+    expect(extractFeatures(makeNeutralLandmarks()).eyeOpennessRatio).toBeGreaterThan(0.05);
   });
 
   it('returns near-zero eyeOpennessRatio for closed eyes', () => {
     const lm = makeNeutralLandmarks();
-    // Collapse lids together
-    lm[159] = { ...lm[145] }; // upper lid = lower lid
+    lm[159] = { ...lm[145] }; // collapse upper lid onto lower
     lm[386] = { ...lm[374] };
-    const features = extractFeatures(lm);
-    expect(features.eyeOpennessRatio).toBeLessThan(0.02);
+    expect(extractFeatures(lm).eyeOpennessRatio).toBeLessThan(0.02);
   });
 
   it('returns near-zero irisDeviation for centered iris', () => {
-    const lm = makeNeutralLandmarks();
-    const features = extractFeatures(lm);
-    expect(features.irisDeviation).toBeLessThan(0.1);
+    expect(extractFeatures(makeNeutralLandmarks()).irisDeviation).toBeLessThan(0.1);
   });
 });
 
@@ -190,7 +171,7 @@ describe('noFaceFeatures', () => {
 ### File: `frontend/src/features/attention/lib/__tests__/blinkDetector.test.ts`
 
 ```typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BlinkDetector } from '../blinkDetector';
 
 describe('BlinkDetector', () => {
@@ -206,24 +187,21 @@ describe('BlinkDetector', () => {
   });
 
   it('returns false on first open-eye reading', () => {
-    const blinked = detector.update(0.30);
-    expect(blinked).toBe(false);
+    expect(detector.update(0.30)).toBe(false);
   });
 
   it('detects a valid blink: open → close → open within 400ms', () => {
-    detector.update(0.30);      // open
-    detector.update(0.05);      // closed (< 0.10)
+    detector.update(0.30);            // open
+    detector.update(0.05);            // closed
     vi.advanceTimersByTime(150);
-    const blinked = detector.update(0.30); // open again
-    expect(blinked).toBe(true);
+    expect(detector.update(0.30)).toBe(true); // re-open = blink counted
   });
 
   it('does not count a blink if closure lasts longer than 400ms', () => {
-    detector.update(0.30);      // open
-    detector.update(0.05);      // closed
-    vi.advanceTimersByTime(500); // too long — eyes held closed
-    const blinked = detector.update(0.30); // re-open
-    expect(blinked).toBe(false);
+    detector.update(0.30);
+    detector.update(0.05);
+    vi.advanceTimersByTime(500);      // held too long
+    expect(detector.update(0.30)).toBe(false);
   });
 
   it('getBlinksPerMinute returns 0 initially', () => {
@@ -231,7 +209,6 @@ describe('BlinkDetector', () => {
   });
 
   it('getBlinksPerMinute counts blinks in the last 60 seconds', () => {
-    // Simulate 3 blinks
     for (let i = 0; i < 3; i++) {
       detector.update(0.30);
       detector.update(0.05);
@@ -246,7 +223,7 @@ describe('BlinkDetector', () => {
     detector.update(0.30);
     detector.update(0.05);
     vi.advanceTimersByTime(100);
-    detector.update(0.30); // one blink counted
+    detector.update(0.30);
     detector.reset();
     expect(detector.getBlinksPerMinute()).toBe(0);
   });
@@ -257,7 +234,7 @@ describe('BlinkDetector', () => {
 
 ## T3 — Unit Tests: `computeAttentionScore.ts`
 
-These were defined in Phase 2. Verify they still pass after Phase 6a changes with `npx vitest run`.
+**Already passing — 12/12 tests green.** Run `npx vitest run` after Phase 6a changes to confirm no regressions.
 
 ---
 
@@ -266,7 +243,7 @@ These were defined in Phase 2. Verify they still pass after Phase 6a changes wit
 ### File: `frontend/src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts`
 
 ```typescript
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useAttentionReceiver } from '../useAttentionReceiver';
 import { AttentionMetrics } from '../../types/attention';
@@ -301,9 +278,7 @@ describe('useAttentionReceiver', () => {
       { initialProps: { metrics: null as AttentionMetrics | null } }
     );
 
-    act(() => {
-      rerender({ metrics: makeMetrics(80, 'high') });
-    });
+    act(() => { rerender({ metrics: makeMetrics(80, 'high') }); });
 
     expect(result.current.hasData).toBe(true);
     expect(result.current.currentScore).toBe(80);
@@ -317,17 +292,11 @@ describe('useAttentionReceiver', () => {
       { initialProps: { metrics: null as AttentionMetrics | null } }
     );
 
-    // First low reading — not yet distracted
-    act(() => {
-      rerender({ metrics: makeMetrics(30, 'low') });
-    });
-    expect(result.current.isDistracted).toBe(false);
+    act(() => { rerender({ metrics: makeMetrics(30, 'low') }); });
+    expect(result.current.isDistracted).toBe(false); // only 1 low reading
 
-    // Second low reading — now distracted
-    act(() => {
-      rerender({ metrics: { ...makeMetrics(25, 'low'), timestamp: 4 } });
-    });
-    expect(result.current.isDistracted).toBe(true);
+    act(() => { rerender({ metrics: { ...makeMetrics(25, 'low'), timestamp: 4 } }); });
+    expect(result.current.isDistracted).toBe(true);  // 2nd consecutive low
   });
 
   it('clears distraction after score recovers', () => {
@@ -337,13 +306,11 @@ describe('useAttentionReceiver', () => {
       { initialProps: { metrics: null as AttentionMetrics | null } }
     );
 
-    // Two low readings → distracted
-    act(() => rerender({ metrics: makeMetrics(30, 'low') }));
-    act(() => rerender({ metrics: { ...makeMetrics(25, 'low'), timestamp: 4 } }));
+    act(() => { rerender({ metrics: makeMetrics(30, 'low') }); });
+    act(() => { rerender({ metrics: { ...makeMetrics(25, 'low'), timestamp: 4 } }); });
     expect(result.current.isDistracted).toBe(true);
 
-    // Recovery
-    act(() => rerender({ metrics: { ...makeMetrics(75, 'high'), timestamp: 8 } }));
+    act(() => { rerender({ metrics: { ...makeMetrics(75, 'high'), timestamp: 8 } }); });
     expect(result.current.isDistracted).toBe(false);
   });
 
@@ -354,8 +321,8 @@ describe('useAttentionReceiver', () => {
       { initialProps: { metrics: null as AttentionMetrics | null } }
     );
 
-    act(() => rerender({ metrics: makeMetrics(80, 'high') }));
-    act(() => rerender({ metrics: { ...makeMetrics(60, 'moderate'), timestamp: 4 } }));
+    act(() => { rerender({ metrics: makeMetrics(80, 'high') }); });
+    act(() => { rerender({ metrics: { ...makeMetrics(60, 'moderate'), timestamp: 4 } }); });
 
     expect(result.current.timeline).toHaveLength(2);
     expect(result.current.timeline[0].score).toBe(80);
@@ -369,7 +336,7 @@ describe('useAttentionReceiver', () => {
       { initialProps: { enabled: true, metrics: makeMetrics(80, 'high') } }
     );
 
-    act(() => rerender({ enabled: false, metrics: makeMetrics(80, 'high') }));
+    act(() => { rerender({ enabled: false, metrics: makeMetrics(80, 'high') }); });
 
     expect(result.current.hasData).toBe(false);
     expect(result.current.timeline).toHaveLength(0);
@@ -380,120 +347,127 @@ describe('useAttentionReceiver', () => {
 
 ---
 
-## T5 — Component Tests: `AttentionOverlay`
+## T5 — Component Tests: `AttentionWidget`
 
-### File: `frontend/src/features/attention/components/__tests__/AttentionOverlay.test.tsx`
+### File: `frontend/src/features/attention/components/__tests__/AttentionWidget.test.tsx`
+
+**Mock Recharts** — it doesn't render correctly in jsdom. Add a mock at the top of the file:
 
 ```tsx
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import AttentionOverlay from '../AttentionOverlay';
+import AttentionWidget from '../AttentionWidget';
 
-// Mock react-i18next
+// Recharts uses ResizeObserver and SVG APIs not available in jsdom
+vi.mock('recharts', () => ({
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  LineChart:   ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Line:        () => null,
+  XAxis:       () => null,
+  YAxis:       () => null,
+  CartesianGrid: () => null,
+  ReferenceDot:  () => null,
+  Tooltip:       () => null,
+}));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
 }));
 
-describe('AttentionOverlay', () => {
-  const defaultProps = {
-    score: 82,
-    label: 'high' as const,
-    hasData: true,
-    isStale: false,
-    unavailable: false,
-    onDetailsClick: vi.fn(),
-  };
+const defaultProps = {
+  currentScore: 82,
+  currentLabel: 'high' as const,
+  hasData: true,
+  isStale: false,
+  isDistracted: false,
+  timeline: [],
+  active: true,
+};
 
-  it('renders waiting state when hasData is false', () => {
-    render(<AttentionOverlay {...defaultProps} hasData={false} />);
-    expect(screen.getByText('attention.overlay.waitingData')).toBeInTheDocument();
+describe('AttentionWidget', () => {
+  it('renders nothing when active is false', () => {
+    const { container } = render(<AttentionWidget {...defaultProps} active={false} />);
+    expect(container.firstChild).toBeNull();
   });
 
-  it('renders stale state when isStale is true', () => {
-    render(<AttentionOverlay {...defaultProps} isStale={true} />);
-    expect(screen.getByText('attention.overlay.noData')).toBeInTheDocument();
-  });
-
-  it('renders unavailable state when unavailable is true', () => {
-    render(<AttentionOverlay {...defaultProps} unavailable={true} />);
-    expect(screen.getByText('attention.overlay.unavailable')).toBeInTheDocument();
-  });
-
-  it('renders score and label when data is available', () => {
-    render(<AttentionOverlay {...defaultProps} />);
+  it('renders the score and label when data is available', () => {
+    render(<AttentionWidget {...defaultProps} />);
     expect(screen.getByText('82%')).toBeInTheDocument();
     expect(screen.getByText('attention.overlay.highFocus')).toBeInTheDocument();
   });
 
-  it('calls onDetailsClick when details button is clicked', async () => {
-    const onDetailsClick = vi.fn();
-    render(<AttentionOverlay {...defaultProps} onDetailsClick={onDetailsClick} />);
-    await userEvent.click(screen.getByRole('button'));
-    expect(onDetailsClick).toHaveBeenCalledOnce();
-  });
-});
-```
-
----
-
-## T6 — Component Tests: `DistractionAlert`
-
-### File: `frontend/src/features/attention/components/__tests__/DistractionAlert.test.tsx`
-
-```tsx
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import DistractionAlert from '../DistractionAlert';
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}));
-
-describe('DistractionAlert', () => {
-  it('renders nothing when isDistracted is false', () => {
-    const { container } = render(<DistractionAlert isDistracted={false} />);
-    expect(container.firstChild).toBeNull();
+  it('renders "—" when hasData is false', () => {
+    render(<AttentionWidget {...defaultProps} hasData={false} />);
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('attention.overlay.waitingData')).toBeInTheDocument();
   });
 
-  it('renders the alert when isDistracted becomes true', () => {
-    const { rerender } = render(<DistractionAlert isDistracted={false} />);
-    rerender(<DistractionAlert isDistracted={true} />);
-    expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('attention.alert.title')).toBeInTheDocument();
+  it('renders stale label when isStale is true', () => {
+    render(<AttentionWidget {...defaultProps} isStale={true} />);
+    expect(screen.getByText('attention.overlay.noData')).toBeInTheDocument();
   });
 
-  it('dismisses on Dismiss button click', async () => {
-    const { rerender } = render(<DistractionAlert isDistracted={false} />);
-    rerender(<DistractionAlert isDistracted={true} />);
-    await userEvent.click(screen.getByRole('button'));
+  it('renders unavailable label when unavailable is true', () => {
+    render(<AttentionWidget {...defaultProps} unavailable={true} />);
+    expect(screen.getByText('attention.overlay.unavailable')).toBeInTheDocument();
+  });
+
+  it('does not render the distraction row when isDistracted is false', () => {
+    render(<AttentionWidget {...defaultProps} />);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('has role=alert and aria-live=assertive', () => {
-    const { rerender } = render(<DistractionAlert isDistracted={false} />);
-    rerender(<DistractionAlert isDistracted={true} />);
+  it('renders distraction row with role=alert when isDistracted is true', () => {
+    render(<AttentionWidget {...defaultProps} isDistracted={true} />);
     const alert = screen.getByRole('alert');
+    expect(alert).toBeInTheDocument();
     expect(alert).toHaveAttribute('aria-live', 'assertive');
     expect(alert).toHaveAttribute('aria-atomic', 'true');
+    expect(screen.getByText('attention.alert.title')).toBeInTheDocument();
   });
 
-  it('does not re-show alert within the cooldown period', () => {
-    const { rerender } = render(<DistractionAlert isDistracted={false} />);
-    // First trigger
-    rerender(<DistractionAlert isDistracted={true} />);
+  it('distraction row disappears when isDistracted becomes false', () => {
+    const { rerender } = render(<AttentionWidget {...defaultProps} isDistracted={true} />);
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    // Dismiss
-    rerender(<DistractionAlert isDistracted={false} />);
-    // Re-trigger immediately (still in cooldown)
-    rerender(<DistractionAlert isDistracted={true} />);
-    // Alert count should still be 1 (same element, not duplicated)
-    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    rerender(<AttentionWidget {...defaultProps} isDistracted={false} />);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('expand button switches to expanded mode showing chart area', async () => {
+    render(<AttentionWidget {...defaultProps} />);
+    const expandBtn = screen.getByLabelText('attention.overlay.details');
+    await userEvent.click(expandBtn);
+    // Collapse button should now be visible instead of expand
+    expect(screen.getByLabelText('attention.panel.back')).toBeInTheDocument();
+    expect(screen.queryByLabelText('attention.overlay.details')).not.toBeInTheDocument();
+  });
+
+  it('collapse button returns to compact mode', async () => {
+    render(<AttentionWidget {...defaultProps} />);
+    await userEvent.click(screen.getByLabelText('attention.overlay.details'));
+    await userEvent.click(screen.getByLabelText('attention.panel.back'));
+    expect(screen.getByLabelText('attention.overlay.details')).toBeInTheDocument();
+  });
+
+  it('minimize button switches to pill mode', async () => {
+    render(<AttentionWidget {...defaultProps} />);
+    const minimizeBtn = screen.getByLabelText('attention.widget.minimize');
+    await userEvent.click(minimizeBtn);
+    // In pill mode, the expand/minimize buttons are gone, score is still visible
+    expect(screen.queryByLabelText('attention.overlay.details')).not.toBeInTheDocument();
+    expect(screen.getByText('82%')).toBeInTheDocument(); // pill still shows score
+  });
+
+  it('clicking the minimized pill restores compact mode', async () => {
+    render(<AttentionWidget {...defaultProps} />);
+    await userEvent.click(screen.getByLabelText('attention.widget.minimize'));
+    // Pill is now a role=button
+    const pill = screen.getByRole('button', { name: /attention.widget.restore/i });
+    await userEvent.click(pill);
+    expect(screen.getByLabelText('attention.overlay.details')).toBeInTheDocument();
   });
 });
 ```
@@ -502,44 +476,42 @@ describe('DistractionAlert', () => {
 
 ## T7 — Manual End-to-End Test Protocol
 
-This test must be performed manually in two browser windows.
-
 ### Setup
 
-1. Start the dev server: `npm run dev` in `frontend/`
+1. Start dev server: `npm run dev` in `frontend/`
 2. Start the backend WebSocket server
-3. Open two browser windows (not tabs — separate windows to simulate two users)
-4. Navigate both to the same `/call/:roomId` URL
+3. Open **two separate browser windows** (not tabs) to the same `/call/:roomId` URL
 
 ### Test Steps
 
 | # | Action | Expected |
 |---|--------|----------|
 | E1 | Window A: pick "Student". Window B: pick "Teacher" | Both enter the call. Webcam active in both. |
-| E2 | Wait 5–8 seconds | Teacher (B) sees overlay with score and label. No errors. |
-| E3 | Student (A): cover the camera with your hand | Teacher (B) overlay score drops toward 0. Label changes to "Low Focus" (red). |
-| E4 | Student (A): cover camera for 10+ seconds | Teacher (B) sees the distraction alert popup in the top-right corner. |
-| E5 | Teacher (B): click "Dismiss" on the alert | Alert disappears immediately. |
-| E6 | Student (A): uncover camera | Teacher (B) score recovers gradually. Label returns to green. |
-| E7 | Teacher (B): click "≡" Details button on overlay | `AttentionPanel` fills the video tile. Back button is visible. |
-| E8 | Watch panel for 30+ seconds | Line chart grows from left to right. Color segments visible. |
-| E9 | Student (A): turn head to the side | Score drops in the chart. Line color shifts to yellow or red. |
-| E10 | Teacher (B): click "← Back" | Overlay returns. Score is still updating. |
-| E11 | Window A: switch tab to another URL (hide tab) | Teacher (B) overlay shows stale state within 15 seconds. |
-| E12 | Window A: return to the call tab | Teacher (B) overlay resumes with live data within ~4 seconds. |
-| E13 | Student (A): end call | Teacher (B) sees normal post-call state (peer left message). Attention state cleared. |
-| E14 | Both users: pick same role (both pick "Teacher") | Neither sees an error. Teacher sees "Waiting for student data…" overlay. No crash. |
-| E15 | Student (A): check console | `[AttentionProcessor]` logs present. No unhandled errors. |
-| E16 | Verify DevTools → Network → WS | `attention_metrics` frames visible every ~4s, ~200 bytes each. |
+| E2 | Wait 5–8 seconds | Teacher (B) sees `AttentionWidget` in bottom-right corner. Score and label visible. Widget has colored left border. |
+| E3 | Student (A): cover the camera | Teacher (B) widget: border turns red, score drops, label changes to "Low Focus" |
+| E4 | Student (A): keep camera covered for 10+ seconds | Teacher (B) widget: red distraction banner row appears inside the card with `⚠️` icon |
+| E5 | Student (A): uncover camera | Teacher (B): distraction banner disappears automatically. Score recovers gradually. Border turns green. |
+| E6 | Teacher (B): click `⤢` expand button | Widget expands downward, chart area appears. Collapse button `⤡` is visible. |
+| E7 | Watch expanded widget for 30+ seconds | Line chart grows right-to-left. Color segments visible (green/amber/red). |
+| E8 | Student (A): turn head to the side | Score drops in chart. Line color shifts to yellow or red. |
+| E9 | Teacher (B): click `⤡` collapse button | Widget returns to compact mode. Score still updating. |
+| E10 | Teacher (B): click `—` minimize button | Widget collapses to a small pill showing dot + score only. |
+| E11 | Teacher (B): click the pill | Widget restores to compact mode. |
+| E12 | Teacher (B): drag the widget header | Widget follows cursor. On release, snaps to nearest corner. |
+| E13 | Window A: switch to another tab (hide it) | Teacher (B) widget: border turns gray, score shows `—`, stale label appears within 15s. |
+| E14 | Window A: return to the call tab | Teacher (B) widget: resumes live data within ~4s. |
+| E15 | Student (A): end call | Teacher (B): post-call state shown. Widget disappears (active=false). |
+| E16 | Both users pick "Teacher" | No errors. Widget shows `attention.overlay.waitingData`. No crash. |
+| E17 | Student (A): verify console | `[AttentionProcessor]` logs every ~4s. No unhandled errors. |
+| E18 | DevTools → Network → WS | `attention_metrics` frames every ~4s, ~200 bytes each. |
 
 ### Regression Check
 
-Verify these existing features still work after all phases:
 - [ ] WebRTC video/audio works normally (no degradation)
-- [ ] Mute/camera toggle still works
-- [ ] Reconnection still works (disconnect and reconnect network)
-- [ ] Room full message still works (open a third tab)
-- [ ] i18n language switching still works (switch to Arabic mid-call)
+- [ ] Mute/camera toggle works
+- [ ] Reconnection works (disconnect and reconnect network)
+- [ ] Room full message works (open a third tab)
+- [ ] i18n language switching works mid-call (switch to Arabic)
 
 ---
 
@@ -547,11 +519,11 @@ Verify these existing features still work after all phases:
 
 Simulate a 30-minute session:
 
-1. Join as Student. Run the call with MediaPipe active for 30 minutes.
-2. Monitor in Chrome DevTools → Performance tab:
-   - CPU usage should stay below **15%** average on a mid-range laptop
-   - Heap memory should not grow unboundedly (check Memory tab for leaks)
-3. Monitor the timeline array: after 30 minutes at 4s intervals = 450 entries. After 60 minutes = 900 entries (the cap). Verify the cap is enforced (no array beyond 900).
+1. Join as Student. Run call with MediaPipe active for 30 minutes.
+2. Chrome DevTools → Performance tab:
+   - CPU usage stays below **15%** average on a mid-range laptop
+   - Heap memory does not grow unboundedly (Memory tab)
+3. `attentionState.timeline` array: after 30 min = 450 entries; after 60 min = 900 entries (cap). Verify array never exceeds 900.
 
 ---
 
@@ -562,15 +534,14 @@ cd frontend
 npx vitest run
 ```
 
-Expected output: all unit and hook tests pass. Zero failures.
+Expected: all unit, hook, and component tests pass. Zero failures.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] All Vitest unit tests pass (`npx vitest run` exits with code 0)
-- [ ] All component tests pass
-- [ ] Manual E2E protocol: all 16 steps pass without errors
+- [ ] `npx vitest run` exits with code 0 — all tests pass
+- [ ] Manual E2E: all 18 steps pass without errors
 - [ ] Regression check: all existing call features unaffected
 - [ ] Performance: CPU < 15% over 30-minute session, no memory leak
 
@@ -583,7 +554,6 @@ Expected output: all unit and hook tests pass. Zero failures.
 | CREATE | `frontend/src/features/attention/lib/__tests__/extractFeatures.test.ts` |
 | CREATE | `frontend/src/features/attention/lib/__tests__/blinkDetector.test.ts` |
 | CREATE | `frontend/src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts` |
-| CREATE | `frontend/src/features/attention/components/__tests__/AttentionOverlay.test.tsx` |
-| CREATE | `frontend/src/features/attention/components/__tests__/DistractionAlert.test.tsx` |
-| CREATE | `frontend/src/test-setup.ts` (if not already present) |
-| MODIFY | `vite.config.ts` — add `test` configuration block (if not already present) |
+| CREATE | `frontend/src/features/attention/components/__tests__/AttentionWidget.test.tsx` |
+| CREATE | `frontend/src/test-setup.ts` |
+| MODIFY | `vite.config.ts` — add `globals: true` and `setupFiles` to the existing `test` block |

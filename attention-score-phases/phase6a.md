@@ -5,7 +5,9 @@
 
 **Depends on:** Phases 0–5 fully working end-to-end.
 
-**Produces:** Modifications to existing files only — no net-new components (except the consent indicator, which is a small addition to the student's call view).
+> **Architecture note:** `AttentionOverlay.tsx`, `DistractionAlert.tsx`, and `AttentionPanel.tsx` from the original phase designs were replaced by a single unified component: `AttentionWidget.tsx` (+ `useDraggableSnap.ts`). All references in this phase target the widget instead.
+
+**Produces:** Modifications to existing files only — no net-new components (except the consent indicator, which is a small addition to the student's PiP tile).
 
 ---
 
@@ -15,38 +17,20 @@
 
 ### Where to render it
 
-In `CallPage.tsx`, inside the `callState === "connected"` block, render a consent badge **on the student's PiP tile** (their own local video tile) when `role === 'student'`.
+In `CallPage.tsx`, inside the `callState === "connected"` block, render a consent badge on the student's PiP tile when `role === 'student'`.
 
 ### What to add to `VideoTile.tsx`
 
-Add an optional `consentBadge` boolean prop:
+`VideoTile.tsx` already has a `children` prop added in Phase 4. Add one more optional prop to carry the consent label:
 
 ```typescript
 interface VideoTileProps {
-  // ... existing props ...
-  showConsentBadge?: boolean;  // ← add this
+  // ... existing props (stream, muted, label, variant, isCamOff, remoteMuted, children) ...
+  consentBadgeLabel?: string;  // pass already-translated string from parent
 }
 ```
 
 Inside the `VideoTile` return JSX, before `{children}`, add:
-
-```tsx
-{showConsentBadge && (
-  <div className="video-tile__consent-badge" title={t('attention.consent.tracking')}>
-    👁
-  </div>
-)}
-```
-
-> Note: `VideoTile` currently does not import `useTranslation`. To keep it simple, pass the translated string as a prop instead:
-
-Alternative (simpler — avoid adding i18n import to VideoTile):
-
-```typescript
-interface VideoTileProps {
-  consentBadgeLabel?: string;  // pass already-translated string from parent
-}
-```
 
 ```tsx
 {consentBadgeLabel && (
@@ -56,7 +40,9 @@ interface VideoTileProps {
 )}
 ```
 
-### CSS to add to `CallPage.css` (or create `VideoTile.css`):
+### CSS to add to `CallPage.css`
+
+Verify `.video-tile` already has `position: relative` (required so the badge positions correctly). If missing, add it. Then add the badge style:
 
 ```css
 .video-tile__consent-badge {
@@ -97,23 +83,22 @@ interface VideoTileProps {
 
 **Existing handling:** `CallPage.tsx` already has `callState === "error"` with `mediaError === "CAMERA_DENIED"`. The MediaPipe processor already checks `enabled: role === 'student' && !!localStream` — if `localStream` is null, the processor never starts.
 
-**What to add:**
+**What to add in `useAttentionProcessor.ts`:**
 
-In `useAttentionProcessor.ts`, catch the case where `video.play()` rejects due to NotAllowedError:
+Catch the case where `video.play()` rejects due to NotAllowedError:
 
 ```typescript
 video.play().catch((err: Error) => {
   if (err.name === 'NotAllowedError' || err.name === 'NotFoundError') {
     console.warn('[AttentionProcessor] Camera access unavailable — processor disabled');
-    // Nothing to do: enabled check already guards against null localStream.
-    // The teacher will see the "No attention data available" state via isStale.
+    // The teacher will see the "—" / waiting state via isStale in AttentionWidget.
   } else {
     console.warn('[AttentionProcessor] Hidden video play() failed:', err);
   }
 });
 ```
 
-No UI changes needed — the teacher already sees `t('attention.overlay.noData')` via the `isStale` fallback in `AttentionOverlay`.
+No UI changes needed — `AttentionWidget` already handles `hasData: false` and `isStale: true` states by showing `—` in the score row and the `t('attention.overlay.noData')` label. These states are driven by `useAttentionReceiver` which sets `isStale: true` after 15s of silence.
 
 ---
 
@@ -123,7 +108,7 @@ No UI changes needed — the teacher already sees `t('attention.overlay.noData')
 
 **What to add to `useAttentionProcessor.ts`:**
 
-Add a new state ref and return it:
+Add a new ref and return it:
 
 ```typescript
 const loadFailedRef = useRef(false);
@@ -139,54 +124,62 @@ In the `faceMesh.initialize()` `.catch()` block (already present from Phase 1), 
 });
 ```
 
-Update the hook's return type to expose this:
+Update the hook's return type to expose the flag:
 
 ```typescript
 interface UseAttentionProcessorReturn {
   latestScore: React.RefObject<AttentionScore | null>;
   blinkDetector: React.RefObject<BlinkDetector>;
-  loadFailed: React.RefObject<boolean>;   // ← add this
+  loadFailed: React.RefObject<boolean>;
 }
 
 // In the return statement:
 return { latestScore: latestScoreRef, blinkDetector: blinkDetectorRef, loadFailed: loadFailedRef };
 ```
 
-**In `CallPage.tsx`:**
+**What to add to `AttentionWidget.tsx`:**
 
-Read `loadFailed` from the processor and pass it to the overlay:
-
-```typescript
-const { latestScore, blinkDetector, loadFailed } = useAttentionProcessor({ ... });
-```
-
-Update `AttentionOverlay.tsx` to accept an optional `unavailable` prop:
+Add an `unavailable` prop to the widget's props interface:
 
 ```typescript
-interface AttentionOverlayProps {
+interface AttentionWidgetProps {
   // ... existing props ...
   unavailable?: boolean;
 }
 ```
 
-In the overlay's render logic, check `unavailable` first:
+In the widget's score row render, check `unavailable` first — before checking `hasData`/`isStale`:
 
 ```tsx
-if (unavailable) {
-  return (
-    <div className="attention-overlay attention-overlay--waiting">
-      <span className="attention-overlay__waiting-text">
-        {t('attention.overlay.unavailable')}
-      </span>
-    </div>
-  );
-}
+const labelText = unavailable
+  ? t('attention.overlay.unavailable')
+  : hasData && !isStale
+    ? { high: t('attention.overlay.highFocus'), moderate: t('attention.overlay.moderateFocus'), low: t('attention.overlay.lowFocus') }[currentLabel]
+    : isStale
+      ? t('attention.overlay.noData')
+      : t('attention.overlay.waitingData');
 ```
 
-Pass it from `CallPage`:
+Also pass `unavailable` to the border color logic so the border stays gray when unavailable:
+
+```typescript
+const borderColor = unavailable
+  ? '#4b5563'
+  : isDistracted
+    ? '#ef4444'
+    : (hasData && !isStale ? BORDER_COLOR[currentLabel] : '#4b5563');
+```
+
+**In `CallPage.tsx`:**
+
+Read `loadFailed` from the processor return value and pass it to the widget:
+
+```typescript
+const { latestScore, blinkDetector, loadFailed } = useAttentionProcessor({ ... });
+```
 
 ```tsx
-<AttentionOverlay
+<AttentionWidget
   ...
   unavailable={loadFailed.current}
 />
@@ -200,18 +193,15 @@ Pass it from `CallPage`:
 
 **Implementation in `useAttentionProcessor.ts`:**
 
-Measure the time each `captureAndSend` call takes, and dynamically increase the interval if processing is consistently slow.
+Replace the hardcoded `FRAME_INTERVAL_MS` constant with two constants and measure processing time inside `captureAndSend`:
 
 ```typescript
 const FRAME_INTERVAL_NORMAL_MS = 4000;
 const FRAME_INTERVAL_SLOW_MS = 7000;
 const SLOW_THRESHOLD_MS = 500;
-
-// Track processing time
-const lastFrameStartRef = useRef<number | null>(null);
 ```
 
-Modify `captureAndSend`:
+Modify `captureAndSend` to measure elapsed time and switch intervals if slow:
 
 ```typescript
 const captureAndSend = useCallback(() => {
@@ -224,14 +214,12 @@ const captureAndSend = useCallback(() => {
   if (video.readyState < 2) return;
 
   const start = performance.now();
-  lastFrameStartRef.current = start;
-
   ctx.drawImage(video, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
   faceMesh.send({ image: canvas })
     .then(() => {
       const elapsed = performance.now() - start;
       if (elapsed > SLOW_THRESHOLD_MS && intervalRef.current !== null) {
-        // Slow device — increase the interval to reduce CPU pressure
         clearInterval(intervalRef.current);
         intervalRef.current = setInterval(captureAndSend, FRAME_INTERVAL_SLOW_MS);
         console.warn('[AttentionProcessor] Slow processing detected — reduced to 7s interval');
@@ -243,31 +231,29 @@ const captureAndSend = useCallback(() => {
 }, []);
 ```
 
-Note: once switched to the slow interval, it stays there for the rest of the session. Reset to normal is not implemented in MVP (acceptable per PRD).
+Note: once switched to the slow interval, it stays there for the rest of the session. This is acceptable for MVP.
 
 ---
 
 ## 6a.5 — Tab Visibility Handling
 
-**Requirement:** Pause MediaPipe processing when the student's browser tab is hidden. Resume when visible. Teacher sees `t('attention.overlay.noData')` (via `isStale`) while the tab is hidden.
+**Requirement:** Pause MediaPipe processing when the student's browser tab is hidden. Resume when visible. Teacher sees the stale state in `AttentionWidget` (border turns gray, score shows `—`) while the tab is hidden.
 
 **Implementation in `useAttentionProcessor.ts`:**
 
-Add inside the setup `useEffect`, after the interval is started:
+Add a visibility change listener **inside the setup `useEffect`**, after the interval is started:
 
 ```typescript
 const handleVisibilityChange = () => {
   if (!isMountedRef.current) return;
 
   if (document.hidden) {
-    // Pause the interval
     if (intervalRef.current !== null) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
     console.log('[AttentionProcessor] Tab hidden — paused');
   } else {
-    // Resume the interval
     if (intervalRef.current === null && faceMeshRef.current) {
       intervalRef.current = setInterval(captureAndSend, FRAME_INTERVAL_NORMAL_MS);
       console.log('[AttentionProcessor] Tab visible — resumed');
@@ -284,17 +270,15 @@ Add cleanup in the `return () => { ... }` teardown block:
 document.removeEventListener('visibilitychange', handleVisibilityChange);
 ```
 
-> Important placement note: `handleVisibilityChange` must be defined inside the `useEffect` (not outside) so it has access to the current refs via closure. Alternatively define it as a `useCallback` outside and include it in the `useEffect` dependency array.
+> Important: define `handleVisibilityChange` inside the `useEffect` (not as a `useCallback` outside) so it closes over the current refs without needing to be in the dependency array.
 
 ---
 
 ## 6a.6 — Multiple Students: `peerId` Field (Forward-Compatibility)
 
-**Requirement:** The data model should support a `peerId` so that metrics from multiple students can be distinguished in future phases.
+**Status:** `peerId?: string` was already added to `AttentionMetrics` in Phase 0 (task 0.6). Verify it is present in `attention.ts`.
 
-**Status:** `peerId?: string` was already added to `AttentionMetrics` in Phase 0 (task 0.6). Verify it is present.
-
-**What to do:** In `useAttentionProcessor.ts`, populate `peerId` in the emitted payload. For MVP, there is no real peer ID — use a static placeholder:
+**What to do in `useAttentionProcessor.ts`:** Populate `peerId` in the emitted payload:
 
 ```typescript
 const payload = {
@@ -304,51 +288,67 @@ const payload = {
 };
 ```
 
-No UI changes needed. The field is ignored by current receiver logic but present for forward compatibility.
+No UI changes. The field is ignored by current receiver logic but present for forward compatibility.
 
 ---
 
 ## 6a.7 — Accessibility
 
-### Overlay color contrast
+### Widget color contrast
 
-The `AttentionOverlay` uses these foreground/background combinations:
-- White text (`#ffffff`) on dark semi-transparent background (`rgba(0,0,0,0.65)`) — contrast ratio ≈ 15:1 ✅ passes WCAG AA
-- Muted text (`rgba(255,255,255,0.5)`) on same background — contrast ratio ≈ 7.5:1 ✅ passes WCAG AA
+`AttentionWidget` uses these color combinations — all pass WCAG AA:
+- Large score number (`#22c55e` / `#f59e0b` / `#ef4444`) on `#16162a` background — contrast ratios 6.5:1 / 3.1:1 / 4.5:1
+- Note: amber `#f59e0b` on `#16162a` is borderline at 3.1:1 for the small label text. For the large score number (32px bold) this qualifies as Large Text under WCAG AA (threshold 3:1). No change needed.
+- Label text `rgba(255,255,255,0.65)` on `#16162a` — contrast ≈ 8:1 ✅
 
-No changes needed for the overlay text.
+### Distraction banner — screen reader
 
-### Distraction alert — screen reader
-
-The `DistractionAlert` already has `role="alert"` and `aria-live="assertive"` (added in Phase 4). Verify these are present.
-
-Additionally, add `aria-atomic="true"` to ensure the full alert message is announced when it appears:
+The distraction row in `AttentionWidget.tsx` already has `role="alert"`, `aria-live="assertive"`, and `aria-atomic="true"`:
 
 ```tsx
-<div className="distraction-alert" role="alert" aria-live="assertive" aria-atomic="true">
+<div className="aw__distraction-row" role="alert" aria-live="assertive" aria-atomic="true">
 ```
 
-### Details button accessible name
+Verify these attributes are present. The distraction state clears automatically when the score recovers — there is no dismiss button, so no focus management is needed.
 
-The `[≡]` button in `AttentionOverlay` already has `aria-label={t('attention.overlay.details')}`. Verify this is present. The visual `≡` character alone is not readable — the aria-label provides the accessible name.
+### Expand/collapse button accessible names
 
-### Focus management on alert dismiss
-
-After clicking "Dismiss" on the distraction alert, focus should return to the call controls rather than being lost. Update `DistractionAlert.tsx`:
+The `⤢` and `⤡` icon buttons in `AttentionWidget` already have `aria-label` props. Verify:
 
 ```tsx
-const dismissBtnRef = useRef<HTMLButtonElement>(null);
+<button aria-label={t('attention.overlay.details')} ...>⤢</button>
+<button aria-label={t('attention.panel.back')} ...>⤡</button>
+<button aria-label="Minimize attention widget" ...>—</button>
+```
 
-// On dismiss click, move focus to the main call area
-const dismiss = () => {
-  setVisible(false);
-  // Return focus to document body (call controls will be accessible via tab)
-  document.body.focus();
-  if (autoDismissTimerRef.current !== null) {
-    clearTimeout(autoDismissTimerRef.current);
-    autoDismissTimerRef.current = null;
+Add the minimize label to `i18n.ts` in both `en` and `ar` if not already present:
+
+```typescript
+// en
+attention: {
+  widget: {
+    minimize: "Minimize",
+    restore: "Restore attention monitor",
   }
-};
+}
+
+// ar
+attention: {
+  widget: {
+    minimize: "تصغير",
+    restore: "استعادة مراقب الانتباه",
+  }
+}
+```
+
+Replace the hardcoded `"Minimize attention widget"` string in `AttentionWidget.tsx` with `t('attention.widget.minimize')` and the minimized pill's `aria-label` with `t('attention.widget.restore')`.
+
+### Drag handle — keyboard fallback
+
+The drag handle currently only responds to mouse events. For keyboard-only users, the widget's snap corners can still be reached via tab and the expand/minimize buttons are fully keyboard accessible. Add `tabIndex={-1}` to the drag handle to exclude it from tab order (it has no keyboard equivalent):
+
+```tsx
+<div className="aw__header" onMouseDown={onDragHandleMouseDown} tabIndex={-1}>
 ```
 
 ---
@@ -357,15 +357,16 @@ const dismiss = () => {
 
 - [ ] Student's PiP tile shows a small eye icon (👁) when `role === 'student'` and the call is connected
 - [ ] Hovering the eye icon shows `t('attention.consent.tracking')` as a tooltip
-- [ ] Camera denied: processor does not start, teacher sees `t('attention.overlay.noData')` gracefully
-- [ ] MediaPipe CDN failure: teacher sees `t('attention.overlay.unavailable')`, no unhandled errors in console
-- [ ] Slow device: if frame processing > 500ms, interval increases to 7s (verify with console.warn)
-- [ ] Hiding the student's tab: `[AttentionProcessor] Tab hidden — paused` logs. Teacher sees stale data indicator within 15s.
-- [ ] Restoring the student's tab: `[AttentionProcessor] Tab visible — resumed` logs. Metrics resume.
+- [ ] Camera denied: processor does not start; `AttentionWidget` shows `—` / waiting state gracefully
+- [ ] MediaPipe CDN failure: `AttentionWidget` shows `t('attention.overlay.unavailable')`, no unhandled errors in console, widget border stays gray
+- [ ] Slow device: if frame processing > 500ms, interval increases to 7s (verify with `console.warn`)
+- [ ] Hiding the student's tab: `[AttentionProcessor] Tab hidden — paused` appears in console. `AttentionWidget` transitions to stale state within 15s (border gray, score `—`)
+- [ ] Restoring the student's tab: `[AttentionProcessor] Tab visible — resumed` appears. Widget resumes live data within ~4s
 - [ ] `AttentionMetrics` payload includes `peerId: "student-1"`
-- [ ] Distraction alert has `role="alert"`, `aria-live="assertive"`, `aria-atomic="true"`
-- [ ] All existing overlay/alert text passes WCAG AA contrast (verify with browser accessibility checker)
-- [ ] `npm run build` clean
+- [ ] Distraction row in `AttentionWidget` has `role="alert"`, `aria-live="assertive"`, `aria-atomic="true"`
+- [ ] All icon buttons have meaningful `aria-label` text (verify with screen reader or accessibility inspector)
+- [ ] Drag handle has `tabIndex={-1}` so it is excluded from keyboard tab order
+- [ ] `npm run build` clean — no TypeScript errors
 
 ---
 
@@ -374,8 +375,8 @@ const dismiss = () => {
 | Action | File |
 |--------|------|
 | MODIFY | `frontend/src/components/VideoTile.tsx` — add `consentBadgeLabel` prop |
-| MODIFY | `frontend/src/pages/CallPage.css` — add `.video-tile__consent-badge` styles |
-| MODIFY | `frontend/src/features/attention/hooks/useAttentionProcessor.ts` — camera error handling, MediaPipe failure flag, adaptive interval, tab visibility |
-| MODIFY | `frontend/src/features/attention/components/AttentionOverlay.tsx` — add `unavailable` prop |
-| MODIFY | `frontend/src/features/attention/components/DistractionAlert.tsx` — add `aria-atomic`, focus management |
-| MODIFY | `frontend/src/pages/CallPage.tsx` — pass `loadFailed` to overlay, pass `consentBadgeLabel` to PiP tile |
+| MODIFY | `frontend/src/pages/CallPage.css` — add `.video-tile__consent-badge`, verify `.video-tile { position: relative }` |
+| MODIFY | `frontend/src/features/attention/hooks/useAttentionProcessor.ts` — camera error handling, `loadFailed` ref, adaptive interval, tab visibility |
+| MODIFY | `frontend/src/features/attention/components/AttentionWidget.tsx` — add `unavailable` prop, i18n keys for minimize/restore |
+| MODIFY | `frontend/src/app/i18n.ts` — add `attention.widget.minimize` and `attention.widget.restore` in `en` and `ar` |
+| MODIFY | `frontend/src/pages/CallPage.tsx` — pass `loadFailed` and `consentBadgeLabel` |

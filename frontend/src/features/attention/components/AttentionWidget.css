@@ -1,0 +1,233 @@
+/* ─── Base widget ─────────────────────────────────────────────────────────── */
+
+.aw {
+  position: fixed;
+  z-index: 250;
+  width: 220px;
+  background: #16162a;
+  border-radius: 12px;
+  border-left: 4px solid var(--aw-border, #4b5563);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transition: border-color 0.4s ease, box-shadow 0.3s ease;
+  user-select: none;
+}
+
+.aw--dragging {
+  cursor: grabbing;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+  opacity: 0.92;
+}
+
+/* Distracted state: border pulses red */
+.aw--distracted {
+  animation: aw-pulse-border 1.8s ease-in-out infinite;
+}
+
+@keyframes aw-pulse-border {
+  0%, 100% { box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 0 rgba(239,68,68,0); }
+  50%       { box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 6px rgba(239,68,68,0.25); }
+}
+
+/* Expanded: grows to show chart */
+.aw--expanded {
+  width: 280px;
+}
+
+/* ─── Drag handle / header ───────────────────────────────────────────────── */
+
+.aw__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.6rem 0.35rem;
+  cursor: grab;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.aw__header:active {
+  cursor: grabbing;
+}
+
+.aw__drag-hint {
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 0.75rem;
+  letter-spacing: -1px;
+  flex-shrink: 0;
+}
+
+.aw__header-label {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex: 1;
+}
+
+.aw__header-actions {
+  display: flex;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.aw__icon-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.aw__icon-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Score row ──────────────────────────────────────────────────────────── */
+
+.aw__score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.75rem 0.85rem 0.6rem;
+}
+
+.aw__score {
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transition: color 0.4s ease;
+  flex-shrink: 0;
+}
+
+.aw__label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* ─── Distraction row ────────────────────────────────────────────────────── */
+
+.aw__distraction-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  background: rgba(239, 68, 68, 0.12);
+  border-top: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.aw__distraction-icon {
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.aw__distraction-text {
+  font-size: 0.75rem;
+  color: #fca5a5;
+  font-weight: 500;
+}
+
+/* ─── Chart area (expanded mode) ─────────────────────────────────────────── */
+
+.aw__chart {
+  height: 180px;
+  padding: 0.5rem 0.5rem 0 0.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.aw__chart-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* ─── Legend (expanded mode) ─────────────────────────────────────────────── */
+
+.aw__legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem 0.6rem;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.aw__legend-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.aw__legend-text {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin-right: 0.35rem;
+}
+
+/* ─── Minimized pill ─────────────────────────────────────────────────────── */
+
+.aw--minimized {
+  position: fixed;
+  z-index: 250;
+  width: auto;
+  background: #16162a;
+  border-radius: 999px;
+  border-left: 4px solid var(--aw-border, #4b5563);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.85rem 0.4rem 0.65rem;
+  cursor: pointer;
+  transition: border-color 0.4s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.aw--minimized:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.65);
+}
+
+.aw-mini__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.4s ease;
+}
+
+.aw-mini__score {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.4s ease;
+}
+
+/* ─── Tooltip ────────────────────────────────────────────────────────────── */
+
+.aw-chart-tooltip {
+  background: rgba(22, 22, 42, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 0.3rem 0.55rem;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.aw-chart-tooltip__time  { color: rgba(255, 255, 255, 0.5); }
+.aw-chart-tooltip__score { color: #ffffff; font-weight: 600; }

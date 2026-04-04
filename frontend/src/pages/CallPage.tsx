@@ -13,9 +13,7 @@ import RolePickerScreen from '../features/attention/components/RolePickerScreen'
 import type { UserRole } from '../features/attention/types/attention';
 import { useAttentionProcessor } from '../features/attention/hooks/useAttentionProcessor';
 import { useAttentionReceiver } from '../features/attention/hooks/useAttentionReceiver';
-import AttentionOverlay from '../features/attention/components/AttentionOverlay';
-import DistractionAlert from '../features/attention/components/DistractionAlert';
-import AttentionPanel from '../features/attention/components/AttentionPanel';
+import AttentionWidget from '../features/attention/components/AttentionWidget';
 import "./CallPage.css";
 
 export function CallRedirect() {
@@ -33,7 +31,6 @@ export default function CallPage() {
   const [callState, setCallState] = useState<CallState>("idle");
   const [copied, setCopied] = useState(false);
   const [role, setRole] = useState<UserRole | null>(null);
-  const [showAttentionPanel, setShowAttentionPanel] = useState(false);
   
   const actionBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -138,7 +135,6 @@ export default function CallPage() {
   useEffect(() => {
     if (peerLeft) {
       destroyPeer();
-      setShowAttentionPanel(false);
     }
   }, [peerLeft, destroyPeer]);
 
@@ -153,7 +149,6 @@ export default function CallPage() {
     destroyPeer();
     stopAllTracks();
     setRole(null);
-    setShowAttentionPanel(false);
     navigate("/");
   }, [destroyPeer, stopAllTracks, navigate]);
 
@@ -162,7 +157,6 @@ export default function CallPage() {
       destroyPeer();
       stopAllTracks();
       setRole(null);
-      setShowAttentionPanel(false);
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
@@ -267,23 +261,7 @@ export default function CallPage() {
             variant="main"
             isCamOff={remoteMediaState ? !remoteMediaState.video : false}
             remoteMuted={remoteMediaState ? !remoteMediaState.audio : false}
-          >
-            {role === 'teacher' && !showAttentionPanel && (
-              <AttentionOverlay
-                score={attentionState.currentScore}
-                label={attentionState.currentLabel}
-                hasData={attentionState.hasData}
-                isStale={attentionState.isStale}
-                onDetailsClick={() => setShowAttentionPanel(true)}
-              />
-            )}
-            {role === 'teacher' && showAttentionPanel && (
-              <AttentionPanel
-                timeline={attentionState.timeline}
-                onBack={() => setShowAttentionPanel(false)}
-              />
-            )}
-          </VideoTile>
+          />
           <VideoTile stream={localStream} muted={true} label={t("call.you")} variant="pip" isCamOff={isCamOff} />
 
           <CallControls
@@ -294,11 +272,17 @@ export default function CallPage() {
             onEndCall={handleEndCall}
             disabled={false}
           />
-        </>
-      )}
 
-      {role === 'teacher' && (
-        <DistractionAlert isDistracted={attentionState.isDistracted} />
+          <AttentionWidget
+            currentScore={attentionState.currentScore}
+            currentLabel={attentionState.currentLabel}
+            hasData={attentionState.hasData}
+            isStale={attentionState.isStale}
+            isDistracted={attentionState.isDistracted}
+            timeline={attentionState.timeline}
+            active={role === 'teacher'}
+          />
+        </>
       )}
 
       {callState === "room_full" && (
