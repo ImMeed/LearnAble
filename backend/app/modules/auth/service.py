@@ -5,6 +5,7 @@ from app.core.i18n import localized_http_exception
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.models.economy import PointsWallet
 from app.db.models.security_models import RoleChangeLog
+from app.db.models.users import User
 from app.modules.auth import repository
 from app.modules.auth import lockout as lockout_service
 from app.modules.auth import totp as totp_service
@@ -122,7 +123,7 @@ def confirm_2fa(session: Session, user_id, payload: Verify2FARequest, locale: st
     if not totp_service.verify_totp_code(secret_row.secret, payload.code):
         raise localized_http_exception(status.HTTP_401_UNAUTHORIZED, "INVALID_OTP", locale)
 
-    user = session.get(repository.get_user_model(), user_id)
+    user = session.get(User, user_id)
     user.totp_enabled = True
     session.commit()
 
@@ -139,7 +140,7 @@ def disable_2fa(session: Session, user_id, payload: Verify2FARequest, locale: st
         raise localized_http_exception(status.HTTP_401_UNAUTHORIZED, "INVALID_OTP", locale)
 
     session.delete(secret_row)
-    user = session.get(repository.get_user_model(), user_id)
+    user = session.get(User, user_id)
     user.totp_enabled = False
     session.commit()
 
@@ -158,10 +159,10 @@ def change_user_role(
 ) -> dict:
     from app.core.roles import UserRole
 
-    if requester_role != UserRole.ADMIN.value:
+    if requester_role != UserRole.ROLE_ADMIN.value:
         raise localized_http_exception(status.HTTP_403_FORBIDDEN, "FORBIDDEN", locale)
 
-    user = repository.get_user_by_id(session, target_user_id)
+    user = session.get(User, target_user_id)
     if not user:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", locale)
 

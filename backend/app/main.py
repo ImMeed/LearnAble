@@ -1,3 +1,5 @@
+import json
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,7 +38,12 @@ def create_app() -> FastAPI:
         title="LearnAble API",
         version="0.1.0",
         description="Arabic-first learning platform API.",
+        swagger_ui_parameters={"persistAuthorization": True},
+        default_response_class=JSONResponse,
     )
+    @app.get("/", tags=["system"])
+    async def root():
+        return {"message": "API is running!"}
 
     # ── CORS ──────────────────────────────────────────────────────────────────
     app.add_middleware(
@@ -91,13 +98,18 @@ def create_app() -> FastAPI:
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         locale = get_request_locale(request)
+
+        safe_errors = json.loads(
+            json.dumps(exc.errors(), default=str)
+        )
+        
         return JSONResponse(
             status_code=422,
             content={
                 "code": "VALIDATION_ERROR",
                 "message": translate("VALIDATION_ERROR", locale),
                 "locale": locale,
-                "details": exc.errors(),
+                "details": safe_errors ,
             },
         )
 

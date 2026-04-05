@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
 revision = "0006_security_tables"
-down_revision = "20260327_0005_t"
+down_revision = "20260327_0005"
 branch_labels = None
 depends_on = None
 

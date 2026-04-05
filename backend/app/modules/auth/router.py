@@ -1,10 +1,11 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, status ,Body
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.core.security import CurrentUser, get_current_user
-from app.db.session import get_session
+from app.db.session import get_db_session
 from app.modules.auth import service
 from app.modules.auth.schemas import (
     AuthResponse,
@@ -18,7 +19,7 @@ from app.modules.auth.schemas import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-SessionDep = Annotated[Session, Depends(get_session)]
+SessionDep = Annotated[Session, Depends(get_db_session)]
 CurrentUserDep = Annotated[CurrentUser, Depends(get_current_user)]
 
 
@@ -38,6 +39,19 @@ def login(payload: LoginRequest, session: SessionDep, request: Request):
     """
     locale = request.headers.get("Accept-Language", "en")[:2]
     return service.login_user(session, payload, locale, request)
+
+
+@router.post("/token", response_model=AuthResponse)
+def login_swagger(
+    session: SessionDep,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+):
+    """Token endpoint for Swagger UI (supports Form Data)."""
+    payload = LoginRequest(
+        email=form_data.username,
+        password=form_data.password
+    )
+    return service.login_user(session, payload, "en")
 
 
 @router.post("/login/otp", response_model=Verify2FAResponse)
