@@ -27,6 +27,20 @@ class TotpSecret(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+class UsedTotpCode(Base):
+    """
+    Tracks recently consumed TOTP codes to prevent replay attacks.
+    A code is valid for at most 90 seconds (3 × 30-second windows with valid_window=1).
+    Old rows are pruned on each successful verification.
+    """
+    __tablename__ = "used_totp_codes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    code: Mapped[str] = mapped_column(String(6), nullable=False)
+    used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class RoleChangeLog(Base):
     __tablename__ = "role_change_log"
 

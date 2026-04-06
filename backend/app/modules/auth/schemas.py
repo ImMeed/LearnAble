@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field
+import re
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.core.roles import UserRole
 
@@ -9,6 +11,20 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     role: UserRole
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        errors = []
+        if not re.search(r"[A-Z]", v):
+            errors.append("one uppercase letter")
+        if not re.search(r"[0-9]", v):
+            errors.append("one digit")
+        if not re.search(r'[!@#$%^&*()\-_=+\[\]{};:\'",.<>/?\\|`~]', v):
+            errors.append("one special character")
+        if errors:
+            raise ValueError(f"Password must contain at least: {', '.join(errors)}")
+        return v
 
 
 class LoginRequest(BaseModel):

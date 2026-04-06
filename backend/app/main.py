@@ -1,4 +1,6 @@
 import json
+import time
+from collections import defaultdict
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -28,9 +30,60 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "font-src 'self'; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'"
+        )
         if settings.app_env == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
+
+
+# ── Rate limits: auth endpoints 20 req/min, everything else 200 req/min ───────
+_AUTH_LIMIT = 20
+_GLOBAL_LIMIT = 200
+_WINDOW = 60  # seconds
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """
+    In-memory per-IP rate limiter.
+    NOTE: For multi-worker deployments replace with a Redis-backed solution
+    (e.g. slowapi + Redis) so counters are shared across processes.
+    """
+
+    def __init__(self, app):
+        super().__init__(app)
+        self._buckets: dict[str, list[float]] = defaultdict(list)
+
+    def _is_auth_path(self, path: str) -> bool:
+        return path.startswith("/auth/")
+
+    async def dispatch(self, request: Request, call_next):
+        ip = request.client.host if request.client else "unknown"
+        path = request.url.path
+        limit = _AUTH_LIMIT if self._is_auth_path(path) else _GLOBAL_LIMIT
+        key = f"{ip}:{path if self._is_auth_path(path) else 'global'}"
+
+        now = time.time()
+        window_start = now - _WINDOW
+        bucket = [t for t in self._buckets[key] if t > window_start]
+        self._buckets[key] = bucket
+
+        if len(bucket) >= limit:
+            return JSONResponse(
+                status_code=429,
+                content={"code": "RATE_LIMITED", "message": "Too many requests. Please slow down."},
+                headers={"Retry-After": str(_WINDOW)},
+            )
+
+        self._buckets[key].append(now)
+        return await call_next(request)
 
 
 def create_app() -> FastAPI:
@@ -56,6 +109,9 @@ def create_app() -> FastAPI:
 
     # ── Security headers ──────────────────────────────────────────────────────
     app.add_middleware(SecurityHeadersMiddleware)
+
+    # ── Rate limiting ─────────────────────────────────────────────────────────
+    app.add_middleware(RateLimitMiddleware)
 
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(auth_router)
