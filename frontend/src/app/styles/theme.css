@@ -1,0 +1,213 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+  /* Dyslexia-friendly color system */
+  --background: #FAFAF5;
+  --foreground: #2E2E2E;
+  --card: #F7F7F2;
+  --card-foreground: #2E2E2E;
+  --popover: #FFFFFF;
+  --popover-foreground: #2E2E2E;
+  --primary: #4A90E2;
+  --primary-foreground: #FFFFFF;
+  --secondary: #6FCF97;
+  --secondary-foreground: #2E2E2E;
+  --muted: #E8E8E0;
+  --muted-foreground: #6B6B6B;
+  --accent: #9B8AFB;
+  --accent-foreground: #FFFFFF;
+  --destructive: #E57373;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --input-background: #FFFFFF;
+  --switch-background: #D0D0C8;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #4A90E2;
+  --highlight: #FFF3B0;
+  --success: #6FCF97;
+  --info: #4A90E2;
+  --warning: #FFD93D;
+  --chart-1: #4A90E2;
+  --chart-2: #6FCF97;
+  --chart-3: #9B8AFB;
+  --chart-4: #FFD93D;
+  --chart-5: #E57373;
+  --radius: 0.75rem;
+  --sidebar: #F7F7F2;
+  --sidebar-foreground: #2E2E2E;
+  --sidebar-primary: #4A90E2;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E8E8E0;
+  --sidebar-accent-foreground: #2E2E2E;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --sidebar-ring: #4A90E2;
+}
+
+.dark {
+  --background: #1E2A3A;
+  --foreground: #E8E8E0;
+  --card: #2A3A4A;
+  --card-foreground: #E8E8E0;
+  --popover: #2A3A4A;
+  --popover-foreground: #E8E8E0;
+  --primary: #5BA3F5;
+  --primary-foreground: #FFFFFF;
+  --secondary: #7DD9A8;
+  --secondary-foreground: #1E2A3A;
+  --muted: #3A4A5A;
+  --muted-foreground: #B0B0A8;
+  --accent: #AC9BFF;
+  --accent-foreground: #FFFFFF;
+  --destructive: #E57373;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.05);
+  --input-background: #2A3A4A;
+  --ring: #5BA3F5;
+  --highlight: #6B5B00;
+  --chart-1: #5BA3F5;
+  --chart-2: #7DD9A8;
+  --chart-3: #AC9BFF;
+  --chart-4: #FFD93D;
+  --chart-5: #E57373;
+  --sidebar: #2A3A4A;
+  --sidebar-foreground: #E8E8E0;
+  --sidebar-primary: #5BA3F5;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #3A4A5A;
+  --sidebar-accent-foreground: #E8E8E0;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #5BA3F5;
+}
+
+.sepia {
+  --background: #F4ECD8;
+  --foreground: #3A2E1E;
+  --card: #F9F2E3;
+  --card-foreground: #3A2E1E;
+  --popover: #FFFFFF;
+  --popover-foreground: #3A2E1E;
+  --primary: #8B7355;
+  --primary-foreground: #FFFFFF;
+  --secondary: #9CAF88;
+  --secondary-foreground: #3A2E1E;
+  --muted: #E8DFC8;
+  --muted-foreground: #6B5D4D;
+  --accent: #B8A8D8;
+  --accent-foreground: #FFFFFF;
+  --border: rgba(0, 0, 0, 0.08);
+  --input-background: #FFFFFF;
+  --ring: #8B7355;
+}
+
+.dyslexia-mode {
+  letter-spacing: 0.12em;
+  word-spacing: 0.16em;
+  line-height: 1.8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted) var(--background);
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--background);
+    border-radius: 5px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--muted);
+    border-radius: 5px;
+    border: 2px solid var(--background);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+
+  button, a, input, textarea, select {
+    transition: all 150ms ease-in-out;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 { font-size: var(--text-2xl); font-weight: var(--font-weight-medium); line-height: 1.5; }
+  h2 { font-size: var(--text-xl); font-weight: var(--font-weight-medium); line-height: 1.5; }
+  h3 { font-size: var(--text-lg); font-weight: var(--font-weight-medium); line-height: 1.5; }
+  h4 { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
+  label { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
+  button { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
+  input { font-size: var(--text-base); font-weight: var(--font-weight-normal); line-height: 1.5; }
+}
+
+/* 3D flip effect for flashcards */
+.perspective-1000 { perspective: 1000px; }
+.transform-style-3d { transform-style: preserve-3d; }
+.backface-hidden { backface-visibility: hidden; }
+.rotate-y-180 { transform: rotateY(180deg); }

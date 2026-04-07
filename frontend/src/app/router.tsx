@@ -1,31 +1,43 @@
 import { createBrowserRouter } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 
-import { HomePage } from "../pages/ar/HomePage";
+import { HomePage }        from "../pages/ar/HomePage";
+import { LoginPage }       from "../pages/ar/LoginPage";
+import { RegisterPage }    from "../pages/ar/RegisterPage";
+import { OnboardingPage }  from "../pages/ar/OnboardingPage";
+import { DashboardPage }   from "../pages/ar/DashboardPage";
+import { QuizPage }        from "../pages/ar/QuizPage";
+import { LibraryPage }     from "../pages/ar/LibraryPage";
+import { ForumPage }       from "../pages/ar/ForumPage";
+import { GamesPage }       from "../pages/ar/GamesPage";
+import { FlashcardsPage }  from "../pages/ar/FlashcardsPage";
+import { AIAssistantPage } from "../pages/ar/AIAssistantPage";
+import { TeacherPage }     from "../pages/ar/TeacherPage";
+import { ParentPage }      from "../pages/ar/ParentPage";
+import { AdminPage }       from "../pages/ar/AdminPage";
 
-function PlaceholderPage({ titleKey }: { titleKey: string }) {
-  const { t } = useTranslation();
-
-  return (
-    <main className="page">
-      <section className="card">
-        <h2>{t(titleKey)}</h2>
-        <p>{t("underConstruction")}</p>
-      </section>
-    </main>
-  );
+function routes(p: string) {
+  return [
+    { path: `${p}`,            element: <HomePage /> },
+    { path: `${p}/login`,      element: <LoginPage /> },
+    { path: `${p}/register`,   element: <RegisterPage /> },
+    { path: `${p}/onboarding`, element: <OnboardingPage /> },
+    // Student
+    { path: `${p}/dashboard`,  element: <DashboardPage /> },
+    { path: `${p}/quizzes`,    element: <QuizPage /> },
+    { path: `${p}/library`,    element: <LibraryPage /> },
+    { path: `${p}/forum`,      element: <ForumPage /> },
+    { path: `${p}/games`,      element: <GamesPage /> },
+    { path: `${p}/flashcards`, element: <FlashcardsPage /> },
+    { path: `${p}/ai`,         element: <AIAssistantPage /> },
+    // Role portals
+    { path: `${p}/teacher`,    element: <TeacherPage /> },
+    { path: `${p}/parent`,     element: <ParentPage /> },
+    { path: `${p}/admin`,      element: <AdminPage /> },
+  ];
 }
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
-  { path: "/ar", element: <HomePage /> },
-  { path: "/en", element: <HomePage /> },
-  { path: "/ar/forum", element: <PlaceholderPage titleKey="nav.forum" /> },
-  { path: "/ar/quizzes", element: <PlaceholderPage titleKey="nav.quizzes" /> },
-  { path: "/ar/games", element: <PlaceholderPage titleKey="nav.games" /> },
-  { path: "/ar/library", element: <PlaceholderPage titleKey="nav.library" /> },
-  { path: "/en/forum", element: <PlaceholderPage titleKey="nav.forum" /> },
-  { path: "/en/quizzes", element: <PlaceholderPage titleKey="nav.quizzes" /> },
-  { path: "/en/games", element: <PlaceholderPage titleKey="nav.games" /> },
-  { path: "/en/library", element: <PlaceholderPage titleKey="nav.library" /> },
+  ...routes("/ar"),
+  ...routes("/en"),
 ]);
