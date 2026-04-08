@@ -10,6 +10,7 @@ import { FocusTimer } from "../components/FocusTimer";
 import { ProgressBar } from "../components/ProgressBar";
 import { useAccessibility } from "../../features/accessibility/AccessibilityContext";
 import { clearSession } from "../../state/auth";
+import { StudentCallFlow } from "../components/StudentCallFlow";
 
 type LessonSummary = {
   id: string;
@@ -340,6 +341,8 @@ export function StudentDashboardPageV2() {
               </div>
             ) : null}
           </article>
+
+          <StudentCallFlow lang={i18n.resolvedLanguage} />
 
           <article className="card checkpoint-block">
             <p className="status-line">{status || t("dashboards.common.idle")}</p>

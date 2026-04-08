@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { v4 as uuidv4 } from "uuid";
 
 import { apiClient } from "../../api/client";
+import { scheduleRequest, completeRequest } from "../../api/callApi";
 import {
   AssistanceRequestItem,
   DashboardShell,
@@ -14,6 +16,8 @@ import {
   TeacherTabs,
 } from "./roleDashboardShared";
 
+const POLL_MS = 8000;
+
 export function TeacherDashboardPageV2() {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage === "en" ? "en" : "ar";
@@ -25,6 +29,33 @@ export function TeacherDashboardPageV2() {
   const [requests, setRequests] = useState<AssistanceRequestItem[]>([]);
   const [activeTab, setActiveTab] = useState<TeacherTab>("overview");
   const [attendanceNote, setAttendanceNote] = useState("");
+  const [isOnline, setIsOnline] = useState(false);
+  // per-request inline schedule picker state
+  const [schedulingId, setSchedulingId] = useState<string | null>(null);
+  const [scheduleDate, setScheduleDate] = useState("");
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const setPresence = useCallback(async (online: boolean) => {
+    try {
+      await apiClient.put("/teacher/presence", { is_online: online }, requestConfig);
+      setIsOnline(online);
+    } catch {
+      // non-critical
+    }
+  }, [requestConfig]);
+
+  const loadRequests = useCallback(async () => {
+    try {
+      const requestsRes = await apiClient.get<{ items: AssistanceRequestItem[] }>(
+        "/teacher/assistance/requests",
+        requestConfig,
+      );
+      setRequests(requestsRes.data.items || []);
+    } catch {
+      // silently retry next poll
+    }
+  }, [requestConfig]);
 
   const loadAll = async () => {
     setStatus(t("dashboards.common.loading"));
@@ -43,32 +74,55 @@ export function TeacherDashboardPageV2() {
     }
   };
 
+  // On mount: go online and start polling
   useEffect(() => {
+    void setPresence(true);
     void loadAll();
+
+    pollRef.current = setInterval(() => {
+      void loadRequests();
+    }, POLL_MS);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      // go offline when leaving the dashboard
+      void setPresence(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i18n.resolvedLanguage]);
 
-  const scheduleRequest = async (requestId: string) => {
+  const acceptNow = async (requestId: string) => {
+    const roomId = uuidv4();
+    const meetingUrl = `${window.location.origin}/call/${roomId}`;
     try {
-      await apiClient.patch(
-        `/teacher/assistance/requests/${requestId}/schedule`,
-        {
-          scheduled_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-          meeting_url: "https://meet.example.com/learnable",
-        },
-        requestConfig,
-      );
-      setStatus(t("dashboards.teacher.requestApproved"));
+      await scheduleRequest(requestId, new Date().toISOString(), meetingUrl, i18n.resolvedLanguage);
+      setStatus(t("callFlow.teacher.accepted"));
+      await loadAll();
+      window.open(meetingUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      setStatus(errorMessage(error));
+    }
+  };
+
+  const confirmSchedule = async (requestId: string) => {
+    if (!scheduleDate) return;
+    const roomId = uuidv4();
+    const meetingUrl = `${window.location.origin}/call/${roomId}`;
+    try {
+      await scheduleRequest(requestId, new Date(scheduleDate).toISOString(), meetingUrl, i18n.resolvedLanguage);
+      setStatus(t("callFlow.teacher.scheduled"));
+      setSchedulingId(null);
+      setScheduleDate("");
       await loadAll();
     } catch (error) {
       setStatus(errorMessage(error));
     }
   };
 
-  const completeRequest = async (requestId: string) => {
+  const rejectRequest = async (requestId: string) => {
     try {
-      await apiClient.patch(`/teacher/assistance/requests/${requestId}/complete`, {}, requestConfig);
-      setStatus(t("dashboards.teacher.requestCompleted"));
+      await completeRequest(requestId, i18n.resolvedLanguage);
+      setStatus(t("callFlow.teacher.rejected"));
       await loadAll();
     } catch (error) {
       setStatus(errorMessage(error));
@@ -130,7 +184,20 @@ export function TeacherDashboardPageV2() {
             </article>
 
             <article className="card">
-              <p className="status-line">{status || t("dashboards.common.idle")}</p>
+              <div className="request-head-row checkpoint-block">
+                <span className="muted">Status:</span>
+                <span className="status-chip" style={{ background: isOnline ? "var(--success, #22c55e)" : undefined }}>
+                  {isOnline ? "Online" : "Offline"}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={isOnline ? "secondary" : ""}
+                onClick={() => void setPresence(!isOnline)}
+              >
+                {isOnline ? "Go Offline" : "Go Online"}
+              </button>
+              <p className="status-line checkpoint-block">{status || t("dashboards.common.idle")}</p>
               <button type="button" className="secondary" onClick={() => void loadAll()}>
                 {t("dashboards.common.refresh")}
               </button>
@@ -168,27 +235,85 @@ export function TeacherDashboardPageV2() {
           <article className="card portal-main-card">
             <h3>{t("dashboards.teacher.pendingJoinRequests", { count: requests.length })}</h3>
             <div className="stack-list">
-              {requests.map((item) => (
-                <article className="request-card" key={item.id}>
-                  <div>
+              {requests.filter((r) => r.status === "REQUESTED").map((item) => (
+                <article className="request-card tcf-request-card" key={item.id}>
+                  <div className="request-head-row">
                     <strong>{item.topic}</strong>
-                    <p>{item.message}</p>
-                    <p className="muted">{t("dashboards.teacher.requestStatus", { status: item.status })}</p>
+                    <span className="status-chip">{t("callFlow.statusRequested")}</span>
                   </div>
-                  <div className="inline-actions">
-                    <button type="button" onClick={() => void scheduleRequest(item.id)}>
-                      {t("dashboards.teacher.approve")}
-                    </button>
-                    <button type="button" className="secondary" onClick={() => void completeRequest(item.id)}>
-                      {t("dashboards.teacher.reject")}
-                    </button>
+                  <p className="muted">{item.message}</p>
+
+                  {schedulingId === item.id ? (
+                    <div className="tcf-schedule-row">
+                      <input
+                        type="datetime-local"
+                        className="tcf-date-input"
+                        value={scheduleDate}
+                        onChange={(e) => setScheduleDate(e.target.value)}
+                        aria-label={t("callFlow.teacher.pickDate")}
+                      />
+                      <button type="button" onClick={() => void confirmSchedule(item.id)} disabled={!scheduleDate}>
+                        {t("callFlow.teacher.confirmDate")}
+                      </button>
+                      <button type="button" className="secondary" onClick={() => setSchedulingId(null)}>
+                        {t("callFlow.teacher.cancel")}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="inline-actions tcf-actions">
+                      <button type="button" className="tcf-btn-accept" onClick={() => void acceptNow(item.id)}>
+                        {t("callFlow.teacher.acceptNow")}
+                      </button>
+                      <button type="button" className="secondary" onClick={() => { setSchedulingId(item.id); setScheduleDate(""); }}>
+                        {t("callFlow.teacher.setDate")}
+                      </button>
+                      <button type="button" className="secondary tcf-btn-reject" onClick={() => void rejectRequest(item.id)}>
+                        {t("callFlow.teacher.reject")}
+                      </button>
+                    </div>
+                  )}
+                </article>
+              ))}
+              {requests.filter((r) => r.status === "SCHEDULED").map((item) => (
+                <article className="request-card" key={item.id}>
+                  <div className="request-head-row">
+                    <strong>{item.topic}</strong>
+                    <span className="status-chip">{t("callFlow.statusScheduled")}</span>
                   </div>
+                  {item.meeting_url && (
+                    <a
+                      href={item.meeting_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="tcf-join-link"
+                    >
+                      {t("callFlow.teacher.openCall")}
+                    </a>
+                  )}
                 </article>
               ))}
             </div>
           </article>
 
           <aside className="portal-side-column">
+            <article className="card">
+              <div className="request-head-row checkpoint-block">
+                <span className="muted">Status:</span>
+                <span className="status-chip" style={{ background: isOnline ? "var(--success, #22c55e)" : undefined }}>
+                  {isOnline ? "Online" : "Offline"}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={isOnline ? "secondary" : ""}
+                onClick={() => void setPresence(!isOnline)}
+              >
+                {isOnline ? "Go Offline" : "Go Online"}
+              </button>
+              <p className="muted checkpoint-block" style={{ fontSize: "0.8em" }}>
+                Auto-refreshing every 8s
+              </p>
+            </article>
             <article className="card">
               <h4>{t("dashboards.teacher.myClassrooms")}</h4>
               <div className="subject-grid">

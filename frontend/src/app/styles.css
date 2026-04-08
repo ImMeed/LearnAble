@@ -1704,3 +1704,188 @@ a:focus-visible {
     overflow-x: auto;
   }
 }
+
+/* ═══════════════════════════════════════════
+   Student Call Flow (StudentCallFlow.tsx)
+   ═══════════════════════════════════════════ */
+
+.scf-root { padding: 1rem; }
+
+.scf-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.scf-hint {
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.scf-teacher-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.scf-teacher-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius);
+  background: var(--muted);
+  min-height: 48px;
+}
+
+.scf-teacher-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.scf-online-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success, #6fcf97);
+  flex-shrink: 0;
+}
+
+.scf-request-btn {
+  min-height: 44px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.scf-status-msg {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+}
+
+.scf-step { margin-top: 0.25rem; }
+
+.scf-request-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  background: var(--muted);
+  margin-bottom: 0.75rem;
+}
+
+.scf-topic { font-weight: 500; }
+
+.scf-new-btn { margin-top: 0.5rem; }
+
+.scf-step--ready .scf-join-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  margin-bottom: 0.75rem;
+}
+
+.scf-join-icon { font-size: 1.8rem; }
+
+.scf-join-title {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.2rem;
+}
+
+.scf-join-btn {
+  width: 100%;
+  min-height: 48px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--success, #6fcf97);
+  border-color: var(--success, #6fcf97);
+}
+
+/* Status chips */
+.scf-chip {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.scf-chip--requested {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: #7a5c00;
+}
+
+.scf-chip--scheduled {
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  color: var(--primary);
+}
+
+.scf-chip--completed, .scf-chip--joined {
+  background: color-mix(in srgb, var(--success) 20%, transparent);
+  color: #1a6b3c;
+}
+
+/* ═══════════════════════════════════════════
+   Teacher Call Flow (TeacherDashboard.tsx)
+   ═══════════════════════════════════════════ */
+
+.tcf-request-card { gap: 0.5rem; }
+
+.tcf-actions { flex-wrap: wrap; gap: 0.4rem; }
+
+.tcf-btn-accept {
+  background: var(--success, #6fcf97);
+  border-color: var(--success, #6fcf97);
+  color: #1a3a2a;
+}
+
+.tcf-btn-reject {
+  border-color: var(--destructive);
+  color: var(--destructive);
+  background: transparent;
+}
+
+.tcf-btn-reject:hover {
+  background: color-mix(in srgb, var(--destructive) 10%, transparent);
+}
+
+.tcf-schedule-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.tcf-date-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--input-background);
+  color: var(--foreground);
+  font: inherit;
+  min-height: 44px;
+}
+
+.tcf-join-link {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  min-height: 44px;
+  line-height: 44px;
+  padding-block: 0;
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid";
+import { createCallRoom } from "../api/callApi";
 import { useTranslation } from "react-i18next";
 import { useSignaling } from "../hooks/useSignaling";
 import { useWebRTC } from "../hooks/useWebRTC";
@@ -9,17 +9,27 @@ import { useConnectionQuality } from "../hooks/useConnectionQuality";
 import { ConnectionBadge } from "../components/ConnectionBadge";
 import VideoTile from "../components/VideoTile";
 import CallControls from "../components/CallControls";
-import RolePickerScreen from '../features/attention/components/RolePickerScreen';
 import type { UserRole } from '../features/attention/types/attention';
 import { useAttentionProcessor } from '../features/attention/hooks/useAttentionProcessor';
 import { useAttentionReceiver } from '../features/attention/hooks/useAttentionReceiver';
 import AttentionWidget from '../features/attention/components/AttentionWidget';
+import { getSession } from "../state/auth";
 import "./CallPage.css";
+
+function deriveRole(): UserRole | null {
+  const session = getSession();
+  if (!session) return null;
+  if (session.role === "ROLE_STUDENT") return "student";
+  // ROLE_TUTOR, ROLE_PSYCHOLOGIST, ROLE_PARENT, ROLE_ADMIN all observe as teacher
+  return "teacher";
+}
 
 export function CallRedirect() {
   const navigate = useNavigate();
   useEffect(() => {
-    navigate(`/call/${uuidv4()}`, { replace: true });
+    createCallRoom()
+      .then((roomId) => navigate(`/call/${roomId}`, { replace: true }))
+      .catch(() => navigate("/", { replace: true }));
   }, [navigate]);
   return null;
 }
@@ -30,13 +40,13 @@ export default function CallPage() {
   const { t } = useTranslation();
   const [callState, setCallState] = useState<CallState>("idle");
   const [copied, setCopied] = useState(false);
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [role] = useState<UserRole | null>(() => deriveRole());
   
   const actionBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!roomId) {
-      navigate(`/call/${uuidv4()}`, { replace: true });
+      navigate("/", { replace: true });
     }
   }, [roomId, navigate]);
 
@@ -148,7 +158,6 @@ export default function CallPage() {
   const handleEndCall = useCallback(() => {
     destroyPeer();
     stopAllTracks();
-    setRole(null);
     navigate("/");
   }, [destroyPeer, stopAllTracks, navigate]);
 
@@ -156,7 +165,6 @@ export default function CallPage() {
     const handleBeforeUnload = () => {
       destroyPeer();
       stopAllTracks();
-      setRole(null);
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
@@ -169,11 +177,6 @@ export default function CallPage() {
       setTimeout(() => setCopied(false), 2000);
     });
   };
-
-  // Show the role picker once the room is joined, until the user picks a role
-  const showRolePicker =
-    role === null &&
-    (callState === "waiting" || callState === "connected");
 
   // Mount attention processor on the student side only
   const { latestScore, blinkDetector, loadFailed } = useAttentionProcessor({
@@ -197,10 +200,6 @@ export default function CallPage() {
         {callState === "connected" && t("call.connected")}
         {callState === "peer_left" && t("call.peerLeft")}
       </div>
-
-      {showRolePicker && (
-        <RolePickerScreen onSelectRole={setRole} />
-      )}
 
       {isReconnecting && (
         <div className="call-reconnecting-banner">
@@ -229,15 +228,7 @@ export default function CallPage() {
                 <span className="call-pulse-dot" />
                 {t("call.waitingForPeer")}
               </div>
-              <p className="call-overlay__text">
-                {t("call.shareLink")}
-              </p>
-              <div className="call-waiting__link-box">
-                <span>{window.location.href}</span>
-                <button className="call-waiting__copy-btn" onClick={handleCopyLink}>
-                  {copied ? t("call.linkCopied") : t("call.copyLink")}
-                </button>
-              </div>
+              <p className="call-overlay__text">{t("call.waitingHint")}</p>
             </div>
           </div>
 

@@ -16,10 +16,20 @@ export type NotificationItem = {
 
 export type AssistanceRequestItem = {
   id: string;
+  student_user_id: string;
+  tutor_user_id: string | null;
+  lesson_id: string | null;
   topic: string;
   message: string;
+  preferred_at: string | null;
   status: string;
   scheduled_at: string | null;
+  meeting_url: string | null;
+};
+
+export type TeacherPresenceItem = {
+  tutor_user_id: string;
+  updated_at: string;
 };
 
 export type ForumReport = {

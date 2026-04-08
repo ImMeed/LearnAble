@@ -1,12 +1,13 @@
 /// <reference types="vitest" />
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 export default defineConfig({
   plugins: [
     react(),
     nodePolyfills({
+      include: ["events", "process", "buffer", "stream", "util"],
       globals: {
         Buffer: true,
         global: true,
@@ -14,15 +15,12 @@ export default defineConfig({
       },
     }),
   ],
-  define: {
-    // global is already handled by nodePolyfills, but retaining for compatibility if needed
-  },
   server: {
     port: 3001,
   },
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
-    setupFiles: './src/test-setup.ts',
+    setupFiles: "./src/test-setup.ts",
   },
 });
