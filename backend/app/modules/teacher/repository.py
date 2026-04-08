@@ -51,6 +51,15 @@ def create_assistance_request(
     return record
 
 
+def list_requests_for_student(session: Session, student_user_id: UUID) -> list[TeacherAssistanceRequest]:
+    stmt = (
+        select(TeacherAssistanceRequest)
+        .where(TeacherAssistanceRequest.student_user_id == student_user_id)
+        .order_by(TeacherAssistanceRequest.created_at.desc())
+    )
+    return list(session.scalars(stmt))
+
+
 def list_requests_for_tutor(session: Session, tutor_user_id: UUID) -> list[TeacherAssistanceRequest]:
     stmt = (
         select(TeacherAssistanceRequest)

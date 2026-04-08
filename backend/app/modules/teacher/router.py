@@ -77,7 +77,7 @@ def request_assistance(
 
 @router.get("/assistance/requests", response_model=AssistanceRequestListResponse)
 def tutor_requests(
-    current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_TUTOR)),
+    current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_TUTOR, UserRole.ROLE_STUDENT)),
     session: Session = Depends(get_db_session),
 ) -> AssistanceRequestListResponse:
     return list_assistance_requests(session, current_user)
