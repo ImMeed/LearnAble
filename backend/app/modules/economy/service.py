@@ -9,7 +9,8 @@ from app.db.models.economy import PointTransaction, PointTransactionType, Points
 
 
 def _get_or_create_wallet(session: Session, user_id: UUID) -> PointsWallet:
-    wallet = session.scalar(select(PointsWallet).where(PointsWallet.user_id == user_id))
+    wallet_stmt = select(PointsWallet).where(PointsWallet.user_id == user_id).with_for_update()
+    wallet = session.scalar(wallet_stmt)
     if wallet is None:
         wallet = PointsWallet(user_id=user_id, balance_points=0)
         session.add(wallet)
@@ -65,6 +66,9 @@ def apply_quiz_reward(
             metadata_json=metadata,
         )
     )
+
+    # Session autoflush is disabled, so force pending writes before progression reads aggregate XP.
+    session.flush()
 
     return wallet_balance
 

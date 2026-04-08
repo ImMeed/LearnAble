@@ -3,6 +3,7 @@ import time
 from collections import defaultdict
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -12,10 +13,12 @@ from app.core.config import settings
 from app.core.i18n import get_request_locale, resolve_request_locale, translate
 from app.modules.ai.router import router as ai_router
 from app.modules.auth.router import router as auth_router
+from app.modules.call.router import router as call_router, http_router as call_http_router, _cleanup_stale_rooms
 from app.modules.forum.router import router as forum_router
 from app.modules.gamification.router import router as gamification_router
 from app.modules.library.router import router as library_router
 from app.modules.notifications.router import router as notifications_router
+from app.modules.psychologist.router import router as psychologist_router
 from app.modules.quiz.router import router as quiz_router
 from app.modules.study.router import router as study_router
 from app.modules.teacher.router import router as teacher_router
@@ -87,6 +90,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 
 def create_app() -> FastAPI:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    )
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        asyncio.create_task(_cleanup_stale_rooms())
+        yield
+
     app = FastAPI(
         title="LearnAble API",
         version="0.1.0",
@@ -124,10 +137,29 @@ def create_app() -> FastAPI:
     app.include_router(notifications_router)
     app.include_router(ai_router)
     app.include_router(teacher_router)
+    app.include_router(psychologist_router)
+    app.include_router(call_http_router)
+    app.include_router(call_router)
+
+    # Allow browser clients from local Vite dev servers to call the API.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3001",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     # ── Existing middleware ───────────────────────────────────────────────────
     @app.middleware("http")
     async def locale_middleware(request: Request, call_next):
+        # Skip locale resolution for WebSocket upgrade requests
+        if request.url.path.startswith("/ws/"):
+            return await call_next(request)
         request.state.locale = resolve_request_locale(request)
         response = await call_next(request)
         response.headers["Content-Language"] = get_request_locale(request)

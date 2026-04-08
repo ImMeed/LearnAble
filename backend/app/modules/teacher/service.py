@@ -89,6 +89,8 @@ def create_assistance_request(
 def list_assistance_requests(session: Session, current_user: CurrentUser) -> AssistanceRequestListResponse:
     if current_user.role == UserRole.ROLE_TUTOR:
         records = repository.list_requests_for_tutor(session, current_user.user_id)
+    elif current_user.role == UserRole.ROLE_STUDENT:
+        records = repository.list_requests_for_student(session, current_user.user_id)
     else:
         records = []
     return AssistanceRequestListResponse(items=[_request_item(record) for record in records])

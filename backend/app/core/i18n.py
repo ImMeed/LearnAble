@@ -89,6 +89,50 @@ MESSAGES = {
         "ar": "مصدر النشاط غير موجود.",
         "en": "Lesson or assessment source was not found.",
     },
+    "NOTIFICATION_NOT_FOUND": {
+        "ar": "الإشعار غير موجود.",
+        "en": "Notification was not found.",
+    },
+    "STUDENT_PSYCHOLOGIST_LINK_NOT_FOUND": {
+        "ar": "لا توجد علاقة ربط مع هذا الطالب لهذا المختص.",
+        "en": "No psychologist link found for this student.",
+    },
+    "STUDENT_SCREENING_NOT_FOUND": {
+        "ar": "لا توجد نتائج تقييم لهذا الطالب.",
+        "en": "No screening results were found for this student.",
+    },
+    "FORUM_SPACE_NOT_FOUND": {
+        "ar": "مساحة المنتدى غير موجودة.",
+        "en": "Forum space was not found.",
+    },
+    "FORUM_POST_NOT_FOUND": {
+        "ar": "منشور المنتدى غير موجود.",
+        "en": "Forum post was not found.",
+    },
+    "FORUM_COMMENT_NOT_FOUND": {
+        "ar": "تعليق المنتدى غير موجود.",
+        "en": "Forum comment was not found.",
+    },
+    "FORUM_REPORT_NOT_FOUND": {
+        "ar": "بلاغ المنتدى غير موجود.",
+        "en": "Forum report was not found.",
+    },
+    "FORUM_TARGET_TYPE_INVALID": {
+        "ar": "نوع هدف المنتدى غير صالح.",
+        "en": "Forum target type is invalid.",
+    },
+    "FORUM_VOTE_VALUE_INVALID": {
+        "ar": "قيمة التصويت غير صالحة.",
+        "en": "Forum vote value is invalid.",
+    },
+    "FORUM_MODERATION_ACTION_INVALID": {
+        "ar": "إجراء الإشراف غير صالح لهذا الهدف.",
+        "en": "Moderation action is invalid for this target.",
+    },
+    "FORUM_POST_LOCKED": {
+        "ar": "تم قفل هذا المنشور ولا يقبل تعليقات جديدة.",
+        "en": "This post is locked and does not accept new comments.",
+    },
 }
 
 
