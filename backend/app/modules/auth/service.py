@@ -31,6 +31,12 @@ def register_user(session: Session, payload: RegisterRequest, locale: str) -> Au
         role=payload.role,
     )
     session.add(PointsWallet(user_id=user.id, balance_points=0))
+
+    if payload.role == UserRole.ROLE_STUDENT:
+        psychologist_id = repository.get_first_psychologist_id(session)
+        if psychologist_id is not None:
+            repository.create_student_psychologist_link(session, user.id, psychologist_id)
+
     session.commit()
 
     token = create_access_token(user.id, str(user.role), user.email)
