@@ -1,0 +1,76 @@
+/* frontend/src/features/attention/components/DistractionAlert.css */
+
+.distraction-alert {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 300;
+  max-width: 340px;
+  width: calc(100vw - 2rem);
+  animation: alert-slide-in 0.25s ease;
+}
+
+@keyframes alert-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.distraction-alert__content {
+  background: #1e1e2e;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.distraction-alert__icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.distraction-alert__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.distraction-alert__title {
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.distraction-alert__body {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.8rem;
+}
+
+.distraction-alert__dismiss {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+  align-self: center;
+}
+
+.distraction-alert__dismiss:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+}

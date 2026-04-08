@@ -1,0 +1,77 @@
+/* frontend/src/features/attention/components/RolePickerScreen.css */
+
+.role-picker {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.role-picker__card {
+  background: #1e1e2e;
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  width: min(90vw, 380px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.role-picker__title {
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  text-align: center;
+}
+
+.role-picker__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.role-picker__btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.role-picker__btn--teacher {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.role-picker__btn--teacher:hover {
+  background: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.role-picker__btn--student {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.role-picker__btn--student:hover {
+  background: #15803d;
+  border-color: #86efac;
+}
+
+.role-picker__icon {
+  font-size: 1.4rem;
+}

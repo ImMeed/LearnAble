@@ -154,7 +154,7 @@ pip install -r requirements.txt
 
 ```bash
 cd backend
-alembic upgrade head
+alembic upgrade head ( $env:PYTHONPATH="."; alembic upgrade head))
 ```
 
 5. Verify migration state (optional but recommended):

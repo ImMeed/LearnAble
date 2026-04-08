@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { ProtectedRoute } from "../features/auth/ProtectedRoute";
+import CallPage, { CallRedirect } from "../pages/CallPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { StudentOnboardingPageV2 } from "./pages/StudentOnboarding";
@@ -27,6 +28,8 @@ function PlaceholderPage({ titleKey }: { titleKey: string }) {
 }
 
 export const router = createBrowserRouter([
+  { path: "/call/:roomId", element: <CallPage /> },
+  { path: "/call", element: <CallRedirect /> },
   { path: "/", element: <LandingPage /> },
   { path: "/ar", element: <LandingPage /> },
   { path: "/en", element: <LandingPage /> },

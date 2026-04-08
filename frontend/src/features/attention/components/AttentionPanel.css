@@ -1,0 +1,111 @@
+/* frontend/src/features/attention/components/AttentionPanel.css */
+
+.attention-panel {
+  position: absolute;
+  inset: 0;
+  background: #121220;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  z-index: 10;
+}
+
+.attention-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+
+.attention-panel__title {
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.attention-panel__back-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.attention-panel__back-btn:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+}
+
+.attention-panel__chart-area {
+  flex: 1;
+  min-height: 0; /* important for flex children with ResponsiveContainer */
+}
+
+.attention-panel__empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+.attention-panel__legend {
+  display: flex;
+  gap: 1.25rem;
+  justify-content: center;
+  flex-shrink: 0;
+  padding-top: 0.5rem;
+}
+
+.attention-panel__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.attention-panel__legend-item::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.attention-panel__legend-item--high::before   { background: #22c55e; }
+.attention-panel__legend-item--moderate::before { background: #f59e0b; }
+.attention-panel__legend-item--low::before    { background: #ef4444; }
+
+.attention-panel__tooltip {
+  background: rgba(30, 30, 46, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.attention-panel__tooltip-time {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.attention-panel__tooltip-score {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.attention-panel__tooltip-distraction {
+  font-size: 0.75rem;
+}

@@ -1,0 +1,121 @@
+
+[1m[46m RUN [49m[22m [36mv4.1.2 [39m[90mC:/Users/pc/Documents/learnapp/LearnAble/frontend[39m
+
+ [31m❯[39m src/features/attention/lib/__tests__/extractFeatures.test.ts [2m([22m[2m10 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 13[2mms[22m[39m
+     [32m✓[39m returns facePresent: true[32m 2[2mms[22m[39m
+     [32m✓[39m returns near-zero yaw for a straight-ahead face[32m 1[2mms[22m[39m
+[31m     [31m×[31m returns positive yaw when face turns right[39m[32m 5[2mms[22m[39m
+     [32m✓[39m returns near-zero pitch for a straight-ahead face[32m 0[2mms[22m[39m
+[31m     [31m×[31m returns negative pitch when looking down[39m[32m 1[2mms[22m[39m
+     [32m✓[39m returns positive eyeOpennessRatio for open eyes[32m 0[2mms[22m[39m
+     [32m✓[39m returns near-zero eyeOpennessRatio for closed eyes[32m 0[2mms[22m[39m
+     [32m✓[39m returns near-zero irisDeviation for centered iris[32m 0[2mms[22m[39m
+     [32m✓[39m returns facePresent: false[32m 0[2mms[22m[39m
+     [32m✓[39m returns zero for all numeric fields[32m 0[2mms[22m[39m
+[90mstdout[2m | src/features/attention/lib/__tests__/blinkDetector.test.ts[2m > [22m[2mBlinkDetector[2m > [22m[2mreset clears blink history and state
+[22m[39m[BlinkDetector] reset() called
+
+ [32m✓[39m src/features/attention/lib/__tests__/computeAttentionScore.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/features/attention/lib/__tests__/blinkDetector.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+[90mstdout[2m | src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts[2m > [22m[2museAttentionReceiver[2m > [22m[2msets hasData: true after first metric
+[22m[39m[AttentionReceiver] incomingAttentionMetrics: { score: [33m80[39m, label: [32m'high'[39m, distraction: [33mfalse[39m }
+[AttentionReceiver] incomingAttentionMetrics: { score: [33m80[39m, label: [32m'high'[39m, distraction: [33mfalse[39m }
+
+[90mstdout[2m | src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts[2m > [22m[2museAttentionReceiver[2m > [22m[2mdetects distraction after 2 consecutive low readings
+[22m[39m[AttentionReceiver] incomingAttentionMetrics: { score: [33m30[39m, label: [32m'low'[39m, distraction: [33mfalse[39m }
+[AttentionReceiver] incomingAttentionMetrics: { score: [33m30[39m, label: [32m'low'[39m, distraction: [33mtrue[39m }
+
+[90mstdout[2m | src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts[2m > [22m[2museAttentionReceiver[2m > [22m[2mclears distraction after score recovers
+[22m[39m[AttentionReceiver] incomingAttentionMetrics: { score: [33m30[39m, label: [32m'low'[39m, distraction: [33mfalse[39m }
+[AttentionReceiver] incomingAttentionMetrics: { score: [33m30[39m, label: [32m'low'[39m, distraction: [33mtrue[39m }
+[AttentionReceiver] incomingAttentionMetrics: { score: [33m25[39m, label: [32m'low'[39m, distraction: [33mtrue[39m }
+[AttentionReceiver] incomingAttentionMetrics: { score: [33m75[39m, label: [32m'high'[39m, distraction: [33mfalse[39m }
+
+[90mstdout[2m | src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts[2m > [22m[2museAttentionReceiver[2m > [22m[2mappends data points to timeline
+[22m[39m[AttentionReceiver] incomingAttentionMetrics: { score: [33m80[39m, label: [32m'high'[39m, distraction: [33mfalse[39m }
+[AttentionReceiver] incomingAttentionMetrics: { score: [33m80[39m, label: [32m'high'[39m, distraction: [33mfalse[39m }
+[AttentionReceiver] incomingAttentionMetrics: { score: [33m60[39m, label: [32m'moderate'[39m, distraction: [33mfalse[39m }
+
+[90mstdout[2m | src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts[2m > [22m[2museAttentionReceiver[2m > [22m[2mresets all state when enabled becomes false
+[22m[39m[AttentionReceiver] incomingAttentionMetrics: { score: [33m80[39m, label: [32m'high'[39m, distraction: [33mfalse[39m }
+[AttentionReceiver] incomingAttentionMetrics: { score: [33m80[39m, label: [32m'high'[39m, distraction: [33mfalse[39m }
+
+ [31m❯[39m src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts [2m([22m[2m6 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 42[2mms[22m[39m
+     [32m✓[39m starts with hasData: false[32m 14[2mms[22m[39m
+     [32m✓[39m sets hasData: true after first metric[32m 5[2mms[22m[39m
+[31m     [31m×[31m detects distraction after 2 consecutive low readings[39m[32m 8[2mms[22m[39m
+     [32m✓[39m clears distraction after score recovers[32m 4[2mms[22m[39m
+[31m     [31m×[31m appends data points to timeline[39m[32m 6[2mms[22m[39m
+     [32m✓[39m resets all state when enabled becomes false[32m 3[2mms[22m[39m
+ [32m✓[39m src/features/attention/components/__tests__/AttentionWidget.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 522[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 4 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts[2m > [22museAttentionReceiver[2m > [22mdetects distraction after 2 consecutive low readings
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts:[2m51:41[22m[39m
+    [90m 49|[39m
+    [90m 50|[39m     [34mact[39m(() [33m=>[39m { [34mrerender[39m({ metrics[33m:[39m [34mmakeMetrics[39m([34m30[39m[33m,[39m [32m'low'[39m) })[33m;[39m })[33m;[39m
+    [90m 51|[39m     expect(result.current.isDistracted).toBe(false); // only 1 low rea…
+    [90m   |[39m                                         [31m^[39m
+    [90m 52|[39m
+    [90m 53|[39m     act(() => { rerender({ metrics: { ...makeMetrics(25, 'low'), times…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts[2m > [22museAttentionReceiver[2m > [22mappends data points to timeline
+[31m[1mAssertionError[22m: expected [ …(3) ] to have a length of 2 but got 3[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 2[39m
+[31m+ 3[39m
+
+[36m [2m❯[22m src/features/attention/hooks/__tests__/useAttentionReceiver.test.ts:[2m82:37[22m[39m
+    [90m 80|[39m     act(() => { rerender({ metrics: { ...makeMetrics(60, 'moderate'), …
+    [90m 81|[39m
+    [90m 82|[39m     [34mexpect[39m(result[33m.[39mcurrent[33m.[39mtimeline)[33m.[39m[34mtoHaveLength[39m([34m2[39m)[33m;[39m
+    [90m   |[39m                                     [31m^[39m
+    [90m 83|[39m     [34mexpect[39m(result[33m.[39mcurrent[33m.[39mtimeline[[34m0[39m][33m.[39mscore)[33m.[39m[34mtoBe[39m([34m80[39m)[33m;[39m
+    [90m 84|[39m     [34mexpect[39m(result[33m.[39mcurrent[33m.[39mtimeline[[34m1[39m][33m.[39mscore)[33m.[39m[34mtoBe[39m([34m60[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/features/attention/lib/__tests__/extractFeatures.test.ts[2m > [22mextractFeatures[2m > [22mreturns positive yaw when face turns right
+[31m[1mAssertionError[22m: expected -12.85714285714285 to be greater than 0[39m
+[36m [2m❯[22m src/features/attention/lib/__tests__/extractFeatures.test.ts:[2m50:41[22m[39m
+    [90m 48|[39m     [35mconst[39m lm [33m=[39m [34mmakeNeutralLandmarks[39m()[33m;[39m
+    [90m 49|[39m     lm[[34m454[39m] [33m=[39m { x[33m:[39m [34m0.9[39m[33m,[39m y[33m:[39m [34m0.5[39m[33m,[39m z[33m:[39m [34m0[39m }[33m;[39m [90m// right ear further right[39m
+    [90m 50|[39m     [34mexpect[39m([34mextractFeatures[39m(lm)[33m.[39mheadYaw)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+    [90m   |[39m                                         [31m^[39m
+    [90m 51|[39m   })[33m;[39m
+    [90m 52|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/features/attention/lib/__tests__/extractFeatures.test.ts[2m > [22mextractFeatures[2m > [22mreturns negative pitch when looking down
+[31m[1mAssertionError[22m: expected 25.714285714285722 to be less than 0[39m
+[36m [2m❯[22m src/features/attention/lib/__tests__/extractFeatures.test.ts:[2m60:43[22m[39m
+    [90m 58|[39m     [35mconst[39m lm [33m=[39m [34mmakeNeutralLandmarks[39m()[33m;[39m
+    [90m 59|[39m     lm[[34m152[39m] [33m=[39m { x[33m:[39m [34m0.5[39m[33m,[39m y[33m:[39m [34m0.60[39m[33m,[39m z[33m:[39m [34m0[39m }[33m;[39m [90m// chin closer to nose[39m
+    [90m 60|[39m     [34mexpect[39m([34mextractFeatures[39m(lm)[33m.[39mheadPitch)[33m.[39m[34mtoBeLessThan[39m([34m0[39m)[33m;[39m
+    [90m   |[39m                                           [31m^[39m
+    [90m 61|[39m   })[33m;[39m
+    [90m 62|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[2m | [22m[1m[32m42 passed[39m[22m[90m (46)[39m
+[2m   Start at [22m 01:11:42
+[2m   Duration [22m 2.48s[2m (transform 368ms, setup 914ms, import 745ms, tests 594ms, environment 5.94s)[22m
+
