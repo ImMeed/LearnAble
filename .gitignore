@@ -2,7 +2,10 @@
 __pycache__/
 *.pyc
 .venv/
+venv/
 .pytest_cache/
+
+.claude/
 
 # Node
 node_modules/

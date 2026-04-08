@@ -7,9 +7,8 @@ export default defineConfig({
   plugins: [
     react(),
     nodePolyfills({
-      include: ['events', 'process', 'buffer', 'stream', 'util'],
       globals: {
-        Buffer: true, 
+        Buffer: true,
         global: true,
         process: true,
       },

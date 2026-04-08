@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
-    database_url: str = "postgresql+psycopg://learnable:learnable@localhost:5432/learnable"
+    database_url: str = "postgresql+psycopg://learnable:learnable@localhost:5433/learnable"
     gemini_api_key: str = ""
 
     @field_validator("jwt_secret_key")
