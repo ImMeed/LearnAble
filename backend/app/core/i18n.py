@@ -97,6 +97,10 @@ MESSAGES = {
         "ar": "لا توجد علاقة ربط مع هذا الطالب لهذا المختص.",
         "en": "No psychologist link found for this student.",
     },
+    "STUDENT_SCREENING_NOT_FOUND": {
+        "ar": "لا توجد نتائج تقييم لهذا الطالب.",
+        "en": "No screening results were found for this student.",
+    },
     "FORUM_SPACE_NOT_FOUND": {
         "ar": "مساحة المنتدى غير موجودة.",
         "en": "Forum space was not found.",

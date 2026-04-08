@@ -24,9 +24,19 @@ class TeacherQuestionnaireResponse(BaseModel):
 
 class PsychologistReviewResponse(BaseModel):
     student_user_id: UUID
+    student_label: str
+    screening_composite_score: int | None
     screening_summary: dict | None
     latest_questionnaire: dict | None
     support_confirmation: dict | None
+
+
+class PsychologistReviewListResponse(BaseModel):
+    items: list[PsychologistReviewResponse] = []
+    total: int = 0
+    limit: int = 20
+    offset: int = 0
+    query: str | None = None
 
 
 class SupportConfirmRequest(BaseModel):
