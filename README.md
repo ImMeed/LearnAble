@@ -54,6 +54,26 @@ Phase status in repository reports: Phase 1 through Phase 10 are marked READY.
 - End-of-lesson and assessment feedback prompt APIs.
 - Teacher presence indicator support.
 
+### 5.1 Dashboard Call Flow (Student <-> Teacher)
+
+- Frontend routing includes integrated call room pages:
+	- `/call` creates a room and redirects to `/call/:roomId`
+	- `/call/:roomId` runs the WebRTC call page
+- Student dashboard now includes a "Request a call" panel:
+	- lists currently active teachers from `GET /teacher/presence/active`
+	- sends assistance requests with `POST /teacher/assistance/requests`
+	- shows student-owned assistance requests from `GET /teacher/assistance/requests`
+	- exposes a "Join call" action when request status becomes `SCHEDULED`
+- Teacher dashboard now includes in-dashboard call actions:
+	- auto-updates presence via `PUT /teacher/presence` on mount/unmount
+	- accepts requests and schedules immediate sessions from classroom requests
+	- stores an internal call path (`/call/:roomId`) as `meeting_url`
+	- opens scheduled calls directly from classroom and schedule views
+- Backend API behavior:
+	- `GET /teacher/assistance/requests` supports both tutor and student roles
+	- tutors see assigned + requested items; students see only their own items
+	- scheduling sets `status=SCHEDULED` with `scheduled_at` and `meeting_url`
+
 ### 6. Psychologist + Parent Workflow
 
 - Teacher questionnaire submission for psychologist review.

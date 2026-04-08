@@ -74,6 +74,15 @@ def list_requests_for_tutor(session: Session, tutor_user_id: UUID) -> list[Teach
     return list(session.scalars(stmt))
 
 
+def list_requests_for_student(session: Session, student_user_id: UUID) -> list[TeacherAssistanceRequest]:
+    stmt = (
+        select(TeacherAssistanceRequest)
+        .where(TeacherAssistanceRequest.student_user_id == student_user_id)
+        .order_by(TeacherAssistanceRequest.created_at.desc())
+    )
+    return list(session.scalars(stmt))
+
+
 def get_assistance_request(session: Session, request_id: UUID) -> TeacherAssistanceRequest | None:
     return session.get(TeacherAssistanceRequest, request_id)
 

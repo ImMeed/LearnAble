@@ -44,6 +44,20 @@ type AiMessage = {
   text: string;
 };
 
+type AssistanceRequestItem = {
+  id: string;
+  topic: string;
+  message: string;
+  status: string;
+  scheduled_at: string | null;
+  meeting_url: string | null;
+};
+
+type TeacherPresenceItem = {
+  tutor_user_id: string;
+  updated_at: string;
+};
+
 type BadgeIconVariant = "streak" | "quiz" | "focus" | "xp" | "default";
 
 function localeRequestConfig(resolvedLanguage: string | undefined) {
@@ -148,6 +162,9 @@ export function StudentDashboardPageV2() {
   const [showAIChat, setShowAIChat] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<AiMessage[]>([]);
+  const [activeTeachers, setActiveTeachers] = useState<TeacherPresenceItem[]>([]);
+  const [assistanceRequests, setAssistanceRequests] = useState<AssistanceRequestItem[]>([]);
+  const [requestingTeacherId, setRequestingTeacherId] = useState<string | null>(null);
 
   const prefix = useMemo(() => localePrefix(i18n.resolvedLanguage), [i18n.resolvedLanguage]);
   const requestConfig = useMemo(() => localeRequestConfig(i18n.resolvedLanguage), [i18n.resolvedLanguage]);
@@ -159,16 +176,62 @@ export function StudentDashboardPageV2() {
   ];
   const visibleLessons = lessons.slice(0, 6);
 
+  const requestStatusLabel = (status: string): string => {
+    if (status === "REQUESTED") return t("callFlow.statusRequested");
+    if (status === "SCHEDULED") return t("callFlow.statusScheduled");
+    if (status === "COMPLETED") return t("callFlow.statusCompleted");
+    return status;
+  };
+
+  const displayTeacherName = (teacherId: string): string => {
+    return t("callFlow.teacherName", { n: teacherId.slice(0, 8) });
+  };
+
+  const openMeetingLink = (meetingUrl: string) => {
+    if (meetingUrl.startsWith("http://") || meetingUrl.startsWith("https://")) {
+      window.location.href = meetingUrl;
+      return;
+    }
+
+    const normalizedPath = meetingUrl.startsWith("/") ? meetingUrl : `/${meetingUrl}`;
+    navigate(normalizedPath);
+  };
+
+  const requestCall = async (teacherId: string) => {
+    setRequestingTeacherId(teacherId);
+    try {
+      await apiClient.post(
+        "/teacher/assistance/requests",
+        {
+          topic: t("callFlow.requestTopic"),
+          message: t("callFlow.requestMessage", { teacher: displayTeacherName(teacherId) }),
+          preferred_at: new Date().toISOString(),
+        },
+        requestConfig,
+      );
+      setStatus(t("callFlow.requestSent"));
+      await loadDashboard();
+    } catch (error) {
+      setStatus(errorMessage(error));
+    } finally {
+      setRequestingTeacherId(null);
+    }
+  };
+
   const loadDashboard = async () => {
     setStatus(t("dashboards.common.loading"));
     try {
-      const [lessonRes, progressionRes] = await Promise.all([
+      const [lessonRes, progressionRes, activeTeachersRes, requestsRes] = await Promise.all([
         apiClient.get<{ items: LessonSummary[] }>("/study/lessons", requestConfig),
         apiClient.get<Progression>("/gamification/progression/me", requestConfig),
+        apiClient.get<{ items: TeacherPresenceItem[] }>("/teacher/presence/active", requestConfig),
+        apiClient.get<{ items: AssistanceRequestItem[] }>("/teacher/assistance/requests", requestConfig),
       ]);
 
       setLessons(lessonRes.data.items || []);
       setProgression(progressionRes.data);
+      setActiveTeachers(activeTeachersRes.data.items || []);
+      setAssistanceRequests(requestsRes.data.items || []);
 
       setGoals(fallbackGoals);
 
@@ -308,6 +371,51 @@ export function StudentDashboardPageV2() {
                   <ProgressBar current={goal.current} max={goal.target} showPercentage={false} />
                 </div>
               ))}
+            </div>
+          </article>
+
+          <article className="card checkpoint-block">
+            <p className="muted">{t("callFlow.sectionLabel")}</p>
+            <h3>{t("callFlow.sectionTitle")}</h3>
+
+            <div className="stack-list checkpoint-block">
+              {activeTeachers.length === 0 ? (
+                <p className="muted">{t("callFlow.noTeachers")}</p>
+              ) : (
+                activeTeachers.map((teacher) => {
+                  const teacherName = displayTeacherName(teacher.tutor_user_id);
+                  const isSending = requestingTeacherId === teacher.tutor_user_id;
+                  return (
+                    <article key={teacher.tutor_user_id} className="notification-item">
+                      <strong>{teacherName}</strong>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => void requestCall(teacher.tutor_user_id)}
+                        aria-label={t("callFlow.requestCallAria", { n: teacherName })}
+                        disabled={isSending}
+                      >
+                        {isSending ? t("callFlow.sending") : t("callFlow.requestCall")}
+                      </button>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="stack-list checkpoint-block">
+              {assistanceRequests.slice(0, 4).map((request) => (
+                <article key={request.id} className="notification-item">
+                  <strong>{request.topic}</strong>
+                  <p>{requestStatusLabel(request.status)}</p>
+                  {request.status === "SCHEDULED" && request.meeting_url ? (
+                    <button type="button" onClick={() => openMeetingLink(request.meeting_url as string)}>
+                      {t("callFlow.joinCall")}
+                    </button>
+                  ) : null}
+                </article>
+              ))}
+              {assistanceRequests.length === 0 ? <p className="muted">{t("dashboards.common.none")}</p> : null}
             </div>
           </article>
 
