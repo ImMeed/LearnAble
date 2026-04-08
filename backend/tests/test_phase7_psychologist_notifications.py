@@ -75,6 +75,28 @@ def _seed_phase7_data(session: Session) -> tuple[str, str, str, UUID]:
     return parent_token, tutor_token, psych_token, student.id
 
 
+def _seed_unlinked_psychologist(session: Session) -> str:
+    psychologist = User(
+        email=f"phase7-psych-unlinked-{uuid4()}@learnable.test",
+        password_hash="integration-test-hash",
+        role=UserRole.ROLE_PSYCHOLOGIST,
+    )
+    session.add(psychologist)
+    session.commit()
+    return create_access_token(psychologist.id, str(psychologist.role), psychologist.email)
+
+
+def _seed_unscreened_student(session: Session) -> UUID:
+    student = User(
+        email=f"phase7-unscreened-{uuid4()}@learnable.test",
+        password_hash="integration-test-hash",
+        role=UserRole.ROLE_STUDENT,
+    )
+    session.add(student)
+    session.commit()
+    return student.id
+
+
 def test_phase7_parent_notified_only_after_psychologist_confirmation() -> None:
     session = SessionLocal()
     client = _make_client(session)
@@ -103,8 +125,20 @@ def test_phase7_parent_notified_only_after_psychologist_confirmation() -> None:
         review_response = client.get(f"/psychologist/reviews/students/{student_id}", headers=psych_headers)
         assert review_response.status_code == 200
         review_data = review_response.json()
+        assert review_data["student_label"].startswith("phase7-student-")
+        assert review_data["screening_composite_score"] == 48
         assert review_data["screening_summary"] is not None
         assert review_data["latest_questionnaire"] is not None
+
+        list_response = client.get("/psychologist/reviews/students", headers=psych_headers)
+        assert list_response.status_code == 200
+        payload = list_response.json()
+        items = payload["items"]
+        assert payload["total"] >= 1
+        assert payload["limit"] == 20
+        assert payload["offset"] == 0
+        assert len(items) >= 1
+        assert any(item["student_user_id"] == str(student_id) for item in items)
 
         confirm_response = client.post(
             f"/psychologist/support/{student_id}/confirm",
@@ -126,6 +160,39 @@ def test_phase7_parent_notified_only_after_psychologist_confirmation() -> None:
         )
         assert read_response.status_code == 200
         assert read_response.json()["is_read"] is True
+
+        unlinked_psych_token = _seed_unlinked_psychologist(session)
+        unlinked_headers = {"Authorization": f"Bearer {unlinked_psych_token}", "x-lang": "en"}
+
+        # Reviews are intentionally open to all psychologists.
+        review_open_response = client.get(f"/psychologist/reviews/students/{student_id}", headers=unlinked_headers)
+        assert review_open_response.status_code == 200
+
+        list_open_response = client.get(
+            "/psychologist/reviews/students?search=phase7-student&limit=5&offset=0",
+            headers=unlinked_headers,
+        )
+        assert list_open_response.status_code == 200
+        list_payload = list_open_response.json()
+        assert list_payload["query"] == "phase7-student"
+        assert list_payload["limit"] == 5
+
+        unscreened_student_id = _seed_unscreened_student(session)
+        missing_review_response = client.get(
+            f"/psychologist/reviews/students/{unscreened_student_id}",
+            headers=unlinked_headers,
+        )
+        assert missing_review_response.status_code == 404
+        assert missing_review_response.json()["code"] == "STUDENT_SCREENING_NOT_FOUND"
+
+        # Confirmations remain restricted to linked psychologists.
+        confirm_forbidden = client.post(
+            f"/psychologist/support/{student_id}/confirm",
+            headers=unlinked_headers,
+            json={"support_level": "MEDIUM", "notes": "Should be blocked for unlinked psychologist."},
+        )
+        assert confirm_forbidden.status_code == 403
+        assert confirm_forbidden.json()["code"] == "STUDENT_PSYCHOLOGIST_LINK_NOT_FOUND"
     finally:
         app.dependency_overrides.clear()
         client.close()

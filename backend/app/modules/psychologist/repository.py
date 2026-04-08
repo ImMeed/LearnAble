@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models.links import StudentParentLink, StudentPsychologistLink
 from app.db.models.psychologist import PsychologistSupportConfirmation, TeacherQuestionnaire
 from app.db.models.study import StudentScreening
+from app.db.models.users import User
 
 
 def is_student_linked_to_psychologist(session: Session, student_id: UUID, psychologist_id: UUID) -> bool:
@@ -14,6 +15,31 @@ def is_student_linked_to_psychologist(session: Session, student_id: UUID, psycho
         StudentPsychologistLink.psychologist_user_id == psychologist_id,
     )
     return session.scalar(stmt) is not None
+
+
+def list_linked_student_ids_for_psychologist(session: Session, psychologist_id: UUID) -> list[UUID]:
+    stmt = select(StudentPsychologistLink.student_user_id).where(
+        StudentPsychologistLink.psychologist_user_id == psychologist_id
+    )
+    return list(session.scalars(stmt))
+
+
+def list_student_ids_with_screenings(
+    session: Session,
+    search: str | None,
+    limit: int,
+    offset: int,
+) -> tuple[list[UUID], int]:
+    base = select(StudentScreening.user_id).join(User, User.id == StudentScreening.user_id)
+    if search:
+        base = base.where(func.split_part(User.email, "@", 1).ilike(f"%{search}%"))
+
+    total_stmt = select(func.count()).select_from(base.subquery())
+    total = session.scalar(total_stmt) or 0
+
+    items_stmt = base.order_by(StudentScreening.created_at.desc()).limit(limit).offset(offset)
+    items = list(session.scalars(items_stmt))
+    return items, total
 
 
 def list_parent_ids_for_student(session: Session, student_id: UUID) -> list[UUID]:
@@ -59,6 +85,11 @@ def get_student_screening(session: Session, student_id: UUID) -> StudentScreenin
 
 def get_support_confirmation(session: Session, student_id: UUID) -> PsychologistSupportConfirmation | None:
     stmt = select(PsychologistSupportConfirmation).where(PsychologistSupportConfirmation.student_user_id == student_id)
+    return session.scalar(stmt)
+
+
+def get_student_email(session: Session, student_id: UUID) -> str | None:
+    stmt = select(User.email).where(User.id == student_id)
     return session.scalar(stmt)
 
 
