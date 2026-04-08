@@ -103,6 +103,10 @@ def test_teacher_assistance_presence_dashboard_flow() -> None:
         assert create_response.status_code == 200
         request_id = create_response.json()["id"]
 
+        student_list_response = client.get("/teacher/assistance/requests", headers=student_headers)
+        assert student_list_response.status_code == 200
+        assert any(item["id"] == request_id for item in student_list_response.json()["items"])
+
         list_response = client.get("/teacher/assistance/requests", headers=tutor_headers)
         assert list_response.status_code == 200
         assert any(item["id"] == request_id for item in list_response.json()["items"])
