@@ -157,6 +157,7 @@ export function StudentDashboardPageV2() {
     { id: "goal-minutes", title: t("dashboards.studentV2.goalMinutes"), current: 22, target: 30 },
     { id: "goal-xp", title: t("dashboards.studentV2.goalXp"), current: 150, target: 200 },
   ];
+  const visibleLessons = lessons.slice(0, 6);
 
   const loadDashboard = async () => {
     setStatus(t("dashboards.common.loading"));
@@ -251,7 +252,7 @@ export function StudentDashboardPageV2() {
             </div>
 
             <div className="lesson-grid">
-              {lessons.map((lesson, index) => (
+              {visibleLessons.map((lesson, index) => (
                 <Link className="lesson-card" to={`${prefix}/student/course/${lesson.id}`} key={lesson.id}>
                   <div className="request-head-row">
                     <div>
