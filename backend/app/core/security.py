@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
@@ -11,7 +12,7 @@ from pydantic import BaseModel
 from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 class CurrentUser(BaseModel):
@@ -21,11 +22,13 @@ class CurrentUser(BaseModel):
 
 
 def hash_password(password: str) -> str:
+    password = hashlib.sha256(password.encode("utf-8")).hexdigest()
     return pwd_context.hash(password)
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password(password: str, hashed_password: str) -> bool:
+    password = hashlib.sha256(password.encode("utf-8")).hexdigest()
+    return pwd_context.verify(password, hashed_password)
 
 
 def create_access_token(user_id: UUID, role: str, email: str) -> str:
