@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session
 from app.core.i18n import localized_http_exception
 from app.core.security import CurrentUser
 from app.modules.economy.service import apply_hint_penalty, apply_quiz_reward
+from app.modules.gamification.service import apply_progression_after_xp
 from app.modules.quiz import repository
 from app.modules.quiz.schemas import (
     HintRequest,
     HintResponse,
+    QuizProgressionSnapshot,
     QuizAnswerSubmission,
     QuizListResponse,
     QuizQuestionItem,
@@ -140,6 +142,14 @@ def submit_quiz(
         metadata={"quiz_id": str(quiz_id), "attempt_id": str(attempt.id), "score": score},
     )
 
+    progression_state = apply_progression_after_xp(
+        session=session,
+        user_id=current_user.user_id,
+        xp_delta=earned_xp,
+        locale=locale,
+        metadata={"quiz_id": str(quiz_id), "attempt_id": str(attempt.id), "score": score},
+    )
+
     session.add(attempt)
     session.commit()
 
@@ -150,6 +160,13 @@ def submit_quiz(
         earned_points=earned_points,
         earned_xp=earned_xp,
         wallet_balance=wallet_balance,
+        progression=QuizProgressionSnapshot(
+            total_xp=progression_state["total_xp"],
+            current_level=progression_state["current_level"],
+            next_level_xp=progression_state["next_level_xp"],
+            leveled_up=progression_state["leveled_up"],
+            new_badges=progression_state["new_badges"],
+        ),
     )
 
 

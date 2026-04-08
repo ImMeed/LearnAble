@@ -2,7 +2,10 @@
 __pycache__/
 *.pyc
 .venv/
+venv/
 .pytest_cache/
+
+.claude/
 
 # Node
 node_modules/
@@ -15,7 +18,7 @@ dist/
 .vscode/
 
 plan.md
-summary.md
+summary.md 
 phase1.md
 phase2.md
 phase3.md
@@ -28,3 +31,7 @@ phase9.md
 phase10.md
 .github
 planhumain.md
+learnable_frontend_layout.json
+ui/
+.github/
+first-session/

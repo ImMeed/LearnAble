@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.core.i18n import get_request_locale
-from app.core.security import CurrentUser, get_current_user
+from app.core.roles import UserRole, require_roles
+from app.core.security import CurrentUser
 from app.db.session import get_db_session
 from app.modules.quiz.schemas import HintRequest, HintResponse, QuizListResponse, StartQuizResponse, SubmitQuizRequest, SubmitQuizResponse
 from app.modules.quiz.service import get_quizzes, get_quiz_hint, start_quiz, submit_quiz
@@ -21,7 +22,7 @@ def list_quizzes(request: Request, session: Session = Depends(get_db_session)) -
 def start_quiz_attempt(
     quiz_id: UUID,
     request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_STUDENT)),
     session: Session = Depends(get_db_session),
 ) -> StartQuizResponse:
     return start_quiz(session, quiz_id, current_user, get_request_locale(request))
@@ -32,7 +33,7 @@ def submit_quiz_attempt(
     quiz_id: UUID,
     payload: SubmitQuizRequest,
     request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_STUDENT)),
     session: Session = Depends(get_db_session),
 ) -> SubmitQuizResponse:
     return submit_quiz(session, quiz_id, payload, current_user, get_request_locale(request))
@@ -43,7 +44,28 @@ def quiz_hint(
     quiz_id: UUID,
     payload: HintRequest,
     request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_STUDENT)),
     session: Session = Depends(get_db_session),
 ) -> HintResponse:
     return get_quiz_hint(session, quiz_id, payload, current_user, get_request_locale(request))
+
+
+@router.post("/{quiz_id}/play/init", response_model=StartQuizResponse)
+def init_quiz_play(
+    quiz_id: UUID,
+    request: Request,
+    current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_STUDENT)),
+    session: Session = Depends(get_db_session),
+) -> StartQuizResponse:
+    return start_quiz(session, quiz_id, current_user, get_request_locale(request))
+
+
+@router.post("/{quiz_id}/play/answer", response_model=SubmitQuizResponse)
+def answer_quiz_play(
+    quiz_id: UUID,
+    payload: SubmitQuizRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_STUDENT)),
+    session: Session = Depends(get_db_session),
+) -> SubmitQuizResponse:
+    return submit_quiz(session, quiz_id, payload, current_user, get_request_locale(request))

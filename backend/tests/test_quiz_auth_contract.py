@@ -27,3 +27,18 @@ def test_quiz_hint_requires_auth() -> None:
         json={"question_id": str(uuid4())},
     )
     assert response.status_code == 401
+
+
+def test_quiz_play_init_requires_auth() -> None:
+    client = TestClient(app)
+    response = client.post(f"/quizzes/{uuid4()}/play/init")
+    assert response.status_code == 401
+
+
+def test_quiz_play_answer_requires_auth() -> None:
+    client = TestClient(app)
+    response = client.post(
+        f"/quizzes/{uuid4()}/play/answer",
+        json={"attempt_id": str(uuid4()), "answers": []},
+    )
+    assert response.status_code == 401

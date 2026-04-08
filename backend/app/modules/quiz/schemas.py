@@ -42,6 +42,14 @@ class SubmitQuizRequest(BaseModel):
     answers: list[QuizAnswerSubmission]
 
 
+class QuizProgressionSnapshot(BaseModel):
+    total_xp: int
+    current_level: int
+    next_level_xp: int
+    leveled_up: bool = False
+    new_badges: list[str] = []
+
+
 class SubmitQuizResponse(BaseModel):
     score: int
     total_questions: int
@@ -49,6 +57,7 @@ class SubmitQuizResponse(BaseModel):
     earned_points: int
     earned_xp: int
     wallet_balance: int
+    progression: QuizProgressionSnapshot | None = None
 
 
 class HintRequest(BaseModel):
