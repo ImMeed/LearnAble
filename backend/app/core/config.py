@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 60
     database_url: str = "postgresql+psycopg://learnable:learnable@localhost:5433/learnable"
     gemini_api_key: str = ""
+    require_call_auth: bool = True
 
     @field_validator("jwt_secret_key")
     @classmethod

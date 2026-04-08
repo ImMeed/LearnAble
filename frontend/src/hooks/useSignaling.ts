@@ -48,9 +48,13 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
     if (!roomId) return;
 
     const host = window.location.hostname;
+    const isSecure = window.location.protocol === "https:";
+    const wsScheme = isSecure ? "wss" : "ws";
+    const apiBase = import.meta.env.VITE_API_BASE_URL || `http://${host}:8000`;
+    const wsBase = apiBase.replace(/^https?/, wsScheme);
     const session = getSession();
     const tokenParam = session?.accessToken ? `?token=${session.accessToken}` : "";
-    const wsUrl = `ws://${host}:8000/ws/call/${roomId}${tokenParam}`;
+    const wsUrl = `${wsBase}/ws/call/${roomId}${tokenParam}`;
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;

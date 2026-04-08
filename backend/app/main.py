@@ -1,4 +1,6 @@
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
@@ -9,7 +11,7 @@ from fastapi.responses import JSONResponse
 from app.core.i18n import get_request_locale, resolve_request_locale, translate
 from app.modules.ai.router import router as ai_router
 from app.modules.auth.router import router as auth_router
-from app.modules.call.router import router as call_router
+from app.modules.call.router import router as call_router, http_router as call_http_router, _cleanup_stale_rooms
 from app.modules.forum.router import router as forum_router
 from app.modules.gamification.router import router as gamification_router
 from app.modules.library.router import router as library_router
@@ -27,10 +29,16 @@ def create_app() -> FastAPI:
         format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
     )
 
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        asyncio.create_task(_cleanup_stale_rooms())
+        yield
+
     app = FastAPI(
         title="LearnAble API",
         version="0.1.0",
         description="Arabic-first learning platform API.",
+        lifespan=lifespan,
     )
 
     app.include_router(auth_router)
@@ -44,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(ai_router)
     app.include_router(teacher_router)
     app.include_router(psychologist_router)
+    app.include_router(call_http_router)
     app.include_router(call_router)
 
     # Allow browser clients from local Vite dev servers to call the API.

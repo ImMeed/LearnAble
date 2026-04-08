@@ -49,29 +49,38 @@ export function useWebRTC({
     let cancelled = false;
 
     async function initMedia() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
+      // Try video + audio first; fall back to audio-only if camera is unavailable.
+      const constraints: MediaStreamConstraints[] = [
+        { video: true, audio: true },
+        { video: false, audio: true },
+      ];
+
+      for (const constraint of constraints) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(constraint);
+          if (cancelled) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          streamRef.current = stream;
+          setLocalStream(stream);
           return;
-        }
-        streamRef.current = stream;
-        setLocalStream(stream);
-      } catch (err: unknown) {
-        if (cancelled) return;
-        const error = err as DOMException;
-        if (
-          error.name === "NotAllowedError" ||
-          error.name === "PermissionDeniedError"
-        ) {
-          setMediaError("CAMERA_DENIED");
-        } else if (error.name === "NotFoundError") {
-          setMediaError("NO_DEVICE");
-        } else {
-          setMediaError("MEDIA_ERROR");
+        } catch (err: unknown) {
+          if (cancelled) return;
+          const error = err as DOMException;
+          // Permission denied — no point retrying with audio-only
+          if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+            setMediaError("CAMERA_DENIED");
+            return;
+          }
+          // Device not found or in use — try audio-only next iteration
+          if (constraint.video) continue;
+          // Audio-only also failed
+          if (error.name === "NotFoundError") {
+            setMediaError("NO_DEVICE");
+          } else {
+            setMediaError("MEDIA_ERROR");
+          }
         }
       }
     }
@@ -114,6 +123,9 @@ export function useWebRTC({
 
   const peerRef = useRef<PeerInstance | null>(null);
   const signalQueueRef = useRef<any[]>([]);
+  const retryCountRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const MAX_PEER_RETRIES = 3;
 
   const destroyPeer = useCallback(() => {
     if (peerRef.current) {
@@ -147,11 +159,10 @@ export function useWebRTC({
 
     if (!shouldCreate) return;
 
-    // Tear down any stale peer before creating a new one
-    if (peerRef.current) {
-      peerRef.current.destroy();
-      peerRef.current = null;
-    }
+    // If a peer already exists don't tear it down — the connection attempt is
+    // already in progress. This guards against React StrictMode's double-invoke
+    // and any spurious effect re-runs that would abort a live negotiation.
+    if (peerRef.current) return;
     setPeerError(null);
     setRemoteStream(null);
     setPeerConnected(false);
@@ -193,7 +204,24 @@ export function useWebRTC({
 
     peer.on("error", (err) => {
       console.error("simple-peer error:", err);
-      setPeerError(err.message);
+      // Retry with exponential backoff up to MAX_PEER_RETRIES times
+      if (retryCountRef.current < MAX_PEER_RETRIES) {
+        const delay = Math.pow(2, retryCountRef.current) * 1000;
+        retryCountRef.current += 1;
+        console.warn(`WebRTC error, retrying in ${delay}ms (attempt ${retryCountRef.current}/${MAX_PEER_RETRIES})`);
+        peerRef.current?.destroy();
+        peerRef.current = null;
+        signalQueueRef.current = [];
+        retryTimerRef.current = setTimeout(() => {
+          setPeerError(null);
+          setRemoteStream(null);
+          setPeerConnected(false);
+          // Re-trigger peer creation by resetting state
+          setPeerError(null);
+        }, delay);
+      } else {
+        setPeerError(err.message);
+      }
     });
 
     peerRef.current = peer;
@@ -221,6 +249,7 @@ export function useWebRTC({
 
   useEffect(() => {
     return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       destroyPeer();
       stopAllTracks();
     };
