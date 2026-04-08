@@ -38,19 +38,11 @@ export const router = createBrowserRouter([
   { path: "/en/login", element: <LoginPage /> },
   {
     path: "/onboarding",
-    element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
-        <StudentOnboardingPageV2 />
-      </ProtectedRoute>
-    ),
+    element: <StudentOnboardingPageV2 />,
   },
   {
     path: "/student/onboarding",
-    element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
-        <StudentOnboardingPageV2 />
-      </ProtectedRoute>
-    ),
+    element: <StudentOnboardingPageV2 />,
   },
   {
     path: "/student/dashboard",
@@ -102,19 +94,11 @@ export const router = createBrowserRouter([
   },
   {
     path: "/ar/onboarding",
-    element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
-        <StudentOnboardingPageV2 />
-      </ProtectedRoute>
-    ),
+    element: <StudentOnboardingPageV2 />,
   },
   {
     path: "/ar/student/onboarding",
-    element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
-        <StudentOnboardingPageV2 />
-      </ProtectedRoute>
-    ),
+    element: <StudentOnboardingPageV2 />,
   },
   {
     path: "/ar/student/dashboard",
@@ -166,19 +150,11 @@ export const router = createBrowserRouter([
   },
   {
     path: "/en/onboarding",
-    element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
-        <StudentOnboardingPageV2 />
-      </ProtectedRoute>
-    ),
+    element: <StudentOnboardingPageV2 />,
   },
   {
     path: "/en/student/onboarding",
-    element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
-        <StudentOnboardingPageV2 />
-      </ProtectedRoute>
-    ),
+    element: <StudentOnboardingPageV2 />,
   },
   {
     path: "/en/student/dashboard",

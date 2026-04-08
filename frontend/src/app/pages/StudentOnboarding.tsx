@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -6,6 +6,32 @@ import { apiClient } from "../../api/client";
 import { AccessibilityToolbar } from "../components/AccessibilityToolbar";
 import { BrandLogo } from "../components/BrandLogo";
 import { LanguageSwitcher } from "../../features/accessibility/LanguageSwitcher";
+import { getSession } from "../../state/auth";
+
+const ONBOARDING_NAME_KEY = "learnable_onboarding_name";
+const ONBOARDING_ANSWERS_KEY = "learnable_onboarding_answers";
+const ONBOARDING_PENDING_KEY = "learnable_onboarding_pending";
+
+function readStoredAnswers(): Record<number, string> {
+  const raw = localStorage.getItem(ONBOARDING_ANSWERS_KEY);
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return Object.entries(parsed).reduce<Record<number, string>>((acc, [key, value]) => {
+      const numericKey = Number(key);
+      if (Number.isInteger(numericKey) && typeof value === "string") {
+        acc[numericKey] = value;
+      }
+      return acc;
+    }, {});
+  } catch {
+    localStorage.removeItem(ONBOARDING_ANSWERS_KEY);
+    return {};
+  }
+}
 
 function localePrefix(resolvedLanguage: string | undefined): string {
   return resolvedLanguage === "en" ? "/en" : "/ar";
@@ -66,11 +92,13 @@ export function StudentOnboardingPageV2() {
   const prefix = useMemo(() => localePrefix(i18n.resolvedLanguage), [i18n.resolvedLanguage]);
 
   const [step, setStep] = useState(0);
-  const [name, setName] = useState("");
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [name, setName] = useState(() => localStorage.getItem(ONBOARDING_NAME_KEY) ?? "");
+  const [answers, setAnswers] = useState<Record<number, string>>(() => readStoredAnswers());
   const [status, setStatus] = useState("");
+  const [autoSubmitted, setAutoSubmitted] = useState(false);
 
   const current = STEPS[step];
+  const session = getSession();
   const translatedChoiceForStep = (targetStep: number, index: number): string => {
     const key = STEPS[targetStep]?.choices?.[index];
     return key ? t(key) : "";
@@ -90,18 +118,18 @@ export function StudentOnboardingPageV2() {
     };
   };
 
-  const onSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (step < STEPS.length - 1) {
-      setStep((prev) => prev + 1);
-      return;
-    }
+  const clearOnboardingDraft = () => {
+    localStorage.removeItem(ONBOARDING_PENDING_KEY);
+    localStorage.removeItem(ONBOARDING_NAME_KEY);
+    localStorage.removeItem(ONBOARDING_ANSWERS_KEY);
+  };
 
-    localStorage.setItem("learnable_onboarding_name", name.trim());
-    localStorage.setItem("learnable_onboarding_answers", JSON.stringify(answers));
+  const hasCompleteAnswers =
+    typeof answers[1] === "string" && answers[1].length > 0 &&
+    typeof answers[2] === "string" && answers[2].length > 0 &&
+    typeof answers[3] === "string" && answers[3].length > 0;
 
-    setStatus(t("onboarding.submitting"));
-
+  const submitScreening = async () => {
     try {
       await apiClient.post(
         "/study/screening/complete",
@@ -112,8 +140,22 @@ export function StudentOnboardingPageV2() {
           },
         },
       );
+      clearOnboardingDraft();
       setStatus(t("onboarding.saved"));
+      navigate(`${prefix}/student/dashboard`, { replace: true });
     } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        (error as { response?: { status?: number } }).response?.status === 409
+      ) {
+        clearOnboardingDraft();
+        setStatus(t("onboarding.saved"));
+        navigate(`${prefix}/student/dashboard`, { replace: true });
+        return;
+      }
+
       const message =
         typeof error === "object" && error && "response" in error
           ? String(
@@ -123,8 +165,48 @@ export function StudentOnboardingPageV2() {
           : String(error);
       setStatus(`${t("onboarding.notice")}: ${message}`);
     }
+  };
 
-    navigate(`${prefix}/student/dashboard`);
+  useEffect(() => {
+    if (autoSubmitted) {
+      return;
+    }
+    if (!session?.accessToken || session.role !== "ROLE_STUDENT") {
+      return;
+    }
+    if (localStorage.getItem(ONBOARDING_PENDING_KEY) !== "true") {
+      return;
+    }
+    if (!hasCompleteAnswers) {
+      return;
+    }
+
+    setAutoSubmitted(true);
+    setStatus(t("onboarding.submitting"));
+    void submitScreening();
+  }, [autoSubmitted, hasCompleteAnswers, session?.accessToken, session?.role, t]);
+
+  const onSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (step < STEPS.length - 1) {
+      setStep((prev) => prev + 1);
+      return;
+    }
+
+    // Store onboarding data locally
+    localStorage.setItem(ONBOARDING_NAME_KEY, name.trim());
+    localStorage.setItem(ONBOARDING_ANSWERS_KEY, JSON.stringify(answers));
+
+    // If logged in, submit screening immediately
+    if (session?.accessToken) {
+      setStatus(t("onboarding.submitting"));
+      await submitScreening();
+    } else {
+      // If not logged in, mark as pending and redirect to registration
+      localStorage.setItem(ONBOARDING_PENDING_KEY, "true");
+      setStatus(t("onboarding.saved"));
+      navigate(`${prefix}/login`, { replace: true });
+    }
   };
 
   return (

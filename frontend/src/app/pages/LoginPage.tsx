@@ -90,7 +90,14 @@ export function LoginPage() {
 
         const data = response.data as { access_token: string; role: string };
         setSession({ accessToken: data.access_token, role: data.role });
-        navigate(`${prefix}${routeFromRole(data.role)}`, { replace: true });
+        
+        // Always redirect newly registered students to onboarding
+        // (whether they came from onboarding flow or registered directly from login page)
+        if (data.role === "ROLE_STUDENT") {
+          navigate(`${prefix}/student/onboarding?fromRegister=1`, { replace: true });
+        } else {
+          navigate(`${prefix}${routeFromRole(data.role)}`, { replace: true });
+        }
         return;
       }
 
@@ -105,6 +112,11 @@ export function LoginPage() {
 
       const data = response.data as { access_token: string; role: string };
       setSession({ accessToken: data.access_token, role: data.role });
+
+      if (data.role === "ROLE_STUDENT" && localStorage.getItem("learnable_onboarding_pending") === "true") {
+        navigate(`${prefix}/student/onboarding`, { replace: true });
+        return;
+      }
 
       const requestedFrom = (location.state as { from?: string } | undefined)?.from;
       const safePath = requestedFrom && requestedFrom.startsWith("/") ? requestedFrom : routeFromRole(data.role);
