@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: learnable
       POSTGRES_DB: learnable
     ports:
-      - "5433:5432"
+      - "5433:5433"
     volumes:
       - learnable_pg_data:/var/lib/postgresql/data
 

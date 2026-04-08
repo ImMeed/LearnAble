@@ -41,7 +41,7 @@ def main() -> None:
         q2 = QuizQuestion(
             quiz_id=quiz.id,
             prompt_ar="أي كلمة تعبّر عن صوت؟",
-            prompt_en":"Which option represents a sound?",
+            prompt_en="Which option represents a sound?",
             options_json=[
                 {"key": "A", "text_ar": "ضوء", "text_en": "Light"},
                 {"key": "B", "text_ar": "صوت", "text_en": "Sound"},
