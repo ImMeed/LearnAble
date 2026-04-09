@@ -136,6 +136,9 @@ export function DashboardShell({
           <Link className="secondary-link" to={localePrefix(i18n.resolvedLanguage)}>
             {t("dashboards.shell.backHome")}
           </Link>
+          <Link className="secondary-link" to={`${localePrefix(i18n.resolvedLanguage)}/settings`}>
+            {t("settings.title")}
+          </Link>
           <button type="button" className="secondary" onClick={onLogout}>
             {t("dashboards.shell.logout")}
           </button>

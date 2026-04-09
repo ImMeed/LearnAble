@@ -279,6 +279,9 @@ export function StudentDashboardPageV2() {
         </div>
         <div className="dashboard-header-actions">
           <AccessibilityToolbar />
+          <Link className="secondary-link" to={`${prefix}/settings`}>
+            {t("settings.title")}
+          </Link>
           <button type="button" className="secondary" onClick={onLogout}>
             {t("dashboards.shell.logout")}
           </button>
