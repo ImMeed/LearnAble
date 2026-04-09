@@ -3,15 +3,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
 
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
@@ -22,13 +21,13 @@ class CurrentUser(BaseModel):
 
 
 def hash_password(password: str) -> str:
-    password = hashlib.sha256(password.encode("utf-8")).hexdigest()
-    return pwd_context.hash(password)
+    pre_hash = hashlib.sha256(password.encode("utf-8")).digest()
+    return bcrypt.hashpw(pre_hash, bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    password = hashlib.sha256(password.encode("utf-8")).hexdigest()
-    return pwd_context.verify(password, hashed_password)
+    pre_hash = hashlib.sha256(password.encode("utf-8")).digest()
+    return bcrypt.checkpw(pre_hash, hashed_password.encode("utf-8"))
 
 
 def create_access_token(user_id: UUID, role: str, email: str) -> str:
