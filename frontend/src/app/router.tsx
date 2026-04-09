@@ -5,6 +5,7 @@ import { ProtectedRoute } from "../features/auth/ProtectedRoute";
 import CallPage, { CallRedirect } from "../pages/CallPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { StudentOnboardingPageV2 } from "./pages/StudentOnboarding";
 import { StudentDashboardPageV2 } from "./pages/StudentDashboard";
 import { CoursePageV2 } from "./pages/CoursePage";
@@ -201,6 +202,30 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute roles={["ROLE_ADMIN"]}>
         <AdminDashboardPageV2 />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/settings",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT", "ROLE_TUTOR", "ROLE_PARENT", "ROLE_PSYCHOLOGIST", "ROLE_ADMIN"]}>
+        <SettingsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ar/settings",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT", "ROLE_TUTOR", "ROLE_PARENT", "ROLE_PSYCHOLOGIST", "ROLE_ADMIN"]}>
+        <SettingsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/en/settings",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT", "ROLE_TUTOR", "ROLE_PARENT", "ROLE_PSYCHOLOGIST", "ROLE_ADMIN"]}>
+        <SettingsPage />
       </ProtectedRoute>
     ),
   },

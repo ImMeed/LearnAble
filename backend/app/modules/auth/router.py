@@ -63,6 +63,14 @@ def login_otp(payload: LoginWithOTPRequest, session: SessionDep, request: Reques
 
 # ── Authenticated endpoints (require valid JWT) ───────────────────────────────
 
+@router.get("/2fa/status")
+def get_2fa_status(session: SessionDep, current_user: CurrentUserDep):
+    """Return whether 2FA is currently enabled for the authenticated user."""
+    from app.db.models.users import User
+    user = session.get(User, current_user.user_id)
+    return {"totp_enabled": bool(user and user.totp_enabled)}
+
+
 @router.post("/2fa/enable", response_model=Enable2FAResponse)
 def enable_2fa(session: SessionDep, current_user: CurrentUserDep):
     """
