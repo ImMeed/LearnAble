@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.models.security_models import TotpSecret, UsedTotpCode
 
-# A TOTP code lives for at most 3 windows (valid_window=1 → ±1 window around now).
-_REPLAY_WINDOW_SECONDS = 90
+# valid_window=2 → ±2 windows around now = 5 windows × 30s = 150s total tolerance.
+_REPLAY_WINDOW_SECONDS = 150
 
 
 def generate_totp_secret() -> str:
@@ -39,7 +39,7 @@ def verify_totp_code(secret: str, code: str) -> bool:
     valid_window=1 allows one 30-second drift in either direction.
     """
     totp = pyotp.TOTP(secret)
-    return totp.verify(code, valid_window=1)
+    return totp.verify(code, valid_window=2)
 
 
 # ── Replay protection ─────────────────────────────────────────────────────────
