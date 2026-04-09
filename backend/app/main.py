@@ -1,15 +1,13 @@
-import json
-import time
-from collections import defaultdict
+import asyncio
+import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.core.config import settings
 from app.core.i18n import get_request_locale, resolve_request_locale, translate
 from app.modules.ai.router import router as ai_router
 from app.modules.auth.router import router as auth_router
@@ -23,70 +21,6 @@ from app.modules.quiz.router import router as quiz_router
 from app.modules.study.router import router as study_router
 from app.modules.teacher.router import router as teacher_router
 from app.modules.users.router import router as users_router
-
-
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; "
-            "script-src 'self'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data:; "
-            "font-src 'self'; "
-            "connect-src 'self'; "
-            "frame-ancestors 'none'"
-        )
-        if settings.app_env == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        return response
-
-
-# ── Rate limits: auth endpoints 20 req/min, everything else 200 req/min ───────
-_AUTH_LIMIT = 20
-_GLOBAL_LIMIT = 200
-_WINDOW = 60  # seconds
-
-
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """
-    In-memory per-IP rate limiter.
-    NOTE: For multi-worker deployments replace with a Redis-backed solution
-    (e.g. slowapi + Redis) so counters are shared across processes.
-    """
-
-    def __init__(self, app):
-        super().__init__(app)
-        self._buckets: dict[str, list[float]] = defaultdict(list)
-
-    def _is_auth_path(self, path: str) -> bool:
-        return path.startswith("/auth/")
-
-    async def dispatch(self, request: Request, call_next):
-        ip = request.client.host if request.client else "unknown"
-        path = request.url.path
-        limit = _AUTH_LIMIT if self._is_auth_path(path) else _GLOBAL_LIMIT
-        key = f"{ip}:{path if self._is_auth_path(path) else 'global'}"
-
-        now = time.time()
-        window_start = now - _WINDOW
-        bucket = [t for t in self._buckets[key] if t > window_start]
-        self._buckets[key] = bucket
-
-        if len(bucket) >= limit:
-            return JSONResponse(
-                status_code=429,
-                content={"code": "RATE_LIMITED", "message": "Too many requests. Please slow down."},
-                headers={"Retry-After": str(_WINDOW)},
-            )
-
-        self._buckets[key].append(now)
-        return await call_next(request)
 
 
 def create_app() -> FastAPI:
@@ -104,29 +38,9 @@ def create_app() -> FastAPI:
         title="LearnAble API",
         version="0.1.0",
         description="Arabic-first learning platform API.",
-        swagger_ui_parameters={"persistAuthorization": True},
-        default_response_class=JSONResponse,
-    )
-    @app.get("/", tags=["system"])
-    async def root():
-        return {"message": "API is running!"}
-
-    # ── CORS ──────────────────────────────────────────────────────────────────
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.get_cors_origins(),
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        lifespan=lifespan,
     )
 
-    # ── Security headers ──────────────────────────────────────────────────────
-    app.add_middleware(SecurityHeadersMiddleware)
-
-    # ── Rate limiting ─────────────────────────────────────────────────────────
-    app.add_middleware(RateLimitMiddleware)
-
-    # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(study_router)
@@ -154,7 +68,6 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # ── Existing middleware ───────────────────────────────────────────────────
     @app.middleware("http")
     async def locale_middleware(request: Request, call_next):
         # Skip locale resolution for WebSocket upgrade requests
@@ -165,7 +78,6 @@ def create_app() -> FastAPI:
         response.headers["Content-Language"] = get_request_locale(request)
         return response
 
-    # ── Exception handlers ────────────────────────────────────────────────────
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
         locale = get_request_locale(request)
@@ -186,18 +98,13 @@ def create_app() -> FastAPI:
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         locale = get_request_locale(request)
-
-        safe_errors = json.loads(
-            json.dumps(exc.errors(), default=str)
-        )
-        
         return JSONResponse(
             status_code=422,
             content={
                 "code": "VALIDATION_ERROR",
                 "message": translate("VALIDATION_ERROR", locale),
                 "locale": locale,
-                "details": safe_errors ,
+                "details": jsonable_encoder(exc.errors()),
             },
         )
 
