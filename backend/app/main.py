@@ -1,7 +1,9 @@
+import asyncio
 import json
+import logging
 import time
 from collections import defaultdict
-from urllib import response
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
@@ -115,6 +117,7 @@ def create_app() -> FastAPI:
         description="Arabic-first learning platform API.",
         swagger_ui_parameters={"persistAuthorization": True},
         default_response_class=JSONResponse,
+        lifespan=lifespan,
     )
     @app.get("/", tags=["system"])
     async def root():

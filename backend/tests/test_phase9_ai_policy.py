@@ -30,13 +30,19 @@ def test_ai_endpoints_require_authentication() -> None:
 
 
 def test_ai_explain_applies_locale_and_disclaimer() -> None:
+    from unittest.mock import patch
+
     client = TestClient(app)
     try:
-        response = client.post(
-            "/ai/explain",
-            headers=_auth_headers("en"),
-            json={"text": "Photosynthesis turns light into energy.", "question": "Explain for a beginner"},
-        )
+        with patch(
+            "app.modules.ai.repository.generate_text",
+            return_value="Photosynthesis uses light energy to produce glucose.",
+        ):
+            response = client.post(
+                "/ai/explain",
+                headers=_auth_headers("en"),
+                json={"text": "Photosynthesis turns light into energy.", "question": "Explain for a beginner"},
+            )
         assert response.status_code == 200
         payload = response.json()
         assert payload["locale"] == "en"
