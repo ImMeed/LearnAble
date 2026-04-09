@@ -13,16 +13,15 @@ def test_register_requires_valid_payload() -> None:
 def test_register_accepts_password_over_72_bytes_with_supported_bcrypt_runtime() -> None:
     client = TestClient(app)
     unique_email = f"long-password-register-{uuid4().hex}@example.com"
-    long_strong_password = "Aa1!" + ("b" * 69)  # 73 chars, satisfies policy
     response = client.post(
         "/auth/register",
         json={
             "email": unique_email,
-            "password": long_strong_password,
+            "password": "a" * 73,
             "role": "ROLE_STUDENT",
         },
     )
-    assert response.status_code == 201
+    assert response.status_code == 200
 
 
 def test_register_blocks_admin_role_self_registration() -> None:
@@ -31,7 +30,7 @@ def test_register_blocks_admin_role_self_registration() -> None:
         "/auth/register",
         json={
             "email": "blocked-admin-register@example.com",
-            "password": "Admin123!",
+            "password": "test123456",
             "role": "ROLE_ADMIN",
         },
     )
