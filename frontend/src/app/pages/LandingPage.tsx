@@ -38,6 +38,26 @@ export function LandingPage() {
     { role: t("landing.flowPsychRole"), detail: t("landing.flowPsychDetail"), icon: "psych" },
     { role: t("landing.flowParentRole"), detail: t("landing.flowParentDetail"), icon: "parent" },
   ];
+  const trackCards = [
+    {
+      title: i18n.resolvedLanguage === "en" ? "+10 Platform" : "منصة +10",
+      body:
+        i18n.resolvedLanguage === "en"
+          ? "For the main learning journey with student, tutor, parent, psychologist, and admin accounts."
+          : "للمسار الرئيسي للتعلم مع حسابات الطالب والمعلم وولي الأمر والأخصائي والإدارة.",
+      loginPath: `${prefix}/login`,
+      signupPath: `${prefix}/signup`,
+    },
+    {
+      title: i18n.resolvedLanguage === "en" ? "Reading Lab" : "مختبر القراءة",
+      body:
+        i18n.resolvedLanguage === "en"
+          ? "For dyslexic kids, parents, and psychologists using the separate reading-support experience."
+          : "لمسار الأطفال ذوي عسر القراءة مع حسابات مستقلة للأهل والأخصائيين والأطفال.",
+      loginPath: `${prefix}/reading-lab/login`,
+      signupPath: `${prefix}/reading-lab/signup`,
+    },
+  ];
 
   return (
     <main className="public-page">
@@ -72,6 +92,26 @@ export function LandingPage() {
               {t("common.getStartedFree")}
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section className="public-section">
+        <h2>{i18n.resolvedLanguage === "en" ? "Choose your platform track" : "اختر مسار المنصة"}</h2>
+        <div className="feature-grid landing-features">
+          {trackCards.map((track) => (
+            <article className="feature-card" key={track.title}>
+              <h3>{track.title}</h3>
+              <p className="muted">{track.body}</p>
+              <div className="hero-cta-row">
+                <Link className="public-button secondary" to={track.loginPath}>
+                  {t("common.signIn")}
+                </Link>
+                <Link className="public-button success" to={track.signupPath}>
+                  {t("login.createAccount")}
+                </Link>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 

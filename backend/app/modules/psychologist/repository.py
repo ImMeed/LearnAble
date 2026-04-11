@@ -32,7 +32,10 @@ def list_student_ids_with_screenings(
 ) -> tuple[list[UUID], int]:
     base = select(StudentScreening.user_id).join(User, User.id == StudentScreening.user_id)
     if search:
-        base = base.where(func.split_part(User.email, "@", 1).ilike(f"%{search}%"))
+        base = base.where(
+            func.coalesce(User.display_name, "").ilike(f"%{search}%")
+            | func.split_part(User.email, "@", 1).ilike(f"%{search}%")
+        )
 
     total_stmt = select(func.count()).select_from(base.subquery())
     total = session.scalar(total_stmt) or 0
@@ -90,6 +93,11 @@ def get_support_confirmation(session: Session, student_id: UUID) -> Psychologist
 
 def get_student_email(session: Session, student_id: UUID) -> str | None:
     stmt = select(User.email).where(User.id == student_id)
+    return session.scalar(stmt)
+
+
+def get_student(session: Session, student_id: UUID) -> User | None:
+    stmt = select(User).where(User.id == student_id)
     return session.scalar(stmt)
 
 

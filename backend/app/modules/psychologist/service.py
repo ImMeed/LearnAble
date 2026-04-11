@@ -21,8 +21,13 @@ def _build_review_response(session: Session, student_id: UUID) -> PsychologistRe
     screening = repository.get_student_screening(session, student_id)
     questionnaire = repository.get_latest_questionnaire_for_student(session, student_id)
     confirmation = repository.get_support_confirmation(session, student_id)
-    student_email = repository.get_student_email(session, student_id)
-    student_label = student_email.split("@", 1)[0] if student_email else str(student_id)
+    student = repository.get_student(session, student_id)
+    student_email = student.email if student else None
+    student_label = (
+        student.display_name.strip()
+        if student and student.display_name and student.display_name.strip()
+        else (student_email.split("@", 1)[0] if student_email else str(student_id))
+    )
 
     screening_summary = None
     screening_composite_score = None
@@ -115,8 +120,19 @@ def list_linked_student_reviews(
     limit: int,
     offset: int,
 ) -> PsychologistReviewListResponse:
-    _ = current_user
-    student_ids, total = repository.list_student_ids_with_screenings(session, search=search, limit=limit, offset=offset)
+    if current_user.platform_track == "READING_LAB":
+        linked_ids = repository.list_linked_student_ids_for_psychologist(session, current_user.user_id)
+        if search:
+            needle = search.strip().casefold()
+            linked_ids = [
+                student_id
+                for student_id in linked_ids
+                if needle in _build_review_response(session, student_id).student_label.casefold()
+            ]
+        total = len(linked_ids)
+        student_ids = linked_ids[offset : offset + limit]
+    else:
+        student_ids, total = repository.list_student_ids_with_screenings(session, search=search, limit=limit, offset=offset)
     items = [_build_review_response(session, student_id) for student_id in student_ids]
     return PsychologistReviewListResponse(items=items, total=total, limit=limit, offset=offset, query=search)
 

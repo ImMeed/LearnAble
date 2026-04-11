@@ -10,6 +10,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.core.platform_tracks import PlatformTrack
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
@@ -19,6 +20,7 @@ class CurrentUser(BaseModel):
     user_id: UUID
     role: str
     email: str
+    platform_track: str
 
 
 def hash_password(password: str) -> str:
@@ -31,13 +33,19 @@ def verify_password(password: str, hashed_password: str) -> bool:
     return pwd_context.verify(password, hashed_password)
 
 
-def create_access_token(user_id: UUID, role: str, email: str) -> str:
+def create_access_token(
+    user_id: UUID,
+    role: str,
+    email: str,
+    platform_track: str = PlatformTrack.PLUS_TEN.value,
+) -> str:
     now = datetime.now(timezone.utc)
     expire = now + timedelta(minutes=settings.jwt_expire_minutes)
     payload = {
         "sub": str(user_id),
         "role": role,
         "email": email,
+        "platform_track": platform_track,
         "iat": int(now.timestamp()),
         "exp": int(expire.timestamp()),
     }
@@ -56,10 +64,11 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Cur
         user_id = payload.get("sub")
         role = payload.get("role")
         email = payload.get("email")
+        platform_track = payload.get("platform_track", PlatformTrack.PLUS_TEN.value)
     except JWTError as exc:
         raise unauthorized from exc
 
     if not user_id or not role or not email:
         raise unauthorized
 
-    return CurrentUser(user_id=UUID(user_id), role=role, email=email)
+    return CurrentUser(user_id=UUID(user_id), role=role, email=email, platform_track=platform_track)

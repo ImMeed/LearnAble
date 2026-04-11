@@ -9,9 +9,10 @@ import { LanguageSwitcher } from "../../features/accessibility/LanguageSwitcher"
 import { setSession } from "../../state/auth";
 
 const ROLE_CHOICES = [
-  { id: "student", labelKey: "login.roleStudent", icon: "student", apiRole: "ROLE_STUDENT" },
-  { id: "teacher", labelKey: "login.roleTeacher", icon: "teacher", apiRole: "ROLE_TUTOR" },
-  { id: "parent", labelKey: "login.roleParent", icon: "parent", apiRole: "ROLE_PARENT" },
+  { id: "student", labelKey: "login.roleStudent", fallbackLabel: "Student", icon: "student", apiRole: "ROLE_STUDENT" },
+  { id: "teacher", labelKey: "login.roleTeacher", fallbackLabel: "Teacher", icon: "teacher", apiRole: "ROLE_TUTOR" },
+  { id: "parent", labelKey: "login.roleParent", fallbackLabel: "Parent", icon: "parent", apiRole: "ROLE_PARENT" },
+  { id: "psychologist", labelKey: "login.rolePsychologist", fallbackLabel: "Psychologist", icon: "psych", apiRole: "ROLE_PSYCHOLOGIST" },
 ] as const;
 
 type SelectedRole = (typeof ROLE_CHOICES)[number]["id"];
@@ -51,14 +52,26 @@ function routeFromRole(role: string): string {
   }
 }
 
-export function LoginPage() {
+export function LoginPage({ defaultMode = "login" }: { defaultMode?: Mode }) {
   const { i18n, t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const locale = i18n.resolvedLanguage === "en" ? "en" : "ar";
   const prefix = useMemo(() => localePrefix(i18n.resolvedLanguage), [i18n.resolvedLanguage]);
+  const readingLabLinks = useMemo(
+    () => ({
+      title: locale === "en" ? "Reading Lab accounts" : "حسابات مختبر القراءة",
+      body:
+        locale === "en"
+          ? "Kids, parents, and psychologists in the dyslexia support track should use the separate Reading Lab sign in and sign up."
+          : "الأطفال والأهل والأخصائيون في مسار عسر القراءة يستخدمون تسجيل دخول وإنشاء حساب منفصلين في مختبر القراءة.",
+      login: locale === "en" ? "Reading Lab login" : "تسجيل دخول مختبر القراءة",
+      signup: locale === "en" ? "Reading Lab sign up" : "إنشاء حساب مختبر القراءة",
+    }),
+    [locale],
+  );
 
-  const [mode, setMode] = useState<Mode>("login");
+  const [mode, setMode] = useState<Mode>(defaultMode);
   const [selectedRole, setSelectedRole] = useState<SelectedRole>("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -84,12 +97,13 @@ export function LoginPage() {
             email: email.trim(),
             password,
             role: selectedRoleConfig.apiRole,
+            platform_track: "PLUS_TEN",
           },
           { headers: { "x-lang": locale } },
         );
 
-        const data = response.data as { access_token: string; role: string };
-        setSession({ accessToken: data.access_token, role: data.role });
+        const data = response.data as { access_token: string; role: string; platform_track: "PLUS_TEN" | "READING_LAB" };
+        setSession({ accessToken: data.access_token, role: data.role, platformTrack: data.platform_track });
         
         // Always redirect newly registered students to onboarding
         // (whether they came from onboarding flow or registered directly from login page)
@@ -106,12 +120,13 @@ export function LoginPage() {
         {
           email: email.trim(),
           password,
+          platform_track: "PLUS_TEN",
         },
         { headers: { "x-lang": locale } },
       );
 
-      const data = response.data as { access_token: string; role: string };
-      setSession({ accessToken: data.access_token, role: data.role });
+      const data = response.data as { access_token: string; role: string; platform_track: "PLUS_TEN" | "READING_LAB" };
+      setSession({ accessToken: data.access_token, role: data.role, platformTrack: data.platform_track });
 
       if (data.role === "ROLE_STUDENT" && localStorage.getItem("learnable_onboarding_pending") === "true") {
         navigate(`${prefix}/student/onboarding`, { replace: true });
@@ -168,7 +183,7 @@ export function LoginPage() {
                   onClick={() => setSelectedRole(role.id)}
                 >
                   <span className={`role-icon ${role.icon}`} aria-hidden="true" />
-                  <span>{t(role.labelKey)}</span>
+                  <span>{t(role.labelKey, { defaultValue: role.fallbackLabel })}</span>
                 </button>
               );
             })}
@@ -214,13 +229,26 @@ export function LoginPage() {
           {status ? <p className="status-line">{status}</p> : null}
 
           <div className="auth-links-row">
-            <button type="button" className="link-button" onClick={() => setMode("login")}>
-              {t("login.forgotPassword")}
-            </button>
+            <Link className="secondary-link" to={`${prefix}/login`} onClick={() => setMode("login")}>
+              {t("common.signIn")}
+            </Link>
             <span aria-hidden="true">.</span>
-            <button type="button" className="link-button" onClick={() => setMode("register")}>
+            <Link className="secondary-link" to={`${prefix}/signup`} onClick={() => setMode("register")}>
               {t("login.createAccount")}
-            </button>
+            </Link>
+          </div>
+        </article>
+
+        <article className="auth-card">
+          <p className="auth-label">{readingLabLinks.title}</p>
+          <p className="muted">{readingLabLinks.body}</p>
+          <div className="hero-cta-row">
+            <Link className="public-button secondary" to={`${prefix}/reading-lab/login`}>
+              {readingLabLinks.login}
+            </Link>
+            <Link className="public-button success" to={`${prefix}/reading-lab/signup`}>
+              {readingLabLinks.signup}
+            </Link>
           </div>
         </article>
       </section>

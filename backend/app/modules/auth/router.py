@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request, status ,Body
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+from app.core.i18n import get_request_locale
 from app.core.security import CurrentUser, get_current_user
 from app.db.session import get_db_session
 from app.modules.auth import service
@@ -27,7 +28,7 @@ CurrentUserDep = Annotated[CurrentUser, Depends(get_current_user)]
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, session: SessionDep, request: Request):
-    locale = request.headers.get("Accept-Language", "en")[:2]
+    locale = get_request_locale(request)
     return service.register_user(session, payload, locale)
 
 
@@ -37,7 +38,7 @@ def login(payload: LoginRequest, session: SessionDep, request: Request):
     Step 1 of login. If totp_required=True in the response,
     the frontend must call /auth/login/otp next.
     """
-    locale = request.headers.get("Accept-Language", "en")[:2]
+    locale = get_request_locale(request)
     return service.login_user(session, payload, locale, request)
 
 
@@ -57,7 +58,7 @@ def login_swagger(
 @router.post("/login/otp", response_model=Verify2FAResponse)
 def login_otp(payload: LoginWithOTPRequest, session: SessionDep, request: Request):
     """Step 2 of login when 2FA is enabled — submit the 6-digit OTP."""
-    locale = request.headers.get("Accept-Language", "en")[:2]
+    locale = get_request_locale(request)
     return service.login_with_otp(session, payload, locale)
 
 
@@ -76,14 +77,14 @@ def enable_2fa(session: SessionDep, current_user: CurrentUserDep):
 @router.post("/2fa/confirm", status_code=status.HTTP_200_OK)
 def confirm_2fa(payload: Verify2FARequest, session: SessionDep, current_user: CurrentUserDep, request: Request):
     """Confirm the first OTP code to activate 2FA on the account."""
-    locale = request.headers.get("Accept-Language", "en")[:2]
+    locale = get_request_locale(request)
     return service.confirm_2fa(session, current_user.user_id, payload, locale)
 
 
 @router.post("/2fa/disable", status_code=status.HTTP_200_OK)
 def disable_2fa(payload: Verify2FARequest, session: SessionDep, current_user: CurrentUserDep, request: Request):
     """Disable 2FA. Requires a valid OTP code as confirmation."""
-    locale = request.headers.get("Accept-Language", "en")[:2]
+    locale = get_request_locale(request)
     return service.disable_2fa(session, current_user.user_id, payload, locale)
 
 
@@ -98,7 +99,7 @@ def change_role(
     request: Request,
 ):
     """Change a user's role. Admin only. Change is logged in role_change_log."""
-    locale = request.headers.get("Accept-Language", "en")[:2]
+    locale = get_request_locale(request)
     return service.change_user_role(
         session=session,
         requester_id=current_user.user_id,

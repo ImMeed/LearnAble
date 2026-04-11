@@ -73,6 +73,34 @@ def apply_quiz_reward(
     return wallet_balance
 
 
+def apply_game_reward(
+    session: Session,
+    user_id: UUID,
+    points_delta: int,
+    xp_delta: int,
+    reason: str,
+    metadata: dict,
+) -> int:
+    wallet_balance = apply_points_transaction(
+        session=session,
+        user_id=user_id,
+        transaction_type=PointTransactionType.GAME_EARN,
+        points_delta=points_delta,
+        reason=reason,
+        metadata=metadata,
+    )
+    session.add(
+        XpLedger(
+            user_id=user_id,
+            xp_delta=xp_delta,
+            reason=reason,
+            metadata_json=metadata,
+        )
+    )
+    session.flush()
+    return wallet_balance
+
+
 def apply_hint_penalty(
     session: Session,
     user_id: UUID,

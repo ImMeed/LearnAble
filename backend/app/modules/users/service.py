@@ -12,7 +12,7 @@ def get_me(session: Session, current_user: CurrentUser, locale: str) -> MeRespon
     user = repository.get_user_by_id(session, current_user.user_id)
     if not user:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", locale)
-    return MeResponse(id=str(user.id), email=user.email, role=user.role)
+    return MeResponse(id=str(user.id), email=user.email, role=user.role, display_name=user.display_name)
 
 
 def get_profile(session: Session, current_user: CurrentUser, expected_role: UserRole, locale: str) -> ProfileResponse:
@@ -23,7 +23,7 @@ def get_profile(session: Session, current_user: CurrentUser, expected_role: User
     if not user:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", locale)
 
-    return ProfileResponse(id=str(user.id), email=user.email, role=user.role)
+    return ProfileResponse(id=str(user.id), email=user.email, role=user.role, display_name=user.display_name)
 
 
 def update_profile(
@@ -45,7 +45,8 @@ def update_profile(
         raise localized_http_exception(status.HTTP_409_CONFLICT, "EMAIL_EXISTS", locale)
 
     user.email = payload.email.lower().strip()
+    user.display_name = payload.display_name.strip() if payload.display_name and payload.display_name.strip() else None
     session.add(user)
     session.commit()
     session.refresh(user)
-    return ProfileResponse(id=str(user.id), email=user.email, role=user.role)
+    return ProfileResponse(id=str(user.id), email=user.email, role=user.role, display_name=user.display_name)

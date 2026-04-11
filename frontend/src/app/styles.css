@@ -1889,3 +1889,923 @@ a:focus-visible {
   line-height: 44px;
   padding-block: 0;
 }
+
+/* Reading Lab */
+
+.reading-lab-page {
+  max-width: 1280px;
+  position: relative;
+}
+
+.reading-lab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  background:
+    radial-gradient(circle at top left, rgba(250, 204, 21, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 30%),
+    linear-gradient(140deg, color-mix(in srgb, var(--card) 92%, white 8%), color-mix(in srgb, var(--card) 82%, #fff3cd 18%));
+}
+
+.reading-lab-header h1 {
+  margin: 0;
+}
+
+.reading-lab-locked {
+  text-align: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.14), rgba(111, 207, 151, 0.16));
+}
+
+.reading-lab-top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.reading-lab-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.reading-lab-summary-card,
+.reading-lab-session-column,
+.reading-lab-game-grid-card {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.reading-lab-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+  flex-wrap: wrap;
+}
+
+.reading-lab-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.reading-lab-focus-card {
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--card) 85%, #fff8dc 15%);
+}
+
+.reading-lab-focus-card h3 {
+  margin: 0 0 0.65rem;
+}
+
+.reading-lab-focus-chip-row,
+.reading-lab-session-meta,
+.reading-lab-game-card-meta {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.reading-lab-focus-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  min-width: 38px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(244, 114, 182, 0.16));
+  border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border));
+  font-weight: 700;
+}
+
+.reading-lab-notes-box {
+  border: 1px dashed var(--border);
+  border-radius: 0.85rem;
+  padding: 0.9rem;
+  background: color-mix(in srgb, var(--card) 88%, white 12%);
+}
+
+.reading-lab-notes-box h3 {
+  margin-top: 0;
+}
+
+.reading-lab-game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem;
+}
+
+.reading-lab-game-card {
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+  border-radius: 1rem;
+  padding: 1rem;
+  display: grid;
+  gap: 0.65rem;
+  background:
+    radial-gradient(circle at top right, rgba(34, 197, 94, 0.14), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.54), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--card) 90%, white 10%);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.reading-lab-game-card h3,
+.reading-lab-session-card h3 {
+  margin: 0;
+}
+
+.reading-lab-game-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.reading-lab-display {
+  margin: 0.25rem 0;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.reading-lab-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.6rem;
+}
+
+.reading-lab-choice {
+  min-height: 68px;
+  font-size: 1.25rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 88%, white 12%);
+  color: var(--foreground);
+}
+
+.reading-lab-choice.active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, var(--card));
+}
+
+.reading-lab-dropzone,
+.reading-lab-pool {
+  border: 1px dashed color-mix(in srgb, var(--primary) 45%, var(--border));
+  border-radius: 1rem;
+  padding: 0.9rem;
+  background: color-mix(in srgb, var(--card) 88%, white 12%);
+  margin-top: 0.75rem;
+}
+
+.reading-lab-tile-row {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  min-height: 56px;
+}
+
+.reading-lab-tile {
+  min-height: 48px;
+  min-width: 60px;
+  border-radius: 0.8rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.reading-lab-tile.secondary {
+  background: transparent;
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+.reading-lab-feedback {
+  border-radius: 0.95rem;
+  padding: 0.85rem 0.95rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.reading-lab-feedback.success {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 65%, var(--border));
+}
+
+.reading-lab-feedback.warning {
+  background: color-mix(in srgb, var(--warning) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 75%, var(--border));
+}
+
+.reading-lab-empty-session {
+  min-height: 220px;
+  align-content: start;
+}
+
+.reading-lab-complete-card {
+  background: linear-gradient(135deg, rgba(111, 207, 151, 0.18), rgba(74, 144, 226, 0.12));
+}
+
+.reading-lab-unlocked-card {
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.12), rgba(155, 138, 251, 0.12));
+}
+
+.reading-support-manage-card {
+  display: grid;
+  gap: 0.85rem;
+  background:
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent 26%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 30%),
+    linear-gradient(140deg, color-mix(in srgb, var(--card) 94%, white 6%), color-mix(in srgb, var(--card) 85%, #ecfeff 15%));
+}
+
+.reading-support-manage-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: start;
+  flex-wrap: wrap;
+}
+
+.reading-support-badge,
+.reading-support-soft-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.reading-support-badge {
+  color: #0f172a;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.9), rgba(56, 189, 248, 0.72));
+}
+
+.reading-support-soft-badge {
+  background: color-mix(in srgb, var(--primary) 12%, white 88%);
+  color: var(--foreground);
+}
+
+.reading-support-student-card {
+  display: grid;
+  gap: 0.75rem;
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--card) 90%, white 10%);
+}
+
+.reading-support-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: start;
+  flex-wrap: wrap;
+}
+
+.reading-support-note-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.reading-support-note-field textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--input-background);
+  color: var(--foreground);
+}
+
+.reading-support-progress-box {
+  border-top: 1px dashed var(--border);
+  padding-top: 0.75rem;
+}
+
+.reading-support-game-history {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.reading-support-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.85rem;
+}
+
+.reading-support-plan-panel {
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  border-radius: 1rem;
+  padding: 0.95rem;
+  background: color-mix(in srgb, var(--card) 92%, white 8%);
+  display: grid;
+  gap: 0.8rem;
+}
+
+.reading-support-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.reading-support-panel-head h4 {
+  margin: 0;
+}
+
+.reading-support-focus-editor {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.reading-support-chip-label {
+  font-weight: 600;
+}
+
+.reading-support-chip-wrap {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  min-height: 42px;
+}
+
+.reading-support-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.38rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(56, 189, 248, 0.12));
+  color: var(--foreground);
+}
+
+.reading-support-chip-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.reading-support-chip-input-row input {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 0.85rem;
+  border: 1px solid var(--border);
+  background: var(--input-background);
+  color: var(--foreground);
+  padding: 0.65rem 0.75rem;
+}
+
+.reading-support-actions {
+  justify-content: flex-end;
+}
+
+.reading-auth-page,
+.reading-portal-page {
+  position: relative;
+  overflow: hidden;
+}
+
+.reading-auth-page::before,
+.reading-portal-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(250, 204, 21, 0.18), transparent 24%),
+    radial-gradient(circle at 88% 16%, rgba(56, 189, 248, 0.16), transparent 26%),
+    radial-gradient(circle at 52% 90%, rgba(244, 114, 182, 0.12), transparent 28%);
+}
+
+.reading-auth-page.role-student {
+  background:
+    linear-gradient(145deg, #fff9e8, #eef8ff 55%, #fff3f8);
+}
+
+.reading-auth-page.role-parent {
+  background:
+    linear-gradient(145deg, #f8fbff, #f3fff8 55%, #fff8f0);
+}
+
+.reading-auth-page.role-psychologist {
+  background:
+    linear-gradient(145deg, #f8fbff, #f4f9ff 55%, #eff6ff);
+}
+
+.reading-auth-page.role-login {
+  background:
+    linear-gradient(145deg, #fffaf0, #f4fbff 52%, #f8fff7);
+}
+
+.reading-auth-header {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+.reading-auth-shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2.5rem 1rem 3rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 480px);
+  gap: 1.2rem;
+  align-items: start;
+}
+
+.reading-auth-story,
+.reading-auth-card {
+  border: 1px solid color-mix(in srgb, var(--border) 84%, white 16%);
+  border-radius: 1.4rem;
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.reading-auth-story {
+  padding: 1.6rem;
+  background:
+    radial-gradient(circle at top left, rgba(250, 204, 21, 0.15), transparent 28%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.62));
+}
+
+.reading-auth-card {
+  padding: 1.4rem;
+  background:
+    radial-gradient(circle at top right, rgba(34, 197, 94, 0.14), transparent 28%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.9));
+}
+
+.reading-auth-eyebrow,
+.reading-portal-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--primary) 78%, #0f172a 22%);
+}
+
+.reading-auth-story h1,
+.reading-portal-brand h1 {
+  margin: 0.45rem 0 0.55rem;
+}
+
+.reading-auth-helper-card {
+  margin-top: 1.2rem;
+  padding: 1rem;
+  border-radius: 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--card) 88%, #fff9d8 12%);
+}
+
+.reading-auth-lane-grid {
+  margin-top: 0.95rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.reading-auth-lane {
+  padding: 0.9rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.reading-auth-lane strong,
+.reading-auth-tips strong,
+.reading-auth-mode-note strong,
+.reading-auth-callout strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.reading-auth-tips,
+.reading-auth-mode-note,
+.reading-auth-callout {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  background: color-mix(in srgb, var(--card) 92%, white 8%);
+}
+
+.reading-auth-mode-note,
+.reading-auth-callout {
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.1), transparent 28%),
+    color-mix(in srgb, var(--card) 92%, white 8%);
+}
+
+.reading-auth-helper-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.7rem;
+}
+
+.reading-auth-helper-head strong {
+  font-size: 1.05rem;
+}
+
+.reading-auth-track-badge {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.reading-auth-track-badge span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.38rem 0.8rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 12%, white 88%);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.reading-auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.reading-auth-tabs button {
+  min-height: 48px;
+  border-radius: 0.9rem;
+  border-color: var(--border);
+  background: transparent;
+  color: var(--foreground);
+}
+
+.reading-auth-tabs button.active {
+  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 70%, var(--accent)));
+  border-color: transparent;
+  color: var(--primary-foreground);
+}
+
+.reading-auth-role-group {
+  margin-top: 1rem;
+}
+
+.reading-auth-role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.reading-auth-role {
+  min-height: 112px;
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  text-align: start;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 90%, white 10%);
+  color: var(--foreground);
+}
+
+.reading-auth-role.selected {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 28%),
+    color-mix(in srgb, var(--primary) 12%, white 88%);
+  box-shadow: 0 12px 24px rgba(59, 130, 246, 0.12);
+}
+
+.reading-auth-role strong {
+  font-size: 1rem;
+}
+
+.reading-auth-role span,
+.reading-auth-password-hint {
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.reading-auth-footer-row {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.65rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.reading-portal-page.student-portal-page {
+  background: linear-gradient(145deg, #fff8e7, #eef7ff 54%, #fff1f7);
+}
+
+.reading-portal-page.parent-portal-page {
+  background: linear-gradient(145deg, #f8fbff, #f3fff7 58%, #fff9f2);
+}
+
+.reading-portal-page.psychologist-portal-page {
+  background: linear-gradient(145deg, #f5f9ff, #eef5ff 62%, #f8fbff);
+}
+
+.reading-portal-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background:
+    radial-gradient(circle at top left, rgba(250, 204, 21, 0.14), transparent 24%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.14), transparent 26%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.72));
+}
+
+.reading-portal-brand {
+  display: flex;
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.reading-portal-brand .brand-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--primary) 12%, white 88%);
+}
+
+.reading-portal-nav {
+  margin-top: 0.85rem;
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.reading-portal-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.reading-portal-student-grid,
+.reading-portal-family-grid,
+.reading-portal-clinical-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.reading-portal-student-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.reading-portal-family-grid,
+.reading-portal-clinical-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reading-portal-family-grid.lower,
+.reading-portal-clinical-grid.lower {
+  align-items: start;
+}
+
+.kid-hero-card,
+.family-hero-card,
+.psych-hero-card {
+  padding: 1.25rem;
+  border-radius: 1.25rem;
+}
+
+.kid-hero-card {
+  grid-column: span 7;
+  background:
+    radial-gradient(circle at 12% 15%, rgba(250, 204, 21, 0.18), transparent 26%),
+    radial-gradient(circle at 88% 22%, rgba(56, 189, 248, 0.16), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(255, 250, 240, 0.88));
+}
+
+.kid-focus-card {
+  grid-column: span 5;
+}
+
+.kid-progress-card,
+.kid-games-card {
+  grid-column: span 12;
+}
+
+.kid-hero-actions {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.kid-game-card {
+  min-height: 220px;
+}
+
+.family-hero-card {
+  background:
+    radial-gradient(circle at 10% 15%, rgba(34, 197, 94, 0.14), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(248, 255, 251, 0.88));
+}
+
+.family-guide-card,
+.family-status-card,
+.family-flow-card,
+.family-action-card,
+.family-support-card,
+.family-notification-card,
+.family-roster-card,
+.family-spotlight-card,
+.psych-plan-card,
+.psych-review-list-card,
+.psych-review-detail-card,
+.psych-alert-card {
+  min-height: 100%;
+}
+
+.family-flow-card,
+.family-action-card,
+.family-support-card {
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.08), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.9));
+}
+
+.family-step-list {
+  margin-top: 0.85rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.family-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  align-items: start;
+  padding: 0.85rem;
+  border-radius: 1rem;
+  border: 1px dashed color-mix(in srgb, var(--primary) 22%, var(--border));
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.family-step p {
+  margin: 0;
+}
+
+.family-step-index {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 70%, var(--accent)));
+  color: var(--primary-foreground);
+  font-weight: 800;
+}
+
+.family-roster-grid {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.7rem;
+}
+
+.family-roster-button {
+  min-height: 132px;
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  text-align: start;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  background: color-mix(in srgb, var(--card) 92%, white 8%);
+  color: var(--foreground);
+}
+
+.family-roster-button.active {
+  border-color: color-mix(in srgb, var(--secondary) 70%, var(--border));
+  background:
+    radial-gradient(circle at top right, rgba(34, 197, 94, 0.12), transparent 28%),
+    color-mix(in srgb, var(--secondary) 10%, white 90%);
+}
+
+.family-roster-button span {
+  color: var(--muted-foreground);
+  font-size: 0.92rem;
+}
+
+.family-spotlight-card,
+.psych-review-detail-card {
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 26%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.92));
+}
+
+.family-summary-stack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.psych-hero-card {
+  background:
+    radial-gradient(circle at 12% 15%, rgba(59, 130, 246, 0.14), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(244, 248, 255, 0.9));
+}
+
+.psych-review-row {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 92%, white 8%);
+  color: var(--foreground);
+}
+
+.psych-review-row.active {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  background: color-mix(in srgb, var(--primary) 10%, white 90%);
+}
+
+.reading-portal-note {
+  border: 1px dashed color-mix(in srgb, var(--primary) 24%, var(--border));
+  border-radius: 0.95rem;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.reading-portal-note p,
+.reading-portal-note strong {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .reading-auth-shell,
+  .reading-portal-family-grid,
+  .reading-portal-clinical-grid,
+  .reading-portal-student-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kid-hero-card,
+  .kid-focus-card,
+  .kid-progress-card,
+  .kid-games-card {
+    grid-column: auto;
+  }
+
+  .reading-auth-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reading-auth-lane-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reading-auth-footer-row,
+  .reading-portal-header,
+  .reading-portal-brand {
+    align-items: stretch;
+  }
+
+  .family-summary-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .reading-lab-top-grid,
+  .reading-lab-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reading-support-actions {
+    justify-content: stretch;
+  }
+}

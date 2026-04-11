@@ -101,6 +101,42 @@ MESSAGES = {
         "ar": "لا توجد نتائج تقييم لهذا الطالب.",
         "en": "No screening results were found for this student.",
     },
+    "STUDENT_PARENT_LINK_NOT_FOUND": {
+        "ar": "\u0644\u0627 \u062a\u0648\u062c\u062f \u0639\u0644\u0627\u0642\u0629 \u0631\u0628\u0637 \u0645\u0639 \u0647\u0630\u0627 \u0627\u0644\u0637\u0627\u0644\u0628 \u0644\u0648\u0644\u064a \u0627\u0644\u0623\u0645\u0631.",
+        "en": "No parent link found for this student.",
+    },
+    "READING_SUPPORT_STUDENT_ROLE_REQUIRED": {
+        "ar": "\u064a\u062c\u0628 \u0627\u062e\u062a\u064a\u0627\u0631 \u0645\u0639\u0631\u0641 \u0637\u0627\u0644\u0628 \u0635\u062d\u064a\u062d.",
+        "en": "The provided ID must belong to a student.",
+    },
+    "READING_SUPPORT_NOT_ENABLED": {
+        "ar": "\u0644\u0645 \u064a\u062a\u0645 \u062a\u0641\u0639\u064a\u0644 \u0645\u062e\u062a\u0628\u0631 \u0627\u0644\u0642\u0631\u0627\u0621\u0629 \u0644\u0647\u0630\u0627 \u0627\u0644\u0637\u0627\u0644\u0628 \u0628\u0639\u062f.",
+        "en": "Reading Lab is not enabled for this student yet.",
+    },
+    "READING_LAB_GAME_INVALID": {
+        "ar": "\u0644\u0639\u0628\u0629 \u0645\u062e\u062a\u0628\u0631 \u0627\u0644\u0642\u0631\u0627\u0621\u0629 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f\u0629.",
+        "en": "Reading Lab game was not found.",
+    },
+    "READING_LAB_SESSION_NOT_FOUND": {
+        "ar": "\u062c\u0644\u0633\u0629 \u0645\u062e\u062a\u0628\u0631 \u0627\u0644\u0642\u0631\u0627\u0621\u0629 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f\u0629.",
+        "en": "Reading Lab session was not found.",
+    },
+    "READING_LAB_ROUND_ALREADY_ANSWERED": {
+        "ar": "\u062a\u0645\u062a \u0625\u062c\u0627\u0628\u0629 \u0647\u0630\u0647 \u0627\u0644\u062c\u0648\u0644\u0629 \u0645\u0633\u0628\u0642\u0627\u064b.",
+        "en": "This round has already been answered.",
+    },
+    "READING_LAB_ROUND_INDEX_INVALID": {
+        "ar": "\u0631\u0642\u0645 \u0627\u0644\u062c\u0648\u0644\u0629 \u063a\u064a\u0631 \u0635\u0627\u0644\u062d.",
+        "en": "Round index is invalid.",
+    },
+    "READING_LAB_SESSION_COMPLETED": {
+        "ar": "\u062a\u0645 \u0625\u0643\u0645\u0627\u0644 \u0647\u0630\u0647 \u0627\u0644\u062c\u0644\u0633\u0629 \u0645\u0633\u0628\u0642\u0627\u064b.",
+        "en": "This session has already been completed.",
+    },
+    "READING_LAB_SESSION_INCOMPLETE": {
+        "ar": "\u064a\u062c\u0628 \u0625\u0643\u0645\u0627\u0644 \u062c\u0645\u064a\u0639 \u062c\u0648\u0644\u0627\u062a \u0627\u0644\u0644\u0639\u0628\u0629 \u0642\u0628\u0644 \u0625\u0646\u0647\u0627\u0621 \u0627\u0644\u062c\u0644\u0633\u0629.",
+        "en": "All rounds must be answered before completing the session.",
+    },
     "FORUM_SPACE_NOT_FOUND": {
         "ar": "مساحة المنتدى غير موجودة.",
         "en": "Forum space was not found.",

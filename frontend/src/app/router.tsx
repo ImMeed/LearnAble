@@ -5,12 +5,17 @@ import { ProtectedRoute } from "../features/auth/ProtectedRoute";
 import CallPage, { CallRedirect } from "../pages/CallPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
+import { ReadingLabAuthPage } from "./pages/ReadingLabAuthPage";
 import { StudentOnboardingPageV2 } from "./pages/StudentOnboarding";
 import { StudentDashboardPageV2 } from "./pages/StudentDashboard";
 import { CoursePageV2 } from "./pages/CoursePage";
+import { ReadingLabPage } from "./pages/ReadingLabPage";
+import { ReadingLabStudentDashboardPage } from "./pages/ReadingLabStudentDashboard";
 import { TeacherDashboardPageV2 } from "./pages/TeacherDashboard";
 import { ParentDashboardPageV2 } from "./pages/ParentDashboard";
+import { ReadingLabParentDashboardPage } from "./pages/ReadingLabParentDashboard";
 import { PsychologistDashboardPageV2 } from "./pages/PsychologistDashboard";
+import { ReadingLabPsychologistDashboardPage } from "./pages/ReadingLabPsychologistDashboard";
 import { AdminDashboardPageV2 } from "./pages/AdminDashboard";
 import { PhaseCheckpointPage } from "../pages/checkpoint/PhaseCheckpointPage";
 
@@ -33,9 +38,21 @@ export const router = createBrowserRouter([
   { path: "/", element: <LandingPage /> },
   { path: "/ar", element: <LandingPage /> },
   { path: "/en", element: <LandingPage /> },
+  { path: "/reading-lab", element: <ReadingLabAuthPage /> },
+  { path: "/reading-lab/login", element: <ReadingLabAuthPage defaultMode="login" /> },
+  { path: "/reading-lab/signup", element: <ReadingLabAuthPage defaultMode="signup" /> },
   { path: "/login", element: <LoginPage /> },
+  { path: "/signup", element: <LoginPage defaultMode="register" /> },
   { path: "/ar/login", element: <LoginPage /> },
+  { path: "/ar/signup", element: <LoginPage defaultMode="register" /> },
   { path: "/en/login", element: <LoginPage /> },
+  { path: "/en/signup", element: <LoginPage defaultMode="register" /> },
+  { path: "/ar/reading-lab", element: <ReadingLabAuthPage /> },
+  { path: "/ar/reading-lab/login", element: <ReadingLabAuthPage defaultMode="login" /> },
+  { path: "/ar/reading-lab/signup", element: <ReadingLabAuthPage defaultMode="signup" /> },
+  { path: "/en/reading-lab", element: <ReadingLabAuthPage /> },
+  { path: "/en/reading-lab/login", element: <ReadingLabAuthPage defaultMode="login" /> },
+  { path: "/en/reading-lab/signup", element: <ReadingLabAuthPage defaultMode="signup" /> },
   {
     path: "/onboarding",
     element: <StudentOnboardingPageV2 />,
@@ -47,7 +64,7 @@ export const router = createBrowserRouter([
   {
     path: "/student/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+      <ProtectedRoute roles={["ROLE_STUDENT"]} platformTracks={["PLUS_TEN"]}>
         <StudentDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -55,15 +72,55 @@ export const router = createBrowserRouter([
   {
     path: "/student/course/:id",
     element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+      <ProtectedRoute roles={["ROLE_STUDENT"]} platformTracks={["PLUS_TEN"]}>
         <CoursePageV2 />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/student/reading-lab",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/reading-lab/student/dashboard",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabStudentDashboardPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/reading-lab/student/lab",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/reading-lab/parent/dashboard",
+    element: (
+      <ProtectedRoute roles={["ROLE_PARENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabParentDashboardPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/reading-lab/psychologist/dashboard",
+    element: (
+      <ProtectedRoute roles={["ROLE_PSYCHOLOGIST"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabPsychologistDashboardPage />
       </ProtectedRoute>
     ),
   },
   {
     path: "/teacher/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_TUTOR"]}>
+      <ProtectedRoute roles={["ROLE_TUTOR"]} platformTracks={["PLUS_TEN"]}>
         <TeacherDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -71,7 +128,7 @@ export const router = createBrowserRouter([
   {
     path: "/psychologist/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_PSYCHOLOGIST"]}>
+      <ProtectedRoute roles={["ROLE_PSYCHOLOGIST"]} platformTracks={["PLUS_TEN"]}>
         <PsychologistDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -79,7 +136,7 @@ export const router = createBrowserRouter([
   {
     path: "/parent/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_PARENT"]}>
+      <ProtectedRoute roles={["ROLE_PARENT"]} platformTracks={["PLUS_TEN"]}>
         <ParentDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -87,7 +144,7 @@ export const router = createBrowserRouter([
   {
     path: "/admin/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_ADMIN"]}>
+      <ProtectedRoute roles={["ROLE_ADMIN"]} platformTracks={["PLUS_TEN"]}>
         <AdminDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -103,7 +160,7 @@ export const router = createBrowserRouter([
   {
     path: "/ar/student/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+      <ProtectedRoute roles={["ROLE_STUDENT"]} platformTracks={["PLUS_TEN"]}>
         <StudentDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -111,15 +168,55 @@ export const router = createBrowserRouter([
   {
     path: "/ar/student/course/:id",
     element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+      <ProtectedRoute roles={["ROLE_STUDENT"]} platformTracks={["PLUS_TEN"]}>
         <CoursePageV2 />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ar/student/reading-lab",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ar/reading-lab/student/dashboard",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabStudentDashboardPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ar/reading-lab/student/lab",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ar/reading-lab/parent/dashboard",
+    element: (
+      <ProtectedRoute roles={["ROLE_PARENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabParentDashboardPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ar/reading-lab/psychologist/dashboard",
+    element: (
+      <ProtectedRoute roles={["ROLE_PSYCHOLOGIST"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabPsychologistDashboardPage />
       </ProtectedRoute>
     ),
   },
   {
     path: "/ar/teacher/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_TUTOR"]}>
+      <ProtectedRoute roles={["ROLE_TUTOR"]} platformTracks={["PLUS_TEN"]}>
         <TeacherDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -127,7 +224,7 @@ export const router = createBrowserRouter([
   {
     path: "/ar/psychologist/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_PSYCHOLOGIST"]}>
+      <ProtectedRoute roles={["ROLE_PSYCHOLOGIST"]} platformTracks={["PLUS_TEN"]}>
         <PsychologistDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -135,7 +232,7 @@ export const router = createBrowserRouter([
   {
     path: "/ar/parent/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_PARENT"]}>
+      <ProtectedRoute roles={["ROLE_PARENT"]} platformTracks={["PLUS_TEN"]}>
         <ParentDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -143,7 +240,7 @@ export const router = createBrowserRouter([
   {
     path: "/ar/admin/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_ADMIN"]}>
+      <ProtectedRoute roles={["ROLE_ADMIN"]} platformTracks={["PLUS_TEN"]}>
         <AdminDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -159,7 +256,7 @@ export const router = createBrowserRouter([
   {
     path: "/en/student/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+      <ProtectedRoute roles={["ROLE_STUDENT"]} platformTracks={["PLUS_TEN"]}>
         <StudentDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -167,15 +264,55 @@ export const router = createBrowserRouter([
   {
     path: "/en/student/course/:id",
     element: (
-      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+      <ProtectedRoute roles={["ROLE_STUDENT"]} platformTracks={["PLUS_TEN"]}>
         <CoursePageV2 />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/en/student/reading-lab",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/en/reading-lab/student/dashboard",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabStudentDashboardPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/en/reading-lab/student/lab",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/en/reading-lab/parent/dashboard",
+    element: (
+      <ProtectedRoute roles={["ROLE_PARENT"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabParentDashboardPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/en/reading-lab/psychologist/dashboard",
+    element: (
+      <ProtectedRoute roles={["ROLE_PSYCHOLOGIST"]} loginPath="/reading-lab/login" platformTracks={["READING_LAB"]}>
+        <ReadingLabPsychologistDashboardPage />
       </ProtectedRoute>
     ),
   },
   {
     path: "/en/teacher/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_TUTOR"]}>
+      <ProtectedRoute roles={["ROLE_TUTOR"]} platformTracks={["PLUS_TEN"]}>
         <TeacherDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -183,7 +320,7 @@ export const router = createBrowserRouter([
   {
     path: "/en/psychologist/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_PSYCHOLOGIST"]}>
+      <ProtectedRoute roles={["ROLE_PSYCHOLOGIST"]} platformTracks={["PLUS_TEN"]}>
         <PsychologistDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -191,7 +328,7 @@ export const router = createBrowserRouter([
   {
     path: "/en/parent/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_PARENT"]}>
+      <ProtectedRoute roles={["ROLE_PARENT"]} platformTracks={["PLUS_TEN"]}>
         <ParentDashboardPageV2 />
       </ProtectedRoute>
     ),
@@ -199,7 +336,7 @@ export const router = createBrowserRouter([
   {
     path: "/en/admin/dashboard",
     element: (
-      <ProtectedRoute roles={["ROLE_ADMIN"]}>
+      <ProtectedRoute roles={["ROLE_ADMIN"]} platformTracks={["PLUS_TEN"]}>
         <AdminDashboardPageV2 />
       </ProtectedRoute>
     ),
