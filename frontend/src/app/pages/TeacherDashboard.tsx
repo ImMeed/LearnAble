@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { apiClient } from "../../api/client";
 import { scheduleRequest, completeRequest } from "../../api/callApi";
+import TeacherCoursesTab from "./TeacherCoursesTab";
 import {
   AssistanceRequestItem,
   DashboardShell,
@@ -331,25 +332,7 @@ export function TeacherDashboardPageV2() {
         </section>
       ) : null}
 
-      {activeTab === "courses" ? (
-        <section className="card portal-main-card">
-          <h3>{t("dashboards.teacher.coursesTitle")}</h3>
-          <div className="subject-grid">
-            <article className="subject-card active">
-              <strong>{t("dashboards.teacher.course1")}</strong>
-              <span>{t("dashboards.teacher.courseMeta", { lessons: 10 })}</span>
-            </article>
-            <article className="subject-card">
-              <strong>{t("dashboards.teacher.course2")}</strong>
-              <span>{t("dashboards.teacher.courseMeta", { lessons: 8 })}</span>
-            </article>
-            <article className="subject-card">
-              <strong>{t("dashboards.teacher.course3")}</strong>
-              <span>{t("dashboards.teacher.courseMeta", { lessons: 6 })}</span>
-            </article>
-          </div>
-        </section>
-      ) : null}
+      {activeTab === "courses" ? <TeacherCoursesTab /> : null}
 
       {activeTab === "schedule" ? (
         <section className="card portal-main-card">

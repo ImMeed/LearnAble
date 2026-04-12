@@ -12,6 +12,7 @@ from app.core.i18n import get_request_locale, resolve_request_locale, translate
 from app.modules.ai.router import router as ai_router
 from app.modules.auth.router import router as auth_router
 from app.modules.call.router import router as call_router, http_router as call_http_router, _cleanup_stale_rooms
+from app.modules.courses.router import student_router as courses_student_router, teacher_router as courses_teacher_router
 from app.modules.forum.router import router as forum_router
 from app.modules.gamification.router import router as gamification_router
 from app.modules.library.router import router as library_router
@@ -54,12 +55,15 @@ def create_app() -> FastAPI:
     app.include_router(psychologist_router)
     app.include_router(call_http_router)
     app.include_router(call_router)
+    app.include_router(courses_teacher_router)
+    app.include_router(courses_student_router)
 
     # Allow browser clients from local Vite dev servers to call the API.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
             "http://localhost:3001",
+            "http://localhost:3002",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
         ],

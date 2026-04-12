@@ -307,11 +307,16 @@ export function StudentDashboardPageV2() {
           <article className="card">
             <div className="section-title-row">
               <h2>{t("dashboards.studentV2.continueLearning")}</h2>
-              {!settings.focusMode ? (
-                <button type="button" className="secondary" onClick={() => setFocusMode(true)}>
-                  {t("dashboards.studentV2.enableFocusMode")}
-                </button>
-              ) : null}
+              <div className="inline-actions">
+                <Link className="secondary-link" to={`${prefix}/student/courses`}>
+                  {t("student.dashboard.coursesLink")}
+                </Link>
+                {!settings.focusMode ? (
+                  <button type="button" className="secondary" onClick={() => setFocusMode(true)}>
+                    {t("dashboards.studentV2.enableFocusMode")}
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             <div className="lesson-grid">

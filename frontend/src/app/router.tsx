@@ -8,7 +8,10 @@ import { LoginPage } from "./pages/LoginPage";
 import { StudentOnboardingPageV2 } from "./pages/StudentOnboarding";
 import { StudentDashboardPageV2 } from "./pages/StudentDashboard";
 import { CoursePageV2 } from "./pages/CoursePage";
+import { StudentCoursesListPage } from "./pages/StudentCoursesListPage";
+import { StudentCourseViewPage } from "./pages/StudentCourseViewPage";
 import { TeacherDashboardPageV2 } from "./pages/TeacherDashboard";
+import { TeacherCourseReviewPage } from "./pages/TeacherCourseReviewPage";
 import { ParentDashboardPageV2 } from "./pages/ParentDashboard";
 import { PsychologistDashboardPageV2 } from "./pages/PsychologistDashboard";
 import { AdminDashboardPageV2 } from "./pages/AdminDashboard";
@@ -61,10 +64,34 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/student/courses",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+        <StudentCoursesListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/student/courses/:id",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+        <StudentCourseViewPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/teacher/dashboard",
     element: (
       <ProtectedRoute roles={["ROLE_TUTOR"]}>
         <TeacherDashboardPageV2 />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/teacher/courses/:id/review",
+    element: (
+      <ProtectedRoute roles={["ROLE_TUTOR"]}>
+        <TeacherCourseReviewPage />
       </ProtectedRoute>
     ),
   },
@@ -117,10 +144,34 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/ar/student/courses",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+        <StudentCoursesListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ar/student/courses/:id",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+        <StudentCourseViewPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/ar/teacher/dashboard",
     element: (
       <ProtectedRoute roles={["ROLE_TUTOR"]}>
         <TeacherDashboardPageV2 />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/ar/teacher/courses/:id/review",
+    element: (
+      <ProtectedRoute roles={["ROLE_TUTOR"]}>
+        <TeacherCourseReviewPage />
       </ProtectedRoute>
     ),
   },
@@ -173,10 +224,34 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/en/student/courses",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+        <StudentCoursesListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/en/student/courses/:id",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+        <StudentCourseViewPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/en/teacher/dashboard",
     element: (
       <ProtectedRoute roles={["ROLE_TUTOR"]}>
         <TeacherDashboardPageV2 />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/en/teacher/courses/:id/review",
+    element: (
+      <ProtectedRoute roles={["ROLE_TUTOR"]}>
+        <TeacherCourseReviewPage />
       </ProtectedRoute>
     ),
   },

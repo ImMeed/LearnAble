@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     nodePolyfills({
-      include: ["events", "process", "buffer", "stream", "util"],
+      include: ["buffer", "events", "stream", "util", "process"],
       globals: {
         Buffer: true,
         global: true,
@@ -15,6 +15,9 @@ export default defineConfig({
       },
     }),
   ],
+  optimizeDeps: {
+    exclude: ["@esbuild-plugins/node-globals-polyfill"],
+  },
   server: {
     port: 3001,
   },

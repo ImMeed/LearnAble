@@ -29,7 +29,11 @@ def test_ai_endpoints_require_authentication() -> None:
         client.close()
 
 
-def test_ai_explain_applies_locale_and_disclaimer() -> None:
+def test_ai_explain_applies_locale_and_disclaimer(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.modules.ai.repository.generate_text",
+        lambda *_args, **_kwargs: "Photosynthesis converts light into chemical energy.",
+    )
     client = TestClient(app)
     try:
         response = client.post(

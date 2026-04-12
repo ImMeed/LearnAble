@@ -8,6 +8,10 @@ Arabic-first learning platform for neurodivergent learners.
 - Backend: FastAPI
 - Database: PostgreSQL
 
+## PDF-to-Structured-Course
+
+LearnAble includes a teacher flow to upload a PDF, extract a structured course tree (chapters/sections/subsections) with Gemini, review/edit it, publish it, and let students read published courses in localized UI. See [`PRD_learnable_pdf_courses.md`](./PRD_learnable_pdf_courses.md) for full product and technical details. To enable extraction, create `backend/.env` with `GEMINI_API_KEY=...` (free key from [aistudio.google.com](https://aistudio.google.com)); current MVP limits are **10 MB max file size** and **30 pages max per PDF**.
+
 ## Backend Status (Implemented Now)
 
 Phase status in repository reports: Phase 1 through Phase 10 are marked READY.

@@ -1,3 +1,4 @@
+from app.db.models.course import Course, CourseStatus
 from app.db.models.economy import PointTransaction, PointsWallet, XpLedger
 from app.db.models.forum import ForumComment, ForumPost, ForumReport, ForumSpace, ForumVote
 from app.db.models.library import Book, DigitalPurchase
@@ -15,6 +16,8 @@ from app.db.models.users import User
 
 __all__ = [
     "Book",
+    "Course",
+    "CourseStatus",
     "DigitalPurchase",
     "ForumComment",
     "ForumPost",
