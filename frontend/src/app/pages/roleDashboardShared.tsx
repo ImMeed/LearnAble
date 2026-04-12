@@ -1,8 +1,11 @@
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { BookOpen, CalendarDays, ClipboardList, LayoutDashboard, MessageSquare, School, type LucideIcon } from "lucide-react";
 
 import { AccessibilityToolbar } from "../components/AccessibilityToolbar";
+import { BrandLogo } from "../components/BrandLogo";
+import { actionClass, cx, surfaceClass } from "../components/uiStyles";
 import { clearSession, getSession } from "../../state/auth";
 
 export type NotificationItem = {
@@ -125,26 +128,40 @@ export function DashboardShell({
   };
 
   return (
-    <main className="page dashboard-page portal-page">
-      <section className="card dashboard-header portal-header">
+    <main className="page dashboard-page portal-page mx-auto grid max-w-[1240px] gap-4 px-4 py-4 sm:px-6">
+      <section
+        className={cx(
+          surfaceClass,
+          "dashboard-header portal-header flex flex-col gap-5 px-5 py-5 backdrop-blur sm:px-6 lg:flex-row lg:items-center lg:justify-between",
+        )}
+      >
         <div className="portal-brand">
-          <h1>{t("appTitle")}</h1>
-          <p className="muted">{subtitle}</p>
-          <p className="muted">{t("dashboards.shell.activeRole", { role: session?.role ?? t("dashboards.common.none") })}</p>
+          <div className="flex items-start gap-4">
+            <BrandLogo className="shrink-0 text-primary" size={40} />
+            <div>
+              <h1 className="text-[clamp(1.8rem,2.4vw,2.5rem)] font-semibold tracking-[-0.04em] text-foreground">
+                {t("appTitle")}
+              </h1>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{subtitle}</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                {t("dashboards.shell.activeRole", { role: session?.role ?? t("dashboards.common.none") })}
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="dashboard-header-actions">
-          <Link className="secondary-link" to={localePrefix(i18n.resolvedLanguage)}>
+        <div className="dashboard-header-actions flex flex-wrap items-center gap-3">
+          <Link className={actionClass("soft")} to={localePrefix(i18n.resolvedLanguage)}>
             {t("dashboards.shell.backHome")}
           </Link>
-          <button type="button" className="secondary" onClick={onLogout}>
+          <button type="button" className={actionClass("soft")} onClick={onLogout}>
             {t("dashboards.shell.logout")}
           </button>
           <AccessibilityToolbar />
         </div>
       </section>
 
-      <section className="portal-section-head">
-        <h2>{title}</h2>
+      <section className="portal-section-head flex items-center justify-between gap-3">
+        <h2 className="text-[clamp(1.4rem,2vw,2rem)] font-semibold tracking-[-0.03em] text-foreground">{title}</h2>
       </section>
 
       {children}
@@ -154,18 +171,31 @@ export function DashboardShell({
 
 export function TeacherTabs({ active, onChange }: { active: TeacherTab; onChange: (tab: TeacherTab) => void }) {
   const { t } = useTranslation();
-  const tabs: TeacherTab[] = ["overview", "attendance", "classrooms", "courses", "schedule", "messages"];
+  const tabs: Array<{ id: TeacherTab; Icon: LucideIcon }> = [
+    { id: "overview", Icon: LayoutDashboard },
+    { id: "attendance", Icon: ClipboardList },
+    { id: "classrooms", Icon: School },
+    { id: "courses", Icon: BookOpen },
+    { id: "schedule", Icon: CalendarDays },
+    { id: "messages", Icon: MessageSquare },
+  ];
 
   return (
-    <nav className="portal-tabs" aria-label={t("dashboards.teacher.tabsLabel")}>
+    <nav className="flex flex-wrap gap-3" aria-label={t("dashboards.teacher.tabsLabel")}>
       {tabs.map((tab) => (
         <button
-          key={tab}
+          key={tab.id}
           type="button"
-          className={active === tab ? "active" : ""}
-          onClick={() => onChange(tab)}
+          className={cx(
+            "inline-flex min-h-11 items-center gap-2 rounded-[1rem] border px-4 py-2.5 text-sm font-semibold transition duration-200",
+            active === tab.id
+              ? "border-primary bg-primary text-primary-foreground shadow-[0_12px_26px_rgba(74,144,226,0.22)]"
+              : "border-border bg-card text-foreground hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(33,40,55,0.08)]",
+          )}
+          onClick={() => onChange(tab.id)}
         >
-          {t(`dashboards.tabs.${tab}`)}
+          <tab.Icon className="h-4 w-4" aria-hidden="true" />
+          <span>{t(`dashboards.tabs.${tab.id}`)}</span>
         </button>
       ))}
     </nav>
