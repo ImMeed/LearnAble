@@ -12,6 +12,8 @@ from app.modules.courses.service import (
     course_assist,
     create_course_from_pdf,
     delete_course,
+    generate_course_flashcards,
+    generate_course_quiz,
     get_course_for_teacher,
     get_published_course,
     list_published_courses_for_students,
@@ -30,6 +32,33 @@ class CourseAssistRequest(BaseModel):
 
 class CourseAssistResponse(BaseModel):
     answer: str
+
+
+class FlashcardItem(BaseModel):
+    front: str
+    back: str
+
+
+class FlashcardsRequest(BaseModel):
+    locale: str = "en"
+
+
+class QuizOption(BaseModel):
+    A: str
+    B: str
+    C: str
+    D: str
+
+
+class QuizQuestion(BaseModel):
+    question: str
+    options: dict[str, str]
+    correct: str
+    explanation: str
+
+
+class QuizRequest(BaseModel):
+    locale: str = "en"
 
 teacher_router = APIRouter(prefix="/teacher/courses", tags=["courses"])
 student_router = APIRouter(prefix="/courses", tags=["courses"])
@@ -159,3 +188,43 @@ def course_assist_endpoint(
         locale=payload.locale,
     )
     return CourseAssistResponse(answer=answer)
+
+
+@student_router.post("/{course_id}/flashcards", response_model=list[FlashcardItem])
+def course_flashcards_endpoint(
+    course_id: UUID,
+    payload: FlashcardsRequest,
+    current_user: CurrentUser = Depends(
+        require_roles(
+            UserRole.ROLE_STUDENT,
+            UserRole.ROLE_TUTOR,
+            UserRole.ROLE_PARENT,
+            UserRole.ROLE_PSYCHOLOGIST,
+            UserRole.ROLE_ADMIN,
+        )
+    ),
+    session: Session = Depends(get_db_session),
+) -> list[FlashcardItem]:
+    _ = current_user
+    items = generate_course_flashcards(session, course_id=course_id, locale=payload.locale)
+    return [FlashcardItem(**item) for item in items]
+
+
+@student_router.post("/{course_id}/quiz", response_model=list[QuizQuestion])
+def course_quiz_endpoint(
+    course_id: UUID,
+    payload: QuizRequest,
+    current_user: CurrentUser = Depends(
+        require_roles(
+            UserRole.ROLE_STUDENT,
+            UserRole.ROLE_TUTOR,
+            UserRole.ROLE_PARENT,
+            UserRole.ROLE_PSYCHOLOGIST,
+            UserRole.ROLE_ADMIN,
+        )
+    ),
+    session: Session = Depends(get_db_session),
+) -> list[QuizQuestion]:
+    _ = current_user
+    items = generate_course_quiz(session, course_id=course_id, locale=payload.locale)
+    return [QuizQuestion(**item) for item in items]

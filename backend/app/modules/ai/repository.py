@@ -170,6 +170,144 @@ def extract_course_structure(pdf_bytes: bytes, language: str) -> dict:
     return parsed
 
 
+def generate_flashcards(course_title: str, course_content: str, locale: str) -> list[dict]:
+    """Generate flashcards from course content using Gemini."""
+    api_key = settings.gemini_api_key.strip()
+    if not api_key:
+        raise GeminiError("GEMINI_API_KEY is not configured")
+
+    prompt = f"""You are creating study flashcards for students with dyslexia and ADHD.
+
+Course: {course_title}
+
+Course content:
+\"\"\"
+{course_content[:6000]}
+\"\"\"
+
+Generate exactly 8 flashcards from this content. Each flashcard must:
+- Have a clear, focused question on the front
+- Have a short, memorable answer on the back (1-2 sentences max)
+- Cover the most important concepts from the material
+- Use simple, plain language
+
+Return a JSON array only — no markdown, no explanation:
+[{{"front": "question text", "back": "answer text"}}]
+
+Respond in {locale} language."""
+
+    endpoint = f"{_GEMINI_BASE_URL}/{_GEMINI_MODEL}:generateContent"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.3,
+            "maxOutputTokens": 2048,
+            "responseMimeType": "application/json",
+        },
+    }
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(endpoint, params={"key": api_key}, json=payload)
+            response.raise_for_status()
+            data = response.json()
+    except httpx.HTTPStatusError as exc:
+        raise GeminiError(f"Gemini HTTP error {exc.response.status_code}: {exc.response.text}") from exc
+    except httpx.HTTPError as exc:
+        raise GeminiError(f"Gemini request failed: {exc}") from exc
+
+    candidates = data.get("candidates") or []
+    if not candidates:
+        raise GeminiError(f"Gemini returned no candidates. Full response: {data}")
+
+    parts = ((candidates[0].get("content") or {}).get("parts") or [])
+    text_parts = [part.get("text", "") for part in parts if part.get("text")]
+    raw_text = "\n".join(text_parts).strip()
+
+    cleaned = _strip_json_fence(raw_text)
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise GeminiParseError(f"Failed to parse flashcards JSON: {exc}") from exc
+
+    if not isinstance(parsed, list):
+        raise GeminiParseError("Flashcards response must be a JSON array")
+
+    return parsed
+
+
+def generate_quiz(course_title: str, course_content: str, locale: str) -> list[dict]:
+    """Generate multiple-choice quiz questions from course content using Gemini."""
+    api_key = settings.gemini_api_key.strip()
+    if not api_key:
+        raise GeminiError("GEMINI_API_KEY is not configured")
+
+    prompt = f"""You are creating a quiz for students with dyslexia and ADHD.
+
+Course: {course_title}
+
+Course content:
+\"\"\"
+{course_content[:6000]}
+\"\"\"
+
+Generate exactly 6 multiple-choice questions from this content. Each question must:
+- Test understanding of a key concept from the material
+- Have exactly 4 options labeled A, B, C, D
+- Have exactly one correct answer
+- Include a brief explanation of why the answer is correct
+- Use simple, clear language
+
+Return a JSON array only — no markdown, no explanation:
+[{{
+  "question": "question text",
+  "options": {{"A": "option text", "B": "option text", "C": "option text", "D": "option text"}},
+  "correct": "A",
+  "explanation": "brief explanation"
+}}]
+
+Respond in {locale} language."""
+
+    endpoint = f"{_GEMINI_BASE_URL}/{_GEMINI_MODEL}:generateContent"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.3,
+            "maxOutputTokens": 3000,
+            "responseMimeType": "application/json",
+        },
+    }
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(endpoint, params={"key": api_key}, json=payload)
+            response.raise_for_status()
+            data = response.json()
+    except httpx.HTTPStatusError as exc:
+        raise GeminiError(f"Gemini HTTP error {exc.response.status_code}: {exc.response.text}") from exc
+    except httpx.HTTPError as exc:
+        raise GeminiError(f"Gemini request failed: {exc}") from exc
+
+    candidates = data.get("candidates") or []
+    if not candidates:
+        raise GeminiError(f"Gemini returned no candidates. Full response: {data}")
+
+    parts = ((candidates[0].get("content") or {}).get("parts") or [])
+    text_parts = [part.get("text", "") for part in parts if part.get("text")]
+    raw_text = "\n".join(text_parts).strip()
+
+    cleaned = _strip_json_fence(raw_text)
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise GeminiParseError(f"Failed to parse quiz JSON: {exc}") from exc
+
+    if not isinstance(parsed, list):
+        raise GeminiParseError("Quiz response must be a JSON array")
+
+    return parsed
+
+
 def generate_course_assist(
     question: str,
     course_title: str,

@@ -44,6 +44,17 @@ type CourseDetail = {
   structure_json: CourseStructure;
 };
 
+// ─── Course mode types (PDF /courses/:id) ────────────────────────────────────
+
+type Flashcard = { front: string; back: string };
+
+type QuizQuestion = {
+  question: string;
+  options: Record<string, string>;
+  correct: string;
+  explanation: string;
+};
+
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
 type SectionNode = { id: string; title: string; content: string };
@@ -342,7 +353,6 @@ export function PdfCoursePageV2() {
   const courseId = id ?? "";
   const { t, i18n } = useTranslation();
   const { settings } = useAccessibility();
-  const navigate = useNavigate();
 
   const [status, setStatus] = useState("");
   const [course, setCourse] = useState<CourseDetail | null>(null);
@@ -356,6 +366,17 @@ export function PdfCoursePageV2() {
   const [showHelpRequest, setShowHelpRequest] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completedSectionIds, setCompletedSectionIds] = useState<Set<string>>(new Set());
+
+  // Flashcard modal state
+  const [flashcardModal, setFlashcardModal] = useState<{
+    open: boolean; cards: Flashcard[]; current: number; flipped: boolean; loading: boolean;
+  }>({ open: false, cards: [], current: 0, flipped: false, loading: false });
+
+  // Quiz modal state
+  const [quizModal, setQuizModal] = useState<{
+    open: boolean; questions: QuizQuestion[]; current: number;
+    answers: Record<number, string>; showResult: boolean; loading: boolean;
+  }>({ open: false, questions: [], current: 0, answers: {}, showResult: false, loading: false });
 
   const prefix = useMemo(() => localePrefix(i18n.resolvedLanguage), [i18n.resolvedLanguage]);
   const requestConfig = useMemo(() => localeRequestConfig(i18n.resolvedLanguage), [i18n.resolvedLanguage]);
@@ -469,6 +490,38 @@ export function PdfCoursePageV2() {
   const goToSection = (delta: 1 | -1) => {
     const next = allSections[currentIndex + delta];
     if (next) setSelectedNode(next);
+  };
+
+  const locale = i18n.resolvedLanguage === "en" ? "en" : "ar";
+
+  const openFlashcards = async () => {
+    setFlashcardModal((prev) => ({ ...prev, open: true, loading: true, cards: [], current: 0, flipped: false }));
+    try {
+      const response = await apiClient.post<Flashcard[]>(
+        `/courses/${courseId}/flashcards`,
+        { locale },
+        requestConfig,
+      );
+      setFlashcardModal((prev) => ({ ...prev, loading: false, cards: response.data }));
+    } catch (error) {
+      setFlashcardModal((prev) => ({ ...prev, loading: false, open: false }));
+      setStatus(errorMessage(error));
+    }
+  };
+
+  const openQuiz = async () => {
+    setQuizModal((prev) => ({ ...prev, open: true, loading: true, questions: [], current: 0, answers: {}, showResult: false }));
+    try {
+      const response = await apiClient.post<QuizQuestion[]>(
+        `/courses/${courseId}/quiz`,
+        { locale },
+        requestConfig,
+      );
+      setQuizModal((prev) => ({ ...prev, loading: false, questions: response.data }));
+    } catch (error) {
+      setQuizModal((prev) => ({ ...prev, loading: false, open: false }));
+      setStatus(errorMessage(error));
+    }
   };
 
   const contentDir = course?.language === "ar" ? "rtl" : "ltr";
@@ -598,13 +651,15 @@ export function PdfCoursePageV2() {
           </article>
 
           <CourseActions
-            onFlashcards={() => setStatus(t("dashboards.course.noFlashcards"))}
+            onFlashcards={() => void openFlashcards()}
             onHelp={() => void askForHelp()}
-            onQuiz={() => navigate(`${prefix}/student/dashboard`)}
+            onQuiz={() => void openQuiz()}
             onReadAloud={() => setIsReading((prev) => !prev)}
             onReview={() => setStatus(t("dashboards.course.reviewQueued"))}
             onVideo={() => setStatus(t("dashboards.course.noGames"))}
             helpLoading={showHelpRequest}
+            flashcardsLoading={flashcardModal.loading}
+            quizLoading={quizModal.loading}
             t={t}
           />
 
@@ -625,6 +680,42 @@ export function PdfCoursePageV2() {
             setStatus(t("dashboards.course.completed"));
           }}
           t={t}
+        />
+      ) : null}
+
+      {flashcardModal.open ? (
+        <FlashcardModal
+          modal={flashcardModal}
+          courseTitle={course?.title ?? ""}
+          onClose={() => setFlashcardModal((prev) => ({ ...prev, open: false }))}
+          onFlip={() => setFlashcardModal((prev) => ({ ...prev, flipped: !prev.flipped }))}
+          onNavigate={(delta) =>
+            setFlashcardModal((prev) => ({
+              ...prev,
+              current: prev.current + delta,
+              flipped: false,
+            }))
+          }
+        />
+      ) : null}
+
+      {quizModal.open ? (
+        <QuizModal
+          modal={quizModal}
+          onClose={() => setQuizModal((prev) => ({ ...prev, open: false }))}
+          onAnswer={(answer) =>
+            setQuizModal((prev) => ({
+              ...prev,
+              answers: { ...prev.answers, [prev.current]: answer },
+            }))
+          }
+          onNavigate={(delta) => {
+            if (delta === "result") {
+              setQuizModal((prev) => ({ ...prev, showResult: true }));
+            } else {
+              setQuizModal((prev) => ({ ...prev, current: prev.current + delta }));
+            }
+          }}
         />
       ) : null}
     </main>
@@ -701,6 +792,8 @@ function CourseActions({
   onReview,
   onVideo,
   helpLoading,
+  flashcardsLoading = false,
+  quizLoading = false,
   t,
 }: {
   onFlashcards: () => void;
@@ -710,20 +803,22 @@ function CourseActions({
   onReview: () => void;
   onVideo: () => void;
   helpLoading: boolean;
+  flashcardsLoading?: boolean;
+  quizLoading?: boolean;
   t: TFunction;
 }) {
   return (
     <article className="card checkpoint-block">
       <h3>{t("dashboards.course.actions")}</h3>
       <div className="course-v2-actions-grid">
-        <button type="button" onClick={onFlashcards}>
-          {t("dashboards.course.openFlashcards")}
+        <button type="button" onClick={onFlashcards} disabled={flashcardsLoading}>
+          {flashcardsLoading ? "Generating…" : t("dashboards.course.openFlashcards")}
         </button>
         <button type="button" className="danger" onClick={onHelp} disabled={helpLoading}>
           {helpLoading ? t("dashboards.course.sendingRequest") : t("dashboards.course.needHelp")}
         </button>
-        <button type="button" className="accent" onClick={onQuiz}>
-          {t("dashboards.course.startQuiz")}
+        <button type="button" className="accent" onClick={onQuiz} disabled={quizLoading}>
+          {quizLoading ? "Generating…" : t("dashboards.course.startQuiz")}
         </button>
         <button type="button" className="secondary" onClick={onReadAloud}>
           {t("dashboards.course.readAloud")}
@@ -738,6 +833,171 @@ function CourseActions({
         </button>
       </div>
     </article>
+  );
+}
+
+
+function FlashcardModal({
+  modal,
+  courseTitle,
+  onClose,
+  onNavigate,
+  onFlip,
+}: {
+  modal: { cards: { front: string; back: string }[]; current: number; flipped: boolean; loading: boolean };
+  courseTitle: string;
+  onClose: () => void;
+  onNavigate: (delta: 1 | -1) => void;
+  onFlip: () => void;
+}) {
+  const card = modal.cards[modal.current];
+
+  return (
+    <div className="course-modal-backdrop" role="presentation" onClick={onClose}>
+      <div className="course-modal-box" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        {modal.loading ? (
+          <div className="course-modal-loading">
+            <div className="course-modal-spinner" />
+            <p>Generating flashcards…</p>
+          </div>
+        ) : (
+          <>
+            <p className="flashcard-counter">
+              Card {modal.current + 1} of {modal.cards.length}
+              <span className="flashcard-subject"> · {courseTitle}</span>
+            </p>
+
+            <div className="flashcard-wrap" onClick={onFlip} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && onFlip()}>
+              <div className={`flashcard-inner ${modal.flipped ? "flipped" : ""}`}>
+                <div className="flashcard-face front">
+                  <p className="flashcard-label">QUESTION</p>
+                  <p className="flashcard-text">{card?.front}</p>
+                  <p className="flashcard-hint">Click to reveal answer</p>
+                </div>
+                <div className="flashcard-face back">
+                  <p className="flashcard-label">ANSWER</p>
+                  <p className="flashcard-text">{card?.back}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flashcard-nav">
+              <button type="button" className="secondary" disabled={modal.current <= 0} onClick={() => onNavigate(-1)}>
+                ‹ Previous
+              </button>
+              <button type="button" className="secondary" disabled={modal.current >= modal.cards.length - 1} onClick={() => onNavigate(1)}>
+                Next ›
+              </button>
+            </div>
+          </>
+        )}
+        <button type="button" className="course-modal-close" onClick={onClose}>✕</button>
+      </div>
+    </div>
+  );
+}
+
+
+function QuizModal({
+  modal,
+  onClose,
+  onAnswer,
+  onNavigate,
+}: {
+  modal: { questions: QuizQuestion[]; current: number; answers: Record<number, string>; showResult: boolean; loading: boolean };
+  onClose: () => void;
+  onAnswer: (answer: string) => void;
+  onNavigate: (delta: 1 | -1 | "result") => void;
+}) {
+  const q = modal.questions[modal.current];
+  const selected = modal.answers[modal.current];
+  const isAnswered = selected !== undefined;
+  const isLast = modal.current >= modal.questions.length - 1;
+
+  if (modal.loading) {
+    return (
+      <div className="course-modal-backdrop" role="presentation" onClick={onClose}>
+        <div className="course-modal-box" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+          <div className="course-modal-loading">
+            <div className="course-modal-spinner" />
+            <p>Generating quiz…</p>
+          </div>
+          <button type="button" className="course-modal-close" onClick={onClose}>✕</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (modal.showResult) {
+    const score = modal.questions.filter((q, i) => modal.answers[i] === q.correct).length;
+    const total = modal.questions.length;
+    const pct = Math.round((score / total) * 100);
+    return (
+      <div className="course-modal-backdrop" role="presentation" onClick={onClose}>
+        <div className="course-modal-box" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+          <div className="quiz-result">
+            <p className="quiz-result-emoji">{pct >= 70 ? "🎉" : "📚"}</p>
+            <h3 className="quiz-result-title">Quiz Complete!</h3>
+            <p className="quiz-result-score">{score} / {total} correct</p>
+            <div className="quiz-result-bar-track">
+              <div className="quiz-result-bar-fill" style={{ width: `${pct}%`, background: pct >= 70 ? "#22c55e" : "#f59e0b" }} />
+            </div>
+            <p className="muted">{pct >= 70 ? "Great job! Keep it up." : "Review the lesson and try again!"}</p>
+            <button type="button" onClick={onClose} style={{ marginTop: "1rem" }}>Close</button>
+          </div>
+          <button type="button" className="course-modal-close" onClick={onClose}>✕</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="course-modal-backdrop" role="presentation" onClick={onClose}>
+      <div className="course-modal-box" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <p className="quiz-counter">Question {modal.current + 1} of {modal.questions.length}</p>
+        <h3 className="quiz-question">{q?.question}</h3>
+
+        <div className="quiz-options">
+          {q && Object.entries(q.options).map(([key, value]) => {
+            const isSelected = selected === key;
+            const isCorrect = isAnswered && key === q.correct;
+            const isWrong = isAnswered && isSelected && key !== q.correct;
+            return (
+              <button
+                key={key}
+                type="button"
+                className={`quiz-option ${isSelected ? "selected" : ""} ${isCorrect ? "correct" : ""} ${isWrong ? "wrong" : ""}`}
+                onClick={() => !isAnswered && onAnswer(key)}
+                disabled={isAnswered}
+              >
+                <span className="quiz-option-badge">{key}</span>
+                <span>{value}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {isAnswered && (
+          <p className="quiz-explanation">{q?.explanation}</p>
+        )}
+
+        <div className="flashcard-nav">
+          <button type="button" className="secondary" disabled={modal.current <= 0} onClick={() => onNavigate(-1)}>
+            Previous
+          </button>
+          {isLast ? (
+            <button type="button" onClick={() => onNavigate("result")} disabled={!isAnswered}>
+              See Results
+            </button>
+          ) : (
+            <button type="button" onClick={() => onNavigate(1)} disabled={!isAnswered}>
+              Next Question
+            </button>
+          )}
+        </div>
+        <button type="button" className="course-modal-close" onClick={onClose}>✕</button>
+      </div>
+    </div>
   );
 }
 

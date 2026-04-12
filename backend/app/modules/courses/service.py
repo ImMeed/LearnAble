@@ -310,6 +310,68 @@ def delete_course(session: Session, current_user: CurrentUser, course_id: UUID) 
     session.commit()
 
 
+def _extract_all_content(structure_json: dict) -> str:
+    """Flatten all chapter/section/subsection content into a single string."""
+    parts = []
+    for chapter in structure_json.get("chapters", []):
+        parts.append(f"# {chapter.get('title', '')}")
+        for section in chapter.get("sections", []):
+            parts.append(f"## {section.get('title', '')}")
+            if section.get("content"):
+                parts.append(section["content"])
+            for sub in section.get("subsections", []):
+                parts.append(f"### {sub.get('title', '')}")
+                if sub.get("content"):
+                    parts.append(sub["content"])
+    return "\n\n".join(parts)
+
+
+def generate_course_flashcards(session: Session, course_id: UUID, locale: str) -> list[dict]:
+    """
+    Generate flashcards from the full course content using Gemini.
+
+    Raises:
+        HTTPException(404): course missing or not published.
+        HTTPException(502): Gemini error.
+    """
+    course = repository.get_course_by_id(session, course_id)
+    if course is None or course.status != CourseStatus.PUBLISHED.value:
+        raise _http_error(status.HTTP_404_NOT_FOUND, "COURSE_NOT_FOUND", "Course not found")
+
+    content = _extract_all_content(course.structure_json)
+    try:
+        return ai_repository.generate_flashcards(
+            course_title=course.title,
+            course_content=content,
+            locale=locale,
+        )
+    except (ai_repository.GeminiError, ai_repository.GeminiParseError) as exc:
+        raise _http_error(status.HTTP_502_BAD_GATEWAY, "AI_UNAVAILABLE", str(exc)) from exc
+
+
+def generate_course_quiz(session: Session, course_id: UUID, locale: str) -> list[dict]:
+    """
+    Generate a multiple-choice quiz from the full course content using Gemini.
+
+    Raises:
+        HTTPException(404): course missing or not published.
+        HTTPException(502): Gemini error.
+    """
+    course = repository.get_course_by_id(session, course_id)
+    if course is None or course.status != CourseStatus.PUBLISHED.value:
+        raise _http_error(status.HTTP_404_NOT_FOUND, "COURSE_NOT_FOUND", "Course not found")
+
+    content = _extract_all_content(course.structure_json)
+    try:
+        return ai_repository.generate_quiz(
+            course_title=course.title,
+            course_content=content,
+            locale=locale,
+        )
+    except (ai_repository.GeminiError, ai_repository.GeminiParseError) as exc:
+        raise _http_error(status.HTTP_502_BAD_GATEWAY, "AI_UNAVAILABLE", str(exc)) from exc
+
+
 def course_assist(
     session: Session,
     course_id: UUID,
