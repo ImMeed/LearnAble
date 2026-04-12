@@ -1,4 +1,5 @@
 import { FormEvent, KeyboardEvent, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 
 type TodoItem = {
   id: string;
@@ -71,8 +72,8 @@ export function ADHDToDoList() {
             autoComplete="off"
             className="todo-input"
           />
-          <button type="submit" className="todo-add-button" disabled={!draft.trim()}>
-            +
+          <button type="submit" className="todo-add-button" disabled={!draft.trim()} aria-label="Add task">
+            <Plus className="todo-action-icon" aria-hidden="true" />
           </button>
         </div>
       </form>

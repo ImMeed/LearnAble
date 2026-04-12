@@ -433,6 +433,9 @@ a:focus-visible {
   min-width: 44px;
   min-height: 44px;
   border-radius: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .todo-list {
@@ -486,6 +489,14 @@ a:focus-visible {
   border-radius: 0.5rem;
   background: transparent;
   color: var(--foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.todo-action-icon {
+  width: 1rem;
+  height: 1rem;
 }
 
 .todo-empty {
