@@ -12,11 +12,13 @@ node_modules/
 dist/
 
 # Env
+backend/.env
+
 .env
 
 # VS Code
 .vscode/
-
+pdf-courses-phases/
 plan.md
 summary.md 
 phase1.md
