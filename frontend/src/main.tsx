@@ -5,6 +5,7 @@ import { RouterProvider } from "react-router-dom";
 
 import { router } from "./app/router";
 import "./app/i18n";
+import "./app/tailwind.css";
 import "./app/styles.css";
 import "./app/styles/theme.css";
 import { AccessibilityProvider } from "./features/accessibility/AccessibilityContext";
