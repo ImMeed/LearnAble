@@ -18,6 +18,16 @@ export function getPathLocale(pathname: string): AppLocale {
 }
 
 export function getInitialLocale(pathname: string): AppLocale {
+  const hasLocaleSegment =
+    pathname === "/ar" ||
+    pathname.startsWith("/ar/") ||
+    pathname === "/en" ||
+    pathname.startsWith("/en/");
+
+  if (hasLocaleSegment) {
+    return getPathLocale(pathname);
+  }
+
   const stored = localStorage.getItem("learnable_locale");
   if (isSupportedLocale(stored)) {
     return stored;
