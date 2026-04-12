@@ -3,14 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../api/client";
-import { AccessibilityToolbar } from "../components/AccessibilityToolbar";
 import { ADHDToDoList } from "../components/ADHDToDoList";
-import { BrandLogo } from "../components/BrandLogo";
 import { FocusTimer } from "../components/FocusTimer";
 import { ProgressBar } from "../components/ProgressBar";
+import { actionClass, cx, surfaceClass } from "../components/uiStyles";
 import { useAccessibility } from "../../features/accessibility/AccessibilityContext";
-import { clearSession } from "../../state/auth";
 import { StudentCallFlow } from "../components/StudentCallFlow";
+import { DashboardShell, errorMessage, localePrefix, localeRequestConfig } from "./roleDashboardShared";
 
 type LessonSummary = {
   id: string;
@@ -59,30 +58,6 @@ type TeacherPresenceItem = {
 };
 
 type BadgeIconVariant = "streak" | "quiz" | "focus" | "xp" | "default";
-
-function localeRequestConfig(resolvedLanguage: string | undefined) {
-  return {
-    headers: {
-      "x-lang": resolvedLanguage === "en" ? "en" : "ar",
-    },
-  };
-}
-
-function localePrefix(resolvedLanguage: string | undefined): string {
-  return resolvedLanguage === "en" ? "/en" : "/ar";
-}
-
-function errorMessage(error: unknown): string {
-  if (typeof error === "object" && error && "response" in error) {
-    const response = (error as { response?: { data?: unknown } }).response;
-    const payload = response?.data;
-    if (typeof payload === "object" && payload && "detail" in payload) {
-      const detail = (payload as { detail?: unknown }).detail;
-      return typeof detail === "string" ? detail : String(detail);
-    }
-  }
-  return String(error);
-}
 
 function badgeVariantForCode(code: string): BadgeIconVariant {
   const key = code.toLowerCase();
@@ -246,11 +221,6 @@ export function StudentDashboardPageV2() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i18n.resolvedLanguage]);
 
-  const onLogout = () => {
-    clearSession();
-    navigate(`${prefix}/login`);
-  };
-
   const sendAiMessage = async () => {
     const text = chatInput.trim();
     if (!text) return;
@@ -271,24 +241,15 @@ export function StudentDashboardPageV2() {
   };
 
   return (
-    <main className="page dashboard-page student-v2-page">
-      <section className="card dashboard-header student-v2-header">
-        <div className="student-v2-brand">
-          <BrandLogo className="brand-icon" />
-          <h1>{t("appTitle")}</h1>
-        </div>
-        <div className="dashboard-header-actions">
-          <AccessibilityToolbar />
-          <button type="button" className="secondary" onClick={onLogout}>
-            {t("dashboards.shell.logout")}
-          </button>
-        </div>
-      </section>
-
+    <DashboardShell title={t("dashboards.tabs.overview")} subtitle={t("branding.subtitle")}>
       {settings.xpSystem && progression ? (
-        <section className="card student-v2-xp-row">
-          <p><TrophyIcon /> {t("dashboards.studentV2.level", { level: progression.current_level })}</p>
-          <p><FlameIcon /> {t("dashboards.studentV2.streak", { days: 7 })}</p>
+        <section className={cx(surfaceClass, "student-v2-xp-row px-5 py-4 sm:px-6")}>
+          <p className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+            <TrophyIcon /> {t("dashboards.studentV2.level", { level: progression.current_level })}
+          </p>
+          <p className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+            <FlameIcon /> {t("dashboards.studentV2.streak", { days: 7 })}
+          </p>
           <ProgressBar current={progression.total_xp} max={progression.next_level_xp} color="accent" />
         </section>
       ) : null}
@@ -296,7 +257,7 @@ export function StudentDashboardPageV2() {
       {settings.focusMode ? (
         <section className="focus-banner">
           <p>{t("dashboards.studentV2.focusModeActive")}</p>
-          <button type="button" className="secondary" onClick={() => setFocusMode(false)}>
+          <button type="button" className={actionClass("soft")} onClick={() => setFocusMode(false)}>
             {t("dashboards.studentV2.exitFocusMode")}
           </button>
         </section>
@@ -304,11 +265,13 @@ export function StudentDashboardPageV2() {
 
       <section className="dashboard-grid student-v2-grid">
         <section className="left-span student-v2-main-column">
-          <article className="card">
+          <article className={cx(surfaceClass, "p-5 sm:p-6")}>
             <div className="section-title-row">
-              <h2>{t("dashboards.studentV2.continueLearning")}</h2>
+              <h2 className="text-[clamp(1.35rem,2vw,1.9rem)] font-semibold tracking-[-0.03em] text-foreground">
+                {t("dashboards.studentV2.continueLearning")}
+              </h2>
               {!settings.focusMode ? (
-                <button type="button" className="secondary" onClick={() => setFocusMode(true)}>
+                <button type="button" className={actionClass("soft")} onClick={() => setFocusMode(true)}>
                   {t("dashboards.studentV2.enableFocusMode")}
                 </button>
               ) : null}
@@ -331,8 +294,10 @@ export function StudentDashboardPageV2() {
           </article>
 
           {settings.badges ? (
-            <article className="card checkpoint-block">
-              <h2>{t("dashboards.studentV2.achievements")}</h2>
+            <article className={cx(surfaceClass, "checkpoint-block p-5 sm:p-6")}>
+              <h2 className="text-[clamp(1.2rem,1.7vw,1.55rem)] font-semibold tracking-[-0.03em] text-foreground">
+                {t("dashboards.studentV2.achievements")}
+              </h2>
               <div className="student-v2-badges-grid">
                 {(progression?.badges || []).map((badge) => (
                   <article
@@ -348,10 +313,12 @@ export function StudentDashboardPageV2() {
             </article>
           ) : null}
 
-          <article className="card checkpoint-block">
+          <article className={cx(surfaceClass, "checkpoint-block p-5 sm:p-6")}>
             <div className="section-title-row">
-              <h2>{t("dashboards.studentV2.myTasks")}</h2>
-              <button type="button" className="secondary" onClick={() => setShowTodoList((prev) => !prev)}>
+              <h2 className="text-[clamp(1.2rem,1.7vw,1.55rem)] font-semibold tracking-[-0.03em] text-foreground">
+                {t("dashboards.studentV2.myTasks")}
+              </h2>
+              <button type="button" className={actionClass("soft")} onClick={() => setShowTodoList((prev) => !prev)}>
                 {showTodoList ? t("dashboards.studentV2.hideTasks") : t("dashboards.studentV2.showTasks")}
               </button>
             </div>
@@ -362,8 +329,10 @@ export function StudentDashboardPageV2() {
         <aside className="student-v2-side-column">
           <FocusTimer defaultDuration={25} />
 
-          <article className="card checkpoint-block">
-            <h3><ClockIcon /> {t("dashboards.studentV2.todayGoals")}</h3>
+          <article className={cx(surfaceClass, "checkpoint-block p-5 sm:p-6")}>
+            <h3 className="inline-flex items-center gap-2 text-lg font-semibold tracking-[-0.02em] text-foreground">
+              <ClockIcon /> {t("dashboards.studentV2.todayGoals")}
+            </h3>
             <div className="stack-list">
               {goals.map((goal) => (
                 <div key={goal.id}>
@@ -374,9 +343,9 @@ export function StudentDashboardPageV2() {
             </div>
           </article>
 
-          <article className="card checkpoint-block">
+          <article className={cx(surfaceClass, "checkpoint-block p-5 sm:p-6")}>
             <p className="muted">{t("callFlow.sectionLabel")}</p>
-            <h3>{t("callFlow.sectionTitle")}</h3>
+            <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">{t("callFlow.sectionTitle")}</h3>
 
             <div className="stack-list checkpoint-block">
               {activeTeachers.length === 0 ? (
@@ -390,7 +359,7 @@ export function StudentDashboardPageV2() {
                       <strong>{teacherName}</strong>
                       <button
                         type="button"
-                        className="secondary"
+                        className={actionClass("soft")}
                         onClick={() => void requestCall(teacher.tutor_user_id)}
                         aria-label={t("callFlow.requestCallAria", { n: teacherName })}
                         disabled={isSending}
@@ -409,7 +378,7 @@ export function StudentDashboardPageV2() {
                   <strong>{request.topic}</strong>
                   <p>{requestStatusLabel(request.status)}</p>
                   {request.status === "SCHEDULED" && request.meeting_url ? (
-                    <button type="button" onClick={() => openMeetingLink(request.meeting_url as string)}>
+                    <button type="button" className={actionClass()} onClick={() => openMeetingLink(request.meeting_url as string)}>
                       {t("callFlow.joinCall")}
                     </button>
                   ) : null}
@@ -419,8 +388,8 @@ export function StudentDashboardPageV2() {
             </div>
           </article>
 
-          <article className="card checkpoint-block">
-            <button type="button" onClick={() => setShowAIChat((prev) => !prev)}>
+          <article className={cx(surfaceClass, "checkpoint-block p-5 sm:p-6")}>
+            <button type="button" className={actionClass("soft")} onClick={() => setShowAIChat((prev) => !prev)}>
               <ChatIcon /> {t("dashboards.studentV2.aiAssistant")}
             </button>
 
@@ -443,7 +412,7 @@ export function StudentDashboardPageV2() {
                     onChange={(event) => setChatInput(event.target.value)}
                     placeholder={t("dashboards.studentV2.askPlaceholder")}
                   />
-                  <button type="button" onClick={() => void sendAiMessage()} disabled={!chatInput.trim()}>
+                  <button type="button" className={actionClass()} onClick={() => void sendAiMessage()} disabled={!chatInput.trim()}>
                     {t("dashboards.studentV2.send")}
                   </button>
                 </div>
@@ -453,14 +422,14 @@ export function StudentDashboardPageV2() {
 
           <StudentCallFlow lang={i18n.resolvedLanguage} />
 
-          <article className="card checkpoint-block">
+          <article className={cx(surfaceClass, "checkpoint-block p-5 sm:p-6")}>
             <p className="status-line">{status || t("dashboards.common.idle")}</p>
-            <button type="button" className="secondary" onClick={() => void loadDashboard()}>
+            <button type="button" className={actionClass("soft")} onClick={() => void loadDashboard()}>
               {t("dashboards.common.refresh")}
             </button>
           </article>
         </aside>
       </section>
-    </main>
+    </DashboardShell>
   );
 }
