@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.roles import UserRole, require_roles
@@ -8,6 +9,7 @@ from app.core.security import CurrentUser
 from app.db.session import get_db_session
 from app.modules.courses.schemas import CourseCreateResponse, CourseDetailResponse, CourseListItem, CourseStructureUpdate
 from app.modules.courses.service import (
+    course_assist,
     create_course_from_pdf,
     delete_course,
     get_course_for_teacher,
@@ -17,6 +19,17 @@ from app.modules.courses.service import (
     publish_course,
     update_course_structure,
 )
+
+
+class CourseAssistRequest(BaseModel):
+    question: str
+    section_title: str = ""
+    section_content: str = ""
+    locale: str = "en"
+
+
+class CourseAssistResponse(BaseModel):
+    answer: str
 
 teacher_router = APIRouter(prefix="/teacher/courses", tags=["courses"])
 student_router = APIRouter(prefix="/courses", tags=["courses"])
@@ -119,3 +132,30 @@ def get_course_endpoint(
 ) -> CourseDetailResponse:
     _ = current_user
     return get_published_course(session, course_id)
+
+
+@student_router.post("/{course_id}/assist", response_model=CourseAssistResponse)
+def course_assist_endpoint(
+    course_id: UUID,
+    payload: CourseAssistRequest,
+    current_user: CurrentUser = Depends(
+        require_roles(
+            UserRole.ROLE_STUDENT,
+            UserRole.ROLE_TUTOR,
+            UserRole.ROLE_PARENT,
+            UserRole.ROLE_PSYCHOLOGIST,
+            UserRole.ROLE_ADMIN,
+        )
+    ),
+    session: Session = Depends(get_db_session),
+) -> CourseAssistResponse:
+    _ = current_user
+    answer = course_assist(
+        session,
+        course_id=course_id,
+        question=payload.question,
+        section_title=payload.section_title,
+        section_content=payload.section_content,
+        locale=payload.locale,
+    )
+    return CourseAssistResponse(answer=answer)

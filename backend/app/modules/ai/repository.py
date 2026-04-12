@@ -170,6 +170,80 @@ def extract_course_structure(pdf_bytes: bytes, language: str) -> dict:
     return parsed
 
 
+def generate_course_assist(
+    question: str,
+    course_title: str,
+    section_title: str,
+    section_content: str,
+    locale: str,
+) -> str:
+    """
+    Answer a student's question scoped strictly to the given lesson section.
+    If the question is off-topic, redirect the student back to the lesson.
+    """
+    api_key = settings.gemini_api_key.strip()
+
+    redirect_msg = (
+        "سؤالك لا يتعلق بمحتوى هذا الدرس. دعنا نركّز على ما نتعلمه الآن. هل لديك سؤال عن هذا الجزء؟"
+        if locale == "ar"
+        else "Your question doesn't seem related to this lesson. Let's stay focused! Do you have a question about this section?"
+    )
+
+    if not api_key:
+        return redirect_msg
+
+    has_content = bool(section_content.strip())
+    content_block = (
+        f"Section content:\n\"\"\"\n{section_content}\n\"\"\""
+        if has_content
+        else "(No section content available — answer based on the course title and section title only.)"
+    )
+
+    system_prompt = f"""You are a friendly and encouraging study assistant for students with dyslexia and ADHD.
+You are helping a student study this lesson:
+
+Course: {course_title}
+Section: {section_title}
+{content_block}
+
+Your job:
+- Answer any question that is about this course, this section, or the topics it covers. Be generous — if the question is even loosely related to the subject matter, answer it.
+- If the question is clearly about a completely different subject (e.g. asking about cooking when the course is about history), do NOT answer it. Instead, kindly encourage the student to ask something about the lesson.
+- Keep answers simple, short, and encouraging. Use plain language suitable for students with learning differences.
+- Respond in {locale} language.
+- Do not make up facts not supported by the section content. If you are unsure, say so honestly.
+
+Student question: {question}"""
+
+    endpoint = f"{_GEMINI_BASE_URL}/{_GEMINI_MODEL}:generateContent"
+    payload = {
+        "contents": [{"parts": [{"text": system_prompt}]}],
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 512,
+        },
+    }
+
+    try:
+        with httpx.Client(timeout=20.0) as client:
+            response = client.post(endpoint, params={"key": api_key}, json=payload)
+            response.raise_for_status()
+            data = response.json()
+    except httpx.HTTPStatusError as exc:
+        raise GeminiError(f"Gemini HTTP error {exc.response.status_code}: {exc.response.text}") from exc
+    except httpx.HTTPError as exc:
+        raise GeminiError(f"Gemini request failed: {exc}") from exc
+
+    candidates = data.get("candidates") or []
+    if not candidates:
+        raise GeminiError(f"Gemini returned no candidates. Full response: {data}")
+
+    parts = ((candidates[0].get("content") or {}).get("parts") or [])
+    text_parts = [part.get("text", "") for part in parts if part.get("text")]
+    rendered = "\n".join(text_parts).strip()
+    return rendered or redirect_msg
+
+
 def generate_text(prompt: str, locale: str, mode: str) -> str:
     api_key = settings.gemini_api_key.strip()
     if not api_key:

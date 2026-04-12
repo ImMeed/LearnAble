@@ -310,6 +310,37 @@ def delete_course(session: Session, current_user: CurrentUser, course_id: UUID) 
     session.commit()
 
 
+def course_assist(
+    session: Session,
+    course_id: UUID,
+    question: str,
+    section_title: str,
+    section_content: str,
+    locale: str,
+) -> str:
+    """
+    Answer a student question scoped to a specific section of a published course.
+
+    Raises:
+        HTTPException(404): course missing or not published.
+    """
+    course = repository.get_course_by_id(session, course_id)
+    if course is None or course.status != CourseStatus.PUBLISHED.value:
+        raise _http_error(status.HTTP_404_NOT_FOUND, "COURSE_NOT_FOUND", "Course not found")
+
+    try:
+        answer = ai_repository.generate_course_assist(
+            question=question,
+            course_title=course.title,
+            section_title=section_title,
+            section_content=section_content,
+            locale=locale,
+        )
+    except ai_repository.GeminiError as exc:
+        raise _http_error(status.HTTP_502_BAD_GATEWAY, "AI_UNAVAILABLE", str(exc)) from exc
+    return answer
+
+
 def list_published_courses_for_students(session: Session, language: str | None) -> list[CourseListItem]:
     """
     List published courses for authenticated users with optional language filter.

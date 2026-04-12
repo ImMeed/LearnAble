@@ -424,23 +424,20 @@ export function PdfCoursePageV2() {
     if (!message) return;
     setChatMessages((prev) => [...prev, { role: "user", text: message }]);
     setChatInput("");
-    // Use selected section content as context in the message
-    const context = selectedNode ? `[Section: ${selectedNode.title}]\n` : "";
     try {
-      // Reuse the general AI assist endpoint — send course context as question prefix
-      const response = await apiClient.post<{ answer?: string; content?: string }>(
+      const response = await apiClient.post<{ answer: string }>(
         `/courses/${courseId}/assist`,
-        { question: message, section_context: context },
+        {
+          question: message,
+          section_title: selectedNode?.title ?? "",
+          section_content: selectedNode?.content ?? "",
+          locale: i18n.resolvedLanguage === "en" ? "en" : "ar",
+        },
         requestConfig,
       );
-      const reply = response.data.answer ?? response.data.content ?? t("dashboards.course.aiNoResponse");
-      setChatMessages((prev) => [...prev, { role: "ai", text: reply }]);
-    } catch {
-      // Fallback: echo a placeholder so UI doesn't break
-      setChatMessages((prev) => [
-        ...prev,
-        { role: "ai", text: t("dashboards.course.aiUnavailable", { defaultValue: "AI assistant coming soon for PDF courses." }) },
-      ]);
+      setChatMessages((prev) => [...prev, { role: "ai", text: response.data.answer }]);
+    } catch (error) {
+      setChatMessages((prev) => [...prev, { role: "ai", text: errorMessage(error) }]);
     }
   };
 
