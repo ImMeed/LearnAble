@@ -262,48 +262,12 @@ a:focus-visible {
   margin-block: 0 0.35rem;
 }
 
-.a11y-toolbar {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--card) 86%, white 14%);
-  border-radius: 999px;
-  padding: 0.3rem;
-  flex-wrap: wrap;
-}
-
-.a11y-toolbar button {
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--foreground);
-  border-radius: 999px;
-  padding: 0.3rem 0.55rem;
-}
-
-.a11y-toolbar button.active {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-
-.toolbar-divider {
-  width: 1px;
-  height: 20px;
-  background: var(--border);
-}
-
-.toolbar-font-size {
-  min-width: 44px;
-  text-align: center;
-  font-size: 0.92rem;
-}
-
 .settings-backdrop {
   position: fixed;
   inset: 0;
   border: 0;
   background: rgba(0, 0, 0, 0.32);
-  z-index: 19;
+  z-index: 60;
   cursor: default;
 }
 
@@ -319,7 +283,7 @@ a:focus-visible {
   background: var(--card);
   box-shadow: 0 24px 44px rgba(0, 0, 0, 0.24);
   padding: 1rem;
-  z-index: 20;
+  z-index: 70;
 }
 
 .settings-panel-header,

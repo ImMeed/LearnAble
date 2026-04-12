@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { createPortal } from "react-dom";
 
 import { useAccessibility } from "./AccessibilityContext";
 
@@ -15,7 +16,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     return null;
   }
 
-  return (
+  return createPortal(
     <>
       <button type="button" className="settings-backdrop" aria-label={t("a11y.settings.close")} onClick={onClose} />
       <aside className="settings-panel" role="dialog" aria-modal="true" aria-label={t("a11y.settings.title")}>
@@ -197,6 +198,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </button>
         </footer>
       </aside>
-    </>
+    </>,
+    document.body,
   );
 }
