@@ -81,8 +81,8 @@ def main() -> None:
 
         # === Create economy records ===
         session.add(PointsWallet(user_id=demo_student.id, balance_points=100))
-        session.add(XpLedger(user_id=demo_student.id, earned_xp=50))
-        session.add(XpLedger(user_id=demo_tutor.id, earned_xp=200))
+        session.add(XpLedger(user_id=demo_student.id, xp_delta=50, reason="seed_demo_ar"))
+        session.add(XpLedger(user_id=demo_tutor.id, xp_delta=200, reason="seed_demo_ar"))
         session.flush()
 
         # === Study Module ===
@@ -228,7 +228,7 @@ def main() -> None:
             tutor_user_id=demo_tutor.id,
             topic="شرح درس القراءة",
             message="أحتاج مساعدة في فهم الجزء الثاني من الدرس",
-            status="PENDING",
+            status="REQUESTED",
         )
         session.add(assistance)
         session.flush()
