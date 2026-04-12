@@ -7,9 +7,8 @@ import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { StudentOnboardingPageV2 } from "./pages/StudentOnboarding";
 import { StudentDashboardPageV2 } from "./pages/StudentDashboard";
-import { CoursePageV2 } from "./pages/CoursePage";
+import { CoursePageV2, PdfCoursePageV2 } from "./pages/CoursePage";
 import { StudentCoursesListPage } from "./pages/StudentCoursesListPage";
-import { StudentCourseViewPage } from "./pages/StudentCourseViewPage";
 import { TeacherDashboardPageV2 } from "./pages/TeacherDashboard";
 import { TeacherCourseReviewPage } from "./pages/TeacherCourseReviewPage";
 import { ParentDashboardPageV2 } from "./pages/ParentDashboard";
@@ -75,7 +74,7 @@ export const router = createBrowserRouter([
     path: "/student/courses/:id",
     element: (
       <ProtectedRoute roles={["ROLE_STUDENT"]}>
-        <StudentCourseViewPage />
+        <PdfCoursePageV2 />
       </ProtectedRoute>
     ),
   },
@@ -155,7 +154,7 @@ export const router = createBrowserRouter([
     path: "/ar/student/courses/:id",
     element: (
       <ProtectedRoute roles={["ROLE_STUDENT"]}>
-        <StudentCourseViewPage />
+        <PdfCoursePageV2 />
       </ProtectedRoute>
     ),
   },
@@ -235,7 +234,7 @@ export const router = createBrowserRouter([
     path: "/en/student/courses/:id",
     element: (
       <ProtectedRoute roles={["ROLE_STUDENT"]}>
-        <StudentCourseViewPage />
+        <PdfCoursePageV2 />
       </ProtectedRoute>
     ),
   },

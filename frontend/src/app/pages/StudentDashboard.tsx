@@ -18,6 +18,13 @@ type LessonSummary = {
   difficulty: string;
 };
 
+type CourseListItem = {
+  id: string;
+  title: string;
+  language: "ar" | "en";
+  source_page_count: number;
+};
+
 type BadgeItem = {
   code: string;
   title: string;
@@ -156,6 +163,7 @@ export function StudentDashboardPageV2() {
 
   const [status, setStatus] = useState("");
   const [lessons, setLessons] = useState<LessonSummary[]>([]);
+  const [courses, setCourses] = useState<CourseListItem[]>([]);
   const [progression, setProgression] = useState<Progression | null>(null);
   const [goals, setGoals] = useState<GoalItem[]>([]);
   const [showTodoList, setShowTodoList] = useState(true);
@@ -221,14 +229,16 @@ export function StudentDashboardPageV2() {
   const loadDashboard = async () => {
     setStatus(t("dashboards.common.loading"));
     try {
-      const [lessonRes, progressionRes, activeTeachersRes, requestsRes] = await Promise.all([
+      const [lessonRes, progressionRes, activeTeachersRes, requestsRes, coursesRes] = await Promise.all([
         apiClient.get<{ items: LessonSummary[] }>("/study/lessons", requestConfig),
         apiClient.get<Progression>("/gamification/progression/me", requestConfig),
         apiClient.get<{ items: TeacherPresenceItem[] }>("/teacher/presence/active", requestConfig),
         apiClient.get<{ items: AssistanceRequestItem[] }>("/teacher/assistance/requests", requestConfig),
+        apiClient.get<CourseListItem[]>("/courses", requestConfig).catch(() => ({ data: [] as CourseListItem[] })),
       ]);
 
       setLessons(lessonRes.data.items || []);
+      setCourses(coursesRes.data ?? []);
       setProgression(progressionRes.data);
       setActiveTeachers(activeTeachersRes.data.items || []);
       setAssistanceRequests(requestsRes.data.items || []);
@@ -307,16 +317,11 @@ export function StudentDashboardPageV2() {
           <article className="card">
             <div className="section-title-row">
               <h2>{t("dashboards.studentV2.continueLearning")}</h2>
-              <div className="inline-actions">
-                <Link className="secondary-link" to={`${prefix}/student/courses`}>
-                  {t("student.dashboard.coursesLink")}
-                </Link>
-                {!settings.focusMode ? (
-                  <button type="button" className="secondary" onClick={() => setFocusMode(true)}>
-                    {t("dashboards.studentV2.enableFocusMode")}
-                  </button>
-                ) : null}
-              </div>
+              {!settings.focusMode ? (
+                <button type="button" className="secondary" onClick={() => setFocusMode(true)}>
+                  {t("dashboards.studentV2.enableFocusMode")}
+                </button>
+              ) : null}
             </div>
 
             <div className="lesson-grid">
@@ -332,6 +337,26 @@ export function StudentDashboardPageV2() {
                   <ProgressBar current={(index + 1) * 20} max={100} showPercentage={false} />
                 </Link>
               ))}
+
+              {courses.slice(0, 6).map((course) => (
+                <Link className="lesson-card" to={`${prefix}/student/courses/${course.id}`} key={course.id}>
+                  <div className="request-head-row">
+                    <div>
+                      <p className="lesson-subject">
+                        {course.language === "ar" ? t("student.courses.languageBadgeAr") : t("student.courses.languageBadgeEn")}
+                        {" · "}{course.source_page_count} {t("student.courses.pagesLabel", { count: course.source_page_count })}
+                      </p>
+                      <h3>{course.title}</h3>
+                    </div>
+                    <BookIcon />
+                  </div>
+                  <ProgressBar current={0} max={100} showPercentage={false} />
+                </Link>
+              ))}
+
+              {visibleLessons.length === 0 && courses.length === 0 ? (
+                <p className="muted">{t("dashboards.studentV2.noLessons", { defaultValue: "No lessons yet." })}</p>
+              ) : null}
             </div>
           </article>
 
