@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, Moon, Settings, Sun, Type} from "lucide-react";
+import { BookOpen, Moon, Settings, Sun, Type, ZoomIn, ZoomOut } from "lucide-react";
 
 import { useAccessibility } from "../../features/accessibility/AccessibilityContext";
 import { SettingsPanel } from "../../features/accessibility/SettingsPanel";
@@ -23,7 +23,7 @@ export function AccessibilityToolbar() {
   return (
     <>
       <section
-        className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-[1.25rem] border border-border bg-card px-2 py-2 shadow-[var(--shadow-soft)] sm:flex-nowrap sm:justify-start"
+        className="a11y-toolbar inline-flex max-w-full items-center justify-start gap-1.5 overflow-x-auto rounded-[1.25rem] border border-border bg-card px-2 py-2 shadow-[var(--shadow-soft)]"
         aria-label={t("a11y.toolbar.label")}
       >
         <button
@@ -79,9 +79,7 @@ export function AccessibilityToolbar() {
           aria-label={t("a11y.toolbar.decreaseFont")}
           title={t("a11y.toolbar.decreaseFont")}
         >
-          <span aria-hidden="true" className="text-[14px] font-semibold tracking-[-0.02em]">
-            A-
-          </span>
+          <ZoomOut aria-hidden="true" className="h-4 w-4" />
         </button>
         <span className="min-w-[58px] rounded-full bg-background px-3 py-2 text-center text-[14px] font-medium leading-none text-muted-foreground">
           {settings.fontSize}px
@@ -93,9 +91,7 @@ export function AccessibilityToolbar() {
           aria-label={t("a11y.toolbar.increaseFont")}
           title={t("a11y.toolbar.increaseFont")}
         >
-          <span aria-hidden="true" className="text-[14px] font-semibold tracking-[-0.02em]">
-            A+
-          </span>
+          <ZoomIn aria-hidden="true" className="h-4 w-4" />
         </button>
 
         <span className="hidden h-5 w-px bg-border sm:block" />

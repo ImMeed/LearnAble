@@ -55,6 +55,9 @@ export function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const locale = getInitialLocale(location.pathname);
+  const inputDirection = locale === "ar" ? "rtl" : "ltr";
+  const fieldIconPosition = locale === "ar" ? "right-4 left-auto" : "left-4 right-auto";
+  const fieldInputPadding = locale === "ar" ? "!pr-11 !pl-4 text-right" : "!pl-11 !pr-4 text-left";
   const prefix = locale === "en" ? "/en" : "/ar";
 
   const [mode, setMode] = useState<Mode>("login");
@@ -163,92 +166,83 @@ export function LoginPage() {
         </div>
 
         <article className={cx(surfaceClass, "mt-8 w-full max-w-[32rem] p-6 sm:p-8")}>
-          <div className="hidden mb-6 grid grid-cols-2 gap-2 rounded-[1.1rem] bg-background p-1">
-            <button
-              type="button"
-              className={cx(
-                "min-h-11 rounded-[0.9rem] px-4 py-2 text-sm font-semibold transition duration-200",
-                mode === "login"
-                  ? "bg-primary text-primary-foreground shadow-[0_10px_22px_rgba(74,144,226,0.22)]"
-                  : "bg-transparent text-muted-foreground hover:bg-card hover:text-foreground",
-              )}
-              onClick={() => switchMode("login")}
-            >
-              {t("common.signIn")}
-            </button>
-            <button
-              type="button"
-              className={cx(
-                "min-h-11 rounded-[0.9rem] px-4 py-2 text-sm font-semibold transition duration-200",
-                mode === "register"
-                  ? "bg-secondary text-secondary-foreground shadow-[0_10px_22px_rgba(111,207,151,0.22)]"
-                  : "bg-transparent text-muted-foreground hover:bg-card hover:text-foreground",
-              )}
-              onClick={() => switchMode("register")}
-            >
-              {t("login.createAccount")}
-            </button>
-          </div>
+          {mode === "register" ? (
+            <>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("login.roleLabel")}</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" role="radiogroup" aria-label={t("login.roleLabel")}>
+                {ROLE_CHOICES.map((role) => {
+                  const isSelected = role.id === selectedRole;
+                  const RoleIcon = role.Icon;
+                  return (
+                    <button
+                      key={role.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      className={cx(
+                        "flex !min-h-28 flex-col items-center justify-center gap-3 !rounded-[1rem] !border !px-3 !py-4 text-center transition duration-200",
+                        isSelected
+                          ? "!border-primary !bg-primary/10 shadow-[0_14px_28px_rgba(74,144,226,0.14)]"
+                          : "!border-border !bg-background hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(33,40,55,0.08)]",
+                      )}
+                      onClick={() => setSelectedRole(role.id)}
+                    >
+                      <span
+                        className={cx(
+                          "inline-flex h-11 w-11 items-center justify-center rounded-full border",
+                          isSelected ? "border-primary bg-card text-primary" : "border-border bg-card text-muted-foreground",
+                        )}
+                        aria-hidden="true"
+                      >
+                        <RoleIcon className="h-5 w-5" />
+                      </span>
+                      <span className="text-sm font-semibold text-foreground">{t(role.labelKey)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : null}
 
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("login.roleLabel")}</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" role="radiogroup" aria-label={t("login.roleLabel")}>
-            {ROLE_CHOICES.map((role) => {
-              const isSelected = role.id === selectedRole;
-              const RoleIcon = role.Icon;
-              return (
-                <button
-                  key={role.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
+          <form className={cx(mode === "register" ? "mt-6" : "mt-2", "grid gap-4")} onSubmit={(event) => void onSubmit(event)}>
+            <label className={cx(locale === "ar" ? "text-right" : "text-left") }>
+              <span className={cx("mb-2 block text-sm font-semibold text-foreground", locale === "ar" ? "text-right" : "text-left")}>{t("login.emailLabel")}</span>
+              <div className="relative" dir={inputDirection}>
+                <Mail
                   className={cx(
-                    "flex !min-h-28 flex-col items-center justify-center gap-3 !rounded-[1rem] !border !px-3 !py-4 text-center transition duration-200",
-                    isSelected
-                      ? "!border-primary !bg-primary/10 shadow-[0_14px_28px_rgba(74,144,226,0.14)]"
-                      : "!border-border !bg-background hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(33,40,55,0.08)]",
+                    "pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground",
+                    fieldIconPosition,
                   )}
-                  onClick={() => setSelectedRole(role.id)}
-                >
-                  <span
-                    className={cx(
-                      "inline-flex h-11 w-11 items-center justify-center rounded-full border",
-                      isSelected ? "border-primary bg-card text-primary" : "border-border bg-card text-muted-foreground",
-                    )}
-                    aria-hidden="true"
-                  >
-                    <RoleIcon className="h-5 w-5" />
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">{t(role.labelKey)}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <form className="mt-6 grid gap-4" onSubmit={(event) => void onSubmit(event)}>
-            <label>
-              <span className="mb-2 block text-sm font-semibold text-foreground">{t("login.emailLabel")}</span>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                  aria-hidden="true"
+                />
                 <input
-                  className={cx(inputClass, "!pl-11")}
+                  className={cx(inputClass, fieldInputPadding)}
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder={t("login.emailPlaceholder")}
+                  dir={inputDirection}
                   required
                 />
               </div>
             </label>
-            <label>
-              <span className="mb-2 block text-sm font-semibold text-foreground">{t("login.passwordLabel")}</span>
-              <div className="relative">
-                <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <label className={cx(locale === "ar" ? "text-right" : "text-left") }>
+              <span className={cx("mb-2 block text-sm font-semibold text-foreground", locale === "ar" ? "text-right" : "text-left")}>{t("login.passwordLabel")}</span>
+              <div className="relative" dir={inputDirection}>
+                <Lock
+                  className={cx(
+                    "pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground",
+                    fieldIconPosition,
+                  )}
+                  aria-hidden="true"
+                />
                 <input
-                  className={cx(inputClass, "!pl-11")}
+                  className={cx(inputClass, fieldInputPadding)}
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder={t("login.passwordPlaceholder")}
+                  dir={inputDirection}
                   minLength={8}
                   required
                 />

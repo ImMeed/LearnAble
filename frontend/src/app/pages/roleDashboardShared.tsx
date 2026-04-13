@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { BookOpen, CalendarDays, ClipboardList, LayoutDashboard, MessageSquare, School, type LucideIcon } from "lucide-react";
+import { BookOpen, CalendarDays, ClipboardList, LayoutDashboard, LogOut, MessageSquare, School, type LucideIcon } from "lucide-react";
 
 import { AccessibilityToolbar } from "../components/AccessibilityToolbar";
 import { BrandLogo } from "../components/BrandLogo";
-import { actionClass, cx, surfaceClass } from "../components/uiStyles";
-import { clearSession, getSession } from "../../state/auth";
+import { cx, surfaceClass } from "../components/uiStyles";
+import { clearSession } from "../../state/auth";
 
 export type NotificationItem = {
   id: string;
@@ -120,7 +120,6 @@ export function DashboardShell({
 }) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const session = getSession();
 
   const onLogout = () => {
     clearSession();
@@ -136,27 +135,31 @@ export function DashboardShell({
         )}
       >
         <div className="portal-brand">
-          <div className="flex items-start gap-4">
-            <BrandLogo className="shrink-0 text-primary" size={40} />
-            <div>
-              <h1 className="text-[clamp(1.8rem,2.4vw,2.5rem)] font-semibold tracking-[-0.04em] text-foreground">
-                {t("appTitle")}
-              </h1>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">{subtitle}</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                {t("dashboards.shell.activeRole", { role: session?.role ?? t("dashboards.common.none") })}
-              </p>
+          <Link className="portal-brand-link" to={localePrefix(i18n.resolvedLanguage)} aria-label={t("dashboards.shell.backHome")}>
+            <div className="flex items-start gap-4">
+              <BrandLogo className="shrink-0 text-primary" size={40} />
+              <div>
+                <h1 className="text-[clamp(1.8rem,2.4vw,2.5rem)] font-semibold tracking-[-0.04em] text-foreground">
+                  {t("appTitle")}
+                </h1>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{subtitle}</p>
+              </div>
             </div>
-          </div>
-        </div>
-        <div className="dashboard-header-actions flex flex-wrap items-center gap-3">
-          <Link className={actionClass("soft")} to={localePrefix(i18n.resolvedLanguage)}>
-            {t("dashboards.shell.backHome")}
           </Link>
-          <button type="button" className={actionClass("soft")} onClick={onLogout}>
-            {t("dashboards.shell.logout")}
+        </div>
+        <div className="dashboard-header-actions">
+          <div className="dashboard-header-toolbar-wrap">
+            <AccessibilityToolbar />
+          </div>
+          <button
+            type="button"
+            className="dashboard-logout-icon"
+            onClick={onLogout}
+            aria-label={t("dashboards.shell.logout")}
+            title={t("dashboards.shell.logout")}
+          >
+            <LogOut aria-hidden="true" size={18} />
           </button>
-          <AccessibilityToolbar />
         </div>
       </section>
 
@@ -181,17 +184,12 @@ export function TeacherTabs({ active, onChange }: { active: TeacherTab; onChange
   ];
 
   return (
-    <nav className="flex flex-wrap gap-3" aria-label={t("dashboards.teacher.tabsLabel")}>
+    <nav className="teacher-tabbar" aria-label={t("dashboards.teacher.tabsLabel")}>
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={cx(
-            "inline-flex min-h-11 items-center gap-2 rounded-[1rem] border px-4 py-2.5 text-sm font-semibold transition duration-200",
-            active === tab.id
-              ? "border-primary bg-primary text-primary-foreground shadow-[0_12px_26px_rgba(74,144,226,0.22)]"
-              : "border-border bg-card text-foreground hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(33,40,55,0.08)]",
-          )}
+          className={cx("teacher-tab", active === tab.id && "is-active")}
           onClick={() => onChange(tab.id)}
         >
           <tab.Icon className="h-4 w-4" aria-hidden="true" />
