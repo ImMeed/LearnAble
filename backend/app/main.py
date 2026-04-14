@@ -64,6 +64,20 @@ _GLOBAL_LIMIT = 200
 _WINDOW = 60  # seconds
 
 
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    """Reject requests whose Content-Length header exceeds 1 MB."""
+    _MAX_BODY = 1_048_576  # 1 MB
+
+    async def dispatch(self, request: Request, call_next):
+        cl = request.headers.get("content-length")
+        if cl is not None and int(cl) > self._MAX_BODY:
+            return JSONResponse(
+                status_code=413,
+                content={"code": "PAYLOAD_TOO_LARGE", "message": "Request body exceeds 1 MB limit."},
+            )
+        return await call_next(request)
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """
     In-memory per-IP rate limiter.
@@ -106,9 +120,24 @@ def create_app() -> FastAPI:
         format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
     )
 
+    async def _purge_old_login_attempts():
+        """Background task: purge login_attempts older than 90 days, every 24 hours."""
+        while True:
+            await asyncio.sleep(24 * 60 * 60)
+            from app.db.session import SessionLocal
+            from app.modules.auth.lockout import purge_old_attempts
+            session = SessionLocal()
+            try:
+                purge_old_attempts(session, days=90)
+            except Exception:
+                session.rollback()
+            finally:
+                session.close()
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         asyncio.create_task(_cleanup_stale_rooms())
+        asyncio.create_task(_purge_old_login_attempts())
         yield
 
     app = FastAPI(
@@ -138,6 +167,9 @@ def create_app() -> FastAPI:
     # ── Rate limiting ─────────────────────────────────────────────────────────
     app.add_middleware(RateLimitMiddleware)
 
+    # ── Request body size limit ───────────────────────────────────────────────
+    app.add_middleware(RequestSizeLimitMiddleware)
+
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(auth_router)
     app.include_router(users_router)
@@ -152,19 +184,6 @@ def create_app() -> FastAPI:
     app.include_router(psychologist_router)
     app.include_router(call_http_router)
     app.include_router(call_router)
-
-    # Allow browser clients from local Vite dev servers to call the API.
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3001",
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-        ],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
     # ── Existing middleware ───────────────────────────────────────────────────
     @app.middleware("http")

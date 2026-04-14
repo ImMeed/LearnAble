@@ -109,7 +109,8 @@ def login_with_otp(session: Session, payload: LoginWithOTPRequest, locale: str) 
     if not secret_row:
         raise localized_http_exception(status.HTTP_401_UNAUTHORIZED, "INVALID_CREDENTIALS", locale)
 
-    if not totp_service.verify_totp_code(secret_row.secret, payload.otp_code):
+    plain_secret = totp_service.decrypt_totp_secret(secret_row)
+    if not totp_service.verify_totp_code(plain_secret, payload.otp_code):
         raise localized_http_exception(status.HTTP_401_UNAUTHORIZED, "INVALID_OTP", locale)
 
     if totp_service.is_totp_code_used(session, user.id, payload.otp_code):
@@ -139,7 +140,8 @@ def confirm_2fa(session: Session, user_id, payload: Verify2FARequest, locale: st
     if not secret_row:
         raise localized_http_exception(status.HTTP_400_BAD_REQUEST, "TOTP_NOT_INITIALIZED", locale)
 
-    if not totp_service.verify_totp_code(secret_row.secret, payload.code):
+    plain_secret = totp_service.decrypt_totp_secret(secret_row)
+    if not totp_service.verify_totp_code(plain_secret, payload.code):
         raise localized_http_exception(status.HTTP_401_UNAUTHORIZED, "INVALID_OTP", locale)
 
     if totp_service.is_totp_code_used(session, user_id, payload.code):
@@ -159,10 +161,11 @@ def disable_2fa(session: Session, user_id, payload: Verify2FARequest, locale: st
     if not secret_row:
         raise localized_http_exception(status.HTTP_400_BAD_REQUEST, "TOTP_NOT_INITIALIZED", locale)
 
+    plain_secret = totp_service.decrypt_totp_secret(secret_row)
     if totp_service.is_totp_code_used(session, user_id, payload.code):
         raise localized_http_exception(status.HTTP_401_UNAUTHORIZED, "INVALID_OTP", locale)
 
-    if not totp_service.verify_totp_code(secret_row.secret, payload.code):
+    if not totp_service.verify_totp_code(plain_secret, payload.code):
         raise localized_http_exception(status.HTTP_401_UNAUTHORIZED, "INVALID_OTP", locale)
 
     totp_service.consume_totp_code(session, user_id, payload.code)

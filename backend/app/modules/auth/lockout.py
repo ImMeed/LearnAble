@@ -85,3 +85,15 @@ def clear_failed_attempts(session: Session, user: User) -> None:
         LoginAttempt.success == False,  # noqa: E712
     ).delete(synchronize_session=False)
     session.commit()
+
+
+def purge_old_attempts(session: Session, days: int = 90) -> int:
+    """Delete login_attempts older than `days` days. Returns the number of rows deleted."""
+    cutoff = _now() - timedelta(days=days)
+    deleted = (
+        session.query(LoginAttempt)
+        .filter(LoginAttempt.attempted_at < cutoff)
+        .delete(synchronize_session=False)
+    )
+    session.commit()
+    return deleted

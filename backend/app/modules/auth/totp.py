@@ -4,6 +4,7 @@ from io import BytesIO
 
 import pyotp
 import qrcode
+from cryptography.fernet import Fernet
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -11,6 +12,27 @@ from app.db.models.security_models import TotpSecret, UsedTotpCode
 
 # valid_window=2 → ±2 windows around now = 5 windows × 30s = 150s total tolerance.
 _REPLAY_WINDOW_SECONDS = 150
+
+
+# ── Encryption helpers ────────────────────────────────────────────────────────
+
+def _get_fernet() -> Fernet:
+    return Fernet(settings.totp_encryption_key.encode())
+
+
+def _encrypt_secret(plaintext: str) -> str:
+    """Encrypt a TOTP base32 secret before persisting it."""
+    return _get_fernet().encrypt(plaintext.encode()).decode()
+
+
+def _decrypt_secret(ciphertext: str) -> str:
+    """Decrypt a stored TOTP secret back to its base32 plaintext."""
+    return _get_fernet().decrypt(ciphertext.encode()).decode()
+
+
+def decrypt_totp_secret(row: TotpSecret) -> str:
+    """Return the decrypted plaintext secret from a TotpSecret ORM row."""
+    return _decrypt_secret(row.secret)
 
 
 def generate_totp_secret() -> str:
@@ -73,13 +95,14 @@ def consume_totp_code(session: Session, user_id, code: str) -> None:
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
 def save_totp_secret(session: Session, user_id, secret: str) -> TotpSecret:
-    """Persist (or replace) a user's TOTP secret."""
+    """Persist (or replace) a user's TOTP secret (stored encrypted)."""
+    encrypted = _encrypt_secret(secret)
     existing = session.query(TotpSecret).filter_by(user_id=user_id).first()
     if existing:
-        existing.secret = secret
+        existing.secret = encrypted
         session.commit()
         return existing
-    record = TotpSecret(user_id=user_id, secret=secret)
+    record = TotpSecret(user_id=user_id, secret=encrypted)
     session.add(record)
     session.commit()
     return record

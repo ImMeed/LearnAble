@@ -14,3 +14,5 @@ pytest-asyncio==0.26.0
 pyotp
 qrcode
 pillow
+cryptography
+nh3

@@ -2,9 +2,15 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+import nh3
+from pydantic import BaseModel, Field, field_validator
 
 from app.db.models.forum import ForumPostStatus, ForumReportStatus, ForumTargetType
+
+
+def _strip_html(v: str) -> str:
+    """Remove all HTML tags, keeping plain text only."""
+    return nh3.clean(v, tags=set())
 
 
 class ForumSpaceCreateRequest(BaseModel):
@@ -13,6 +19,11 @@ class ForumSpaceCreateRequest(BaseModel):
     name_en: str = Field(min_length=2, max_length=160)
     description_ar: str = Field(min_length=2, max_length=700)
     description_en: str = Field(min_length=2, max_length=700)
+
+    @field_validator("name_ar", "name_en", "description_ar", "description_en", mode="before")
+    @classmethod
+    def sanitize_space_text(cls, v: str) -> str:
+        return _strip_html(v)
 
 
 class ForumSpaceItem(BaseModel):
@@ -30,6 +41,11 @@ class SpaceListResponse(BaseModel):
 class ForumPostCreateRequest(BaseModel):
     title: str = Field(min_length=3, max_length=220)
     content: str = Field(min_length=3, max_length=4000)
+
+    @field_validator("title", "content", mode="before")
+    @classmethod
+    def sanitize_post_text(cls, v: str) -> str:
+        return _strip_html(v)
 
 
 class ForumPostItem(BaseModel):
@@ -51,6 +67,11 @@ class ForumPostListResponse(BaseModel):
 
 class ForumCommentCreateRequest(BaseModel):
     content: str = Field(min_length=2, max_length=2000)
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def sanitize_comment_text(cls, v: str) -> str:
+        return _strip_html(v)
 
 
 class ForumCommentItem(BaseModel):
@@ -86,6 +107,11 @@ class ForumReportCreateRequest(BaseModel):
     target_type: ForumTargetType
     target_id: UUID
     reason: str = Field(min_length=3, max_length=1000)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def sanitize_reason(cls, v: str) -> str:
+        return _strip_html(v)
 
 
 class ForumReportItem(BaseModel):

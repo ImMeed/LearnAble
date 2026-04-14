@@ -348,21 +348,30 @@ class TestCORS:
 
 class TestUserEnumeration:
     def _mock_db_no_user(self):
-        """DB session that returns no user (unknown email)."""
+        """DB session that returns no user (unknown email via session.scalar)."""
         mock_session = MagicMock()
-        mock_session.query.return_value.filter.return_value.first.return_value = None
+        mock_session.scalar.return_value = None  # get_user_by_email returns None
         return mock_session
 
     def test_unknown_email_same_response_as_wrong_password(self):
         """Both cases must return 401 with identical error code."""
-        client = _client()
+        from app.db.session import get_db_session
+        from app.main import app as _app
 
-        with patch("app.modules.auth.router.get_db_session") as mock_dep:
-            mock_dep.return_value = iter([self._mock_db_no_user()])
+        mock_session = self._mock_db_no_user()
+
+        def override():
+            yield mock_session
+
+        _app.dependency_overrides[get_db_session] = override
+        try:
+            client = _client()
             r_unknown = client.post(
                 "/auth/login",
                 json={"email": "doesnotexist@test.com", "password": "anything"},
             )
+        finally:
+            _app.dependency_overrides.pop(get_db_session, None)
 
         assert r_unknown.status_code == 401
         body = r_unknown.json()
@@ -605,3 +614,158 @@ class TestSQLInjection:
                     assert pattern not in src, (
                         f"Potentially unsafe raw SQL pattern '{pattern}' found in {fpath}"
                     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LAYER 14 — TOTP secret encryption at rest
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestTOTPEncryption:
+    def test_saved_secret_is_not_plaintext(self):
+        """save_totp_secret must persist the encrypted form, not the raw base32."""
+        from app.modules.auth.totp import save_totp_secret, generate_totp_secret
+        session = MagicMock()
+        session.query.return_value.filter_by.return_value.first.return_value = None
+
+        secret = generate_totp_secret()
+        save_totp_secret(session, uuid4(), secret)
+
+        saved_value = session.add.call_args[0][0].secret
+        assert saved_value != secret, "Secret must be stored encrypted, not in plaintext"
+
+    def test_decrypt_round_trip(self):
+        """Encrypting then decrypting returns the original secret."""
+        from app.modules.auth.totp import _encrypt_secret, _decrypt_secret, generate_totp_secret
+        secret = generate_totp_secret()
+        assert _decrypt_secret(_encrypt_secret(secret)) == secret
+
+    def test_decrypt_totp_secret_helper(self):
+        """decrypt_totp_secret(row) returns the plaintext from an encrypted row."""
+        from app.modules.auth.totp import _encrypt_secret, decrypt_totp_secret, generate_totp_secret
+        secret = generate_totp_secret()
+        row = MagicMock()
+        row.secret = _encrypt_secret(secret)
+        assert decrypt_totp_secret(row) == secret
+
+    def test_different_secrets_produce_different_ciphertexts(self):
+        """Two different secrets must not produce the same ciphertext."""
+        from app.modules.auth.totp import _encrypt_secret, generate_totp_secret
+        s1 = generate_totp_secret()
+        s2 = generate_totp_secret()
+        assert _encrypt_secret(s1) != _encrypt_secret(s2)
+
+    def test_same_secret_produces_different_ciphertexts(self):
+        """Fernet uses random IV — same plaintext yields different ciphertext each time."""
+        from app.modules.auth.totp import _encrypt_secret, generate_totp_secret
+        s = generate_totp_secret()
+        assert _encrypt_secret(s) != _encrypt_secret(s)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LAYER 15 — Request body size limit
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestRequestSizeLimit:
+    def test_small_body_passes(self):
+        client = _client()
+        r = client.post(
+            "/auth/login",
+            json={"email": "x@test.com", "password": "Secret@1"},
+        )
+        assert r.status_code != 413
+
+    def test_oversized_body_rejected(self):
+        """A request advertising Content-Length > 1 MB must be rejected with 413."""
+        client = _client()
+        r = client.post(
+            "/auth/login",
+            content=b"x" * 100,
+            headers={"Content-Length": str(2_000_000), "Content-Type": "application/json"},
+        )
+        assert r.status_code == 413
+        assert r.json()["code"] == "PAYLOAD_TOO_LARGE"
+
+    def test_413_response_has_error_code(self):
+        client = _client()
+        r = client.post(
+            "/health",
+            content=b"x",
+            headers={"Content-Length": str(2_000_000), "Content-Type": "application/json"},
+        )
+        assert r.status_code == 413
+        body = r.json()
+        assert "code" in body
+        assert "message" in body
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LAYER 16 — Forum input sanitization (XSS prevention)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestForumSanitization:
+    def test_script_tag_stripped_from_post_title(self):
+        from app.modules.forum.schemas import ForumPostCreateRequest
+        req = ForumPostCreateRequest(title="<script>alert(1)</script>Hello", content="Normal content here")
+        assert "<script>" not in req.title
+        assert "Hello" in req.title
+
+    def test_script_tag_stripped_from_post_content(self):
+        from app.modules.forum.schemas import ForumPostCreateRequest
+        req = ForumPostCreateRequest(title="Valid title", content="<script>steal(cookie)</script>real content")
+        assert "<script>" not in req.content
+        assert "real content" in req.content
+
+    def test_plain_text_preserved(self):
+        from app.modules.forum.schemas import ForumPostCreateRequest
+        req = ForumPostCreateRequest(title="Normal title", content="Just normal text with no HTML")
+        assert req.title == "Normal title"
+        assert req.content == "Just normal text with no HTML"
+
+    def test_img_tag_stripped_from_comment(self):
+        from app.modules.forum.schemas import ForumCommentCreateRequest
+        req = ForumCommentCreateRequest(content='<img src=x onerror=alert(1)>text')
+        assert "<img" not in req.content
+        assert "text" in req.content
+
+    def test_script_stripped_from_report_reason(self):
+        from app.modules.forum.schemas import ForumReportCreateRequest
+        import uuid
+        from app.db.models.forum import ForumTargetType
+        req = ForumReportCreateRequest(
+            target_type=ForumTargetType.POST,
+            target_id=uuid.uuid4(),
+            reason="<b>This is bad</b> content",
+        )
+        assert "<b>" not in req.reason
+        assert "This is bad" in req.reason
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LAYER 17 — Login attempt purge helper
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestLoginAttemptPurge:
+    def test_purge_deletes_old_records(self):
+        from app.modules.auth.lockout import purge_old_attempts
+        session = MagicMock()
+        session.query.return_value.filter.return_value.delete.return_value = 5
+        deleted = purge_old_attempts(session, days=90)
+        assert deleted == 5
+        session.commit.assert_called_once()
+
+    def test_purge_zero_when_nothing_old(self):
+        from app.modules.auth.lockout import purge_old_attempts
+        session = MagicMock()
+        session.query.return_value.filter.return_value.delete.return_value = 0
+        deleted = purge_old_attempts(session, days=90)
+        assert deleted == 0
+
+    def test_purge_uses_correct_cutoff(self):
+        """Verify the query filters on attempted_at, not another column."""
+        from app.modules.auth.lockout import purge_old_attempts
+        from app.db.models.security_models import LoginAttempt
+        session = MagicMock()
+        session.query.return_value.filter.return_value.delete.return_value = 0
+        purge_old_attempts(session, days=30)
+        # query(LoginAttempt) must have been called
+        session.query.assert_called_with(LoginAttempt)

@@ -39,6 +39,20 @@ class Settings(BaseSettings):
 
     # 2FA / TOTP
     totp_issuer: str = "LearnAble"
+    totp_encryption_key: str  # required — Fernet key (44-char base64url)
+
+    @field_validator("totp_encryption_key")
+    @classmethod
+    def validate_totp_encryption_key(cls, v: str) -> str:
+        from cryptography.fernet import Fernet, InvalidToken
+        try:
+            Fernet(v.encode())
+        except Exception:
+            raise ValueError(
+                "TOTP_ENCRYPTION_KEY must be a valid Fernet key. "
+                "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            )
+        return v
 
     # Login lockout
     lockout_max_attempts: int = 10
