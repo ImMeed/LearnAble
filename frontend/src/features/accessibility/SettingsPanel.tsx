@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Bell, BookOpen, Crosshair, Palette, Settings, Timer, X, type LucideIcon } from "lucide-react";
+import { Bell, BookOpen, Crosshair, Palette, Settings, ShieldCheck, Timer, X, type LucideIcon } from "lucide-react";
 
+import { confirm2FA, disable2FA, enable2FA, get2FAStatus, type Enable2FAResponse } from "../../api/authApi";
+import { OtpInput, type OtpStatus } from "../../app/components/OtpInput";
 import { useAccessibility } from "./AccessibilityContext";
 
 type SettingsPanelProps = {
@@ -10,7 +12,188 @@ type SettingsPanelProps = {
   onClose: () => void;
 };
 
-type SettingsSectionId = "reading" | "focus" | "timer" | "theme" | "notifications";
+type SettingsSectionId = "reading" | "focus" | "timer" | "theme" | "notifications" | "security";
+
+function readError(error: unknown): string {
+  if (typeof error === "object" && error && "response" in error) {
+    const payload = (error as { response?: { data?: unknown } }).response?.data;
+    if (typeof payload === "object" && payload && "detail" in payload) {
+      const detail = (payload as { detail?: unknown }).detail;
+      if (typeof detail === "object" && detail && "message" in detail)
+        return String((detail as { message?: unknown }).message);
+      if (typeof detail === "string") return detail;
+    }
+    if (typeof payload === "object" && payload && "message" in payload)
+      return String((payload as { message: unknown }).message);
+  }
+  return String(error);
+}
+
+function TwoFASection() {
+  const { t } = useTranslation();
+  type Step = "idle" | "enabling-loading" | "enabling-scan" | "enabling-confirm" | "disabling-confirm" | "success" | "error";
+  const [totpEnabled, setTotpEnabled] = useState<boolean | null>(null);
+  const [step, setStep] = useState<Step>("idle");
+  const [qrData, setQrData] = useState<Enable2FAResponse | null>(null);
+  const [code, setCode] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [otpStatus, setOtpStatus] = useState<OtpStatus>("idle");
+
+  useEffect(() => {
+    get2FAStatus()
+      .then((data) => setTotpEnabled(data.totp_enabled))
+      .catch(() => setTotpEnabled(false));
+  }, []);
+
+  const handleEnable = async () => {
+    setStep("enabling-loading");
+    setStatusMsg("");
+    try {
+      const data = await enable2FA();
+      setQrData(data);
+      setStep("enabling-scan");
+    } catch (err) {
+      setStatusMsg(readError(err));
+      setStep("error");
+    }
+  };
+
+  const doConfirmEnable = async () => {
+    if (code.length !== 6 || otpStatus === "pending" || otpStatus === "success") return;
+    setOtpStatus("pending");
+    setBusy(true);
+    try {
+      await confirm2FA(code);
+      setOtpStatus("success");
+      setTotpEnabled(true);
+      setStatusMsg(t("settings.2fa.enabledSuccess"));
+      setCode("");
+      setQrData(null);
+      setTimeout(() => setStep("success"), 800);
+    } catch (err) {
+      setOtpStatus("error");
+      setStatusMsg(readError(err));
+      setTimeout(() => { setCode(""); setOtpStatus("idle"); }, 1800);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doConfirmDisable = async () => {
+    if (code.length !== 6 || otpStatus === "pending" || otpStatus === "success") return;
+    setOtpStatus("pending");
+    setBusy(true);
+    try {
+      await disable2FA(code);
+      setOtpStatus("success");
+      setTotpEnabled(false);
+      setStatusMsg(t("settings.2fa.disabledSuccess"));
+      setCode("");
+      setTimeout(() => setStep("success"), 800);
+    } catch (err) {
+      setOtpStatus("error");
+      setStatusMsg(readError(err));
+      setTimeout(() => { setCode(""); setOtpStatus("idle"); }, 1800);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resetFlow = () => {
+    setStep("idle");
+    setCode("");
+    setQrData(null);
+    setStatusMsg("");
+    setOtpStatus("idle");
+  };
+
+  return (
+    <div className="settings-pane-stack">
+      <h4 className="settings-pane-title">{t("a11y.settings.sections.security")}</h4>
+      <div className="settings-pane-card twofa-panel-content">
+        <div className="twofa-panel-header">
+          <ShieldCheck size={20} aria-hidden="true" />
+          <strong>{t("settings.2fa.title")}</strong>
+        </div>
+        <p className="muted" style={{ marginBottom: "1rem" }}>{t("settings.2fa.description")}</p>
+
+        {totpEnabled === null && <p className="muted">{t("common.loading")}</p>}
+
+        {totpEnabled !== null && step === "idle" && (
+          <div className="settings-2fa-status">
+            <span className={`status-badge ${totpEnabled ? "status-badge-on" : "status-badge-off"}`}>
+              {totpEnabled ? t("settings.2fa.statusEnabled") : t("settings.2fa.statusDisabled")}
+            </span>
+            {totpEnabled ? (
+              <button type="button" className="btn-danger" onClick={() => { setStep("disabling-confirm"); setStatusMsg(""); }}>
+                {t("settings.2fa.disableBtn")}
+              </button>
+            ) : (
+              <button type="button" onClick={() => void handleEnable()}>
+                {t("settings.2fa.enableBtn")}
+              </button>
+            )}
+          </div>
+        )}
+
+        {step === "enabling-loading" && <p className="muted">{t("common.loading")}</p>}
+
+        {step === "enabling-scan" && qrData && (
+          <div className="twofa-setup">
+            <p>{t("settings.2fa.scanInstruction")}</p>
+            <img src={`data:image/png;base64,${qrData.qr_code_base64}`} alt="2FA QR Code" className="qr-code-img" />
+            <p className="muted">{t("settings.2fa.manualEntry")}</p>
+            <code className="totp-secret">{qrData.secret}</code>
+            <button type="button" onClick={() => setStep("enabling-confirm")}>{t("settings.2fa.nextBtn")}</button>
+          </div>
+        )}
+
+        {step === "enabling-confirm" && (
+          <form className="stack-form" onSubmit={(e: FormEvent) => { e.preventDefault(); void doConfirmEnable(); }}>
+            <p style={{ textAlign: "center" }}>{t("settings.2fa.enterCodeInstruction")}</p>
+            <OtpInput value={code} onChange={(v) => { setCode(v); if (otpStatus === "error") setOtpStatus("idle"); if (v.length === 6 && otpStatus === "idle") setTimeout(() => void doConfirmEnable(), 0); }} status={otpStatus} autoFocus />
+            {statusMsg && otpStatus === "error" && <p className="status-line" style={{ textAlign: "center" }}>{statusMsg}</p>}
+            {otpStatus !== "success" && (
+              <button type="submit" disabled={busy || code.length !== 6 || otpStatus === "pending"}>
+                {busy ? t("common.pleaseWait") : t("settings.2fa.confirmBtn")}
+              </button>
+            )}
+            <button type="button" className="link-button" onClick={resetFlow}>{t("common.cancel")}</button>
+          </form>
+        )}
+
+        {step === "disabling-confirm" && (
+          <form className="stack-form" onSubmit={(e: FormEvent) => { e.preventDefault(); void doConfirmDisable(); }}>
+            <p style={{ textAlign: "center" }}>{t("settings.2fa.disableInstruction")}</p>
+            <OtpInput value={code} onChange={(v) => { setCode(v); if (otpStatus === "error") setOtpStatus("idle"); if (v.length === 6 && otpStatus === "idle") setTimeout(() => void doConfirmDisable(), 0); }} status={otpStatus} autoFocus />
+            {statusMsg && otpStatus === "error" && <p className="status-line" style={{ textAlign: "center" }}>{statusMsg}</p>}
+            {otpStatus !== "success" && (
+              <button type="submit" disabled={busy || code.length !== 6 || otpStatus === "pending"} className="btn-danger">
+                {busy ? t("common.pleaseWait") : t("settings.2fa.confirmDisableBtn")}
+              </button>
+            )}
+            <button type="button" className="link-button" onClick={resetFlow}>{t("common.cancel")}</button>
+          </form>
+        )}
+
+        {step === "success" && (
+          <div>
+            <p className="status-line status-success">{statusMsg}</p>
+            <button type="button" onClick={resetFlow}>{t("common.back")}</button>
+          </div>
+        )}
+
+        {step === "error" && (
+          <div>
+            <p className="status-line">{statusMsg}</p>
+            <button type="button" onClick={resetFlow}>{t("common.back")}</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 type ToggleRowProps = {
   label: string;
@@ -47,6 +230,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "timer", label: t("a11y.settings.nav.timer"), Icon: Timer },
     { id: "theme", label: t("a11y.settings.nav.theme"), Icon: Palette },
     { id: "notifications", label: t("a11y.settings.nav.notifications"), Icon: Bell },
+    { id: "security", label: t("a11y.settings.nav.security"), Icon: ShieldCheck },
   ];
 
   if (!isOpen) {
@@ -287,6 +471,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 </div>
               </div>
             ) : null}
+
+            {activeSection === "security" ? <TwoFASection /> : null}
 
             {activeSection === "notifications" ? (
               <div className="settings-pane-stack">

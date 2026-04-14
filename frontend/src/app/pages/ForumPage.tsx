@@ -27,13 +27,22 @@ type View = "spaces" | "posts" | "detail";
 type ReportTarget = { type: "POST" | "COMMENT"; id: string } | null;
 
 const REPORT_REASONS = [
-  { value: "offensive_content", label: "Offensive or hateful content" },
-  { value: "sexual_content", label: "Sexual or inappropriate content" },
-  { value: "harassment", label: "Harassment or bullying" },
-  { value: "spam", label: "Spam or repeated posting" },
-  { value: "off_topic", label: "Off-topic / not related to learning" },
-  { value: "other", label: "Other" },
+  { value: "offensive_content", labelKey: "offensive_content" },
+  { value: "sexual_content",    labelKey: "sexual_content" },
+  { value: "harassment",        labelKey: "harassment" },
+  { value: "spam",              labelKey: "spam" },
+  { value: "off_topic",         labelKey: "off_topic" },
+  { value: "other",             labelKey: "other" },
 ];
+
+const REPORT_REASON_LABELS: Record<string, { ar: string; en: string }> = {
+  offensive_content: { ar: "محتوى مسيء أو كراهية", en: "Offensive or hateful content" },
+  sexual_content:    { ar: "محتوى جنسي أو غير لائق", en: "Sexual or inappropriate content" },
+  harassment:        { ar: "مضايقة أو تنمر", en: "Harassment or bullying" },
+  spam:              { ar: "بريد مزعج أو تكرار", en: "Spam or repeated posting" },
+  off_topic:         { ar: "خارج الموضوع", en: "Off-topic / not related to learning" },
+  other:             { ar: "أخرى", en: "Other" },
+};
 
 function shortId(uuid: string) {
   return uuid.slice(0, 8);
@@ -110,19 +119,25 @@ function VoteRow({
 
 function ReportModal({
   target,
+  locale,
   onClose,
   onSubmitted,
 }: {
   target: ReportTarget;
+  locale: string;
   onClose: () => void;
   onSubmitted: () => void;
 }) {
+  const { t } = useTranslation();
   const [reason, setReason] = useState(REPORT_REASONS[0].value);
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   if (!target) return null;
+
+  const reasonLabel = (value: string) =>
+    locale === "en" ? REPORT_REASON_LABELS[value]?.en : REPORT_REASON_LABELS[value]?.ar;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -144,13 +159,11 @@ function ReportModal({
     <div className="forum-modal-backdrop" onClick={onClose}>
       <div className="forum-modal" onClick={(e) => e.stopPropagation()}>
         <div className="forum-modal-header">
-          <h3>Report {target.type === "POST" ? "Post" : "Comment"}</h3>
+          <h3>{target.type === "POST" ? t("forum.reportPost") : t("forum.reportComment")}</h3>
           <button type="button" className="forum-modal-close" onClick={onClose}>✕</button>
         </div>
         <form onSubmit={(e) => void handleSubmit(e)} className="forum-modal-body">
-          <p className="forum-modal-desc">
-            Help us keep the forum safe. Select the reason for your report:
-          </p>
+          <p className="forum-modal-desc">{t("forum.reportDesc")}</p>
           <div className="forum-reason-list">
             {REPORT_REASONS.map((r) => (
               <label key={r.value} className={`forum-reason-option ${reason === r.value ? "selected" : ""}`}>
@@ -161,13 +174,13 @@ function ReportModal({
                   checked={reason === r.value}
                   onChange={() => setReason(r.value)}
                 />
-                {r.label}
+                {reasonLabel(r.value)}
               </label>
             ))}
           </div>
           <textarea
             className="forum-report-details"
-            placeholder="Additional details (optional)"
+            placeholder={t("forum.reportDetails")}
             value={details}
             onChange={(e) => setDetails(e.target.value)}
             maxLength={500}
@@ -175,9 +188,9 @@ function ReportModal({
           />
           {error && <p className="forum-error">{error}</p>}
           <div className="forum-modal-actions">
-            <button type="button" className="secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="secondary" onClick={onClose}>{t("common.cancel")}</button>
             <button type="submit" className="btn-danger" disabled={busy}>
-              {busy ? "Submitting…" : "Submit Report"}
+              {busy ? t("forum.submitting") : t("forum.submitReport")}
             </button>
           </div>
         </form>
@@ -188,7 +201,8 @@ function ReportModal({
 
 // ── Moderation panel (teacher only) ──────────────────────────────────────────
 
-function ModerationPanel() {
+function ModerationPanel({ locale }: { locale: string }) {
+  const { t } = useTranslation();
   const [reports, setReports] = useState<ForumReport[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -196,7 +210,7 @@ function ModerationPanel() {
 
   const load = async () => {
     try {
-      setReports(await listOpenReports());
+      setReports(await listOpenReports(locale));
     } catch {
       // non-critical
     }
@@ -204,7 +218,8 @@ function ModerationPanel() {
 
   useEffect(() => {
     void load();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
 
   const act = async (reportId: string, action: ModerationAction) => {
     setBusy(reportId);
@@ -228,7 +243,7 @@ function ModerationPanel() {
         className="forum-mod-toggle"
         onClick={() => setOpen((v) => !v)}
       >
-        🚨 {reports.length} Open Report{reports.length !== 1 ? "s" : ""} {open ? "▲" : "▼"}
+        🚨 {reports.length} {t("forum.openReports")} {open ? "▲" : "▼"}
       </button>
       {open && (
         <div className="forum-mod-list">
@@ -241,39 +256,11 @@ function ModerationPanel() {
                 <span className="forum-muted">reported {timeAgo(r.created_at)}</span>
               </div>
               <div className="forum-mod-actions">
-                <button
-                  type="button"
-                  className="secondary"
-                  disabled={busy === r.id}
-                  onClick={() => void act(r.id, "DISMISS")}
-                >
-                  Dismiss
-                </button>
-                <button
-                  type="button"
-                  className="secondary"
-                  disabled={busy === r.id}
-                  onClick={() => void act(r.id, "HIDE")}
-                >
-                  Hide
-                </button>
-                <button
-                  type="button"
-                  className="btn-danger"
-                  disabled={busy === r.id}
-                  onClick={() => void act(r.id, "REMOVE")}
-                >
-                  Remove
-                </button>
+                <button type="button" className="secondary" disabled={busy === r.id} onClick={() => void act(r.id, "DISMISS")}>{t("forum.modDismiss")}</button>
+                <button type="button" className="secondary" disabled={busy === r.id} onClick={() => void act(r.id, "HIDE")}>{t("forum.modHide")}</button>
+                <button type="button" className="btn-danger" disabled={busy === r.id} onClick={() => void act(r.id, "REMOVE")}>{t("forum.modRemove")}</button>
                 {r.target_type === "POST" && (
-                  <button
-                    type="button"
-                    className="secondary"
-                    disabled={busy === r.id}
-                    onClick={() => void act(r.id, "LOCK")}
-                  >
-                    Lock
-                  </button>
+                  <button type="button" className="secondary" disabled={busy === r.id} onClick={() => void act(r.id, "LOCK")}>{t("forum.modLock")}</button>
                 )}
               </div>
             </div>
@@ -289,7 +276,8 @@ function ModerationPanel() {
 export function ForumPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const prefix = i18n.resolvedLanguage === "en" ? "/en" : "/ar";
+  const locale = i18n.resolvedLanguage === "en" ? "en" : "ar";
+  const prefix = locale === "en" ? "/en" : "/ar";
   const session = getSession();
   const isTeacher = session?.role === "ROLE_TUTOR";
   const canComment = session?.role === "ROLE_STUDENT" || session?.role === "ROLE_TUTOR";
@@ -306,27 +294,45 @@ export function ForumPage() {
   const [showNewPostForm, setShowNewPostForm] = useState(false);
   const [newComment, setNewComment] = useState("");
 
-  const [reportTarget, setReportTarget] = useState<ReportTarget>(null);
+  const [activeReportTarget, setActiveReportTarget] = useState<ReportTarget>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [commentError, setCommentError] = useState("");
 
-  // Load spaces on mount
+  // Reload spaces whenever language changes
   useEffect(() => {
-    listSpaces()
-      .then(setSpaces)
-      .catch(() => setError("Failed to load forum spaces."));
-  }, []);
+    listSpaces(locale)
+      .then((data) => {
+        setSpaces(data);
+        // If we were viewing a space, refresh its name too
+        if (selectedSpace) {
+          const refreshed = data.find((s) => s.id === selectedSpace.id);
+          if (refreshed) setSelectedSpace(refreshed);
+        }
+      })
+      .catch(() => setError(t("forum.noSpaces")));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
+
+  // Re-fetch posts when language changes while in posts view
+  useEffect(() => {
+    if (view === "posts" && selectedSpace) {
+      listPosts(selectedSpace.id, locale)
+        .then(setPosts)
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
 
   const openSpace = async (space: ForumSpace) => {
     setError("");
     setSelectedSpace(space);
     setView("posts");
     try {
-      const data = await listPosts(space.id);
+      const data = await listPosts(space.id, locale);
       setPosts(data);
     } catch {
-      setError("Failed to load posts.");
+      setError(t("forum.noPosts"));
     }
   };
 
@@ -335,7 +341,7 @@ export function ForumPage() {
     setSelectedPost(post);
     setView("detail");
     try {
-      const data = await listComments(post.id);
+      const data = await listComments(post.id, locale);
       setComments(data);
     } catch {
       setError("Failed to load comments.");
@@ -348,7 +354,7 @@ export function ForumPage() {
     setBusy(true);
     setError("");
     try {
-      const post = await createPost(selectedSpace.id, newPostTitle.trim(), newPostContent.trim());
+      const post = await createPost(selectedSpace.id, newPostTitle.trim(), newPostContent.trim(), locale);
       setPosts((prev) => [post, ...prev]);
       setNewPostTitle("");
       setNewPostContent("");
@@ -366,7 +372,7 @@ export function ForumPage() {
     setBusy(true);
     setCommentError("");
     try {
-      const comment = await createComment(selectedPost.id, newComment.trim());
+      const comment = await createComment(selectedPost.id, newComment.trim(), locale);
       setComments((prev) => [...prev, comment]);
       setNewComment("");
     } catch (err) {
@@ -391,7 +397,7 @@ export function ForumPage() {
           <BrandLogo className="brand-icon" />
           <div>
             <h1>{t("appTitle")}</h1>
-            <p className="muted">Forum</p>
+            <p className="muted">{t("nav.forum")}</p>
           </div>
         </div>
         <div className="dashboard-header-actions">
@@ -405,7 +411,7 @@ export function ForumPage() {
       {/* Breadcrumb */}
       <nav className="forum-breadcrumb">
         <button type="button" className="forum-crumb" onClick={() => setView("spaces")}>
-          Forum
+          {t("nav.forum")}
         </button>
         {selectedSpace && (
           <>
@@ -428,7 +434,7 @@ export function ForumPage() {
       </nav>
 
       {/* Teacher moderation panel */}
-      {isTeacher && <ModerationPanel />}
+      {isTeacher && <ModerationPanel locale={locale} />}
 
       {error && <p className="forum-error forum-page-error">{error}</p>}
 
@@ -436,10 +442,10 @@ export function ForumPage() {
       {view === "spaces" && (
         <section className="forum-section">
           <div className="forum-section-head">
-            <h2 className="forum-section-title">Choose a Space</h2>
+            <h2 className="forum-section-title">{t("forum.chooseSpace")}</h2>
           </div>
           {spaces.length === 0 ? (
-            <p className="forum-empty">No spaces available yet.</p>
+            <p className="forum-empty">{t("forum.noSpaces")}</p>
           ) : (
             <div className="forum-spaces-grid">
               {spaces.map((space) => (
@@ -464,11 +470,8 @@ export function ForumPage() {
         <section className="forum-section">
           <div className="forum-section-head">
             <h2 className="forum-section-title">{selectedSpace.name}</h2>
-            <button
-              type="button"
-              onClick={() => setShowNewPostForm((v) => !v)}
-            >
-              {showNewPostForm ? "Cancel" : "+ New Post"}
+            <button type="button" onClick={() => setShowNewPostForm((v) => !v)}>
+              {showNewPostForm ? t("common.cancel") : t("forum.newPost")}
             </button>
           </div>
 
@@ -476,14 +479,14 @@ export function ForumPage() {
             <form className="forum-new-post-form" onSubmit={(e) => void submitPost(e)}>
               <input
                 type="text"
-                placeholder="Post title…"
+                placeholder={t("forum.titlePlaceholder")}
                 value={newPostTitle}
                 onChange={(e) => setNewPostTitle(e.target.value)}
                 maxLength={220}
                 required
               />
               <textarea
-                placeholder="What's on your mind?"
+                placeholder={t("forum.contentPlaceholder")}
                 value={newPostContent}
                 onChange={(e) => setNewPostContent(e.target.value)}
                 maxLength={4000}
@@ -492,14 +495,14 @@ export function ForumPage() {
               />
               <div className="forum-form-actions">
                 <button type="submit" disabled={busy || !newPostTitle.trim() || !newPostContent.trim()}>
-                  {busy ? "Posting…" : "Post"}
+                  {busy ? t("forum.posting") : t("forum.post")}
                 </button>
               </div>
             </form>
           )}
 
           {posts.length === 0 ? (
-            <p className="forum-empty">No posts yet. Be the first to post!</p>
+            <p className="forum-empty">{t("forum.noPosts")}</p>
           ) : (
             <div className="forum-post-list">
               {posts.map((post) => (
@@ -516,35 +519,30 @@ export function ForumPage() {
                     }
                   />
                   <div className="forum-post-body">
-                    <button
-                      type="button"
-                      className="forum-post-title"
-                      onClick={() => void openPost(post)}
-                    >
+                    <button type="button" className="forum-post-title" onClick={() => void openPost(post)}>
                       {post.title}
                     </button>
                     <p className="forum-post-excerpt">
                       {post.content.length > 160 ? `${post.content.slice(0, 160)}…` : post.content}
                     </p>
                     <div className="forum-post-meta">
-                      <span>by @{shortId(post.author_user_id)}</span>
+                      <span>@{shortId(post.author_user_id)}</span>
                       <span>{timeAgo(post.created_at)}</span>
-                      {post.is_locked && <span className="forum-badge-locked">🔒 locked</span>}
+                      {post.is_locked && <span className="forum-badge-locked">🔒</span>}
                       <button
                         type="button"
                         className="forum-post-reply-btn"
                         onClick={() => void openPost(post)}
-                        title="Reply to this post"
+                        title={t("forum.replyTitle")}
                       >
-                        💬 Reply
+                        💬 {t("forum.postReply")}
                       </button>
                       <button
                         type="button"
                         className="forum-report-btn"
-                        onClick={() => setReportTarget({ type: "POST", id: post.id })}
-                        title="Report post"
+                        onClick={() => setActiveReportTarget({ type: "POST", id: post.id })}
                       >
-                        ⚑ Report
+                        ⚑
                       </button>
                     </div>
                   </div>
@@ -558,7 +556,6 @@ export function ForumPage() {
       {/* ── Post detail view ── */}
       {view === "detail" && selectedPost && (
         <section className="forum-section">
-          {/* Post */}
           <div className="forum-post-detail card">
             <div className="forum-detail-vote-row">
               <VoteRow
@@ -572,25 +569,18 @@ export function ForumPage() {
             <div className="forum-detail-content">
               <h2 className="forum-detail-title">{selectedPost.title}</h2>
               <div className="forum-post-meta">
-                <span>by @{shortId(selectedPost.author_user_id)}</span>
+                <span>@{shortId(selectedPost.author_user_id)}</span>
                 <span>{timeAgo(selectedPost.created_at)}</span>
-                {selectedPost.is_locked && <span className="forum-badge-locked">🔒 locked</span>}
-                <button
-                  type="button"
-                  className="forum-report-btn"
-                  onClick={() => setReportTarget({ type: "POST", id: selectedPost.id })}
-                >
-                  ⚑ Report
-                </button>
+                {selectedPost.is_locked && <span className="forum-badge-locked">🔒</span>}
+                <button type="button" className="forum-report-btn" onClick={() => setActiveReportTarget({ type: "POST", id: selectedPost.id })}>⚑</button>
               </div>
               <p className="forum-detail-body">{selectedPost.content}</p>
             </div>
           </div>
 
-          {/* Comments */}
           <div className="forum-comments-section">
             <h3 className="forum-comments-title">
-              {comments.length} {comments.length === 1 ? "Comment" : "Comments"}
+              {comments.length} {comments.length === 1 ? t("forum.post") : t("forum.post")}
             </h3>
 
             {comments.map((comment) => (
@@ -609,30 +599,24 @@ export function ForumPage() {
                 <div className="forum-comment-body">
                   <p className="forum-comment-content">{comment.content}</p>
                   <div className="forum-post-meta">
-                    <span>by @{shortId(comment.author_user_id)}</span>
+                    <span>@{shortId(comment.author_user_id)}</span>
                     <span>{timeAgo(comment.created_at)}</span>
-                    <button
-                      type="button"
-                      className="forum-report-btn"
-                      onClick={() => setReportTarget({ type: "COMMENT", id: comment.id })}
-                    >
-                      ⚑ Report
-                    </button>
+                    <button type="button" className="forum-report-btn" onClick={() => setActiveReportTarget({ type: "COMMENT", id: comment.id })}>⚑</button>
                   </div>
                 </div>
               </div>
             ))}
 
             <div className="forum-reply-section">
-              <p className="forum-reply-heading">Write a Reply</p>
+              <p className="forum-reply-heading">{t("forum.writeReply")}</p>
               {selectedPost.is_locked ? (
-                <p className="forum-locked-notice">🔒 This post is locked. No new comments.</p>
+                <p className="forum-locked-notice">{t("forum.postLocked")}</p>
               ) : !canComment ? (
-                <p className="forum-locked-notice">Only students and teachers can post replies.</p>
+                <p className="forum-locked-notice">{t("forum.onlyStudentsTeachers")}</p>
               ) : (
                 <form className="forum-comment-form" onSubmit={(e) => void submitComment(e)}>
                   <textarea
-                    placeholder="Share your thoughts…"
+                    placeholder={t("forum.replyPlaceholder")}
                     value={newComment}
                     onChange={(e) => { setNewComment(e.target.value); setCommentError(""); }}
                     maxLength={2000}
@@ -641,7 +625,7 @@ export function ForumPage() {
                   />
                   {commentError && <p className="forum-comment-error">{commentError}</p>}
                   <button type="submit" disabled={busy || !newComment.trim()}>
-                    {busy ? "Posting…" : "Post Reply"}
+                    {busy ? t("forum.posting") : t("forum.postReply")}
                   </button>
                 </form>
               )}
@@ -651,11 +635,12 @@ export function ForumPage() {
       )}
 
       {/* Report modal */}
-      {reportTarget && (
+      {activeReportTarget && (
         <ReportModal
-          target={reportTarget}
-          onClose={() => setReportTarget(null)}
-          onSubmitted={() => setReportTarget(null)}
+          target={activeReportTarget}
+          locale={locale}
+          onClose={() => setActiveReportTarget(null)}
+          onSubmitted={() => setActiveReportTarget(null)}
         />
       )}
     </main>

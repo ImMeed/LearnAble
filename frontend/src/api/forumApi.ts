@@ -47,28 +47,32 @@ export interface ForumReport {
 
 export type ModerationAction = "HIDE" | "RESTORE" | "REMOVE" | "LOCK" | "UNLOCK" | "DISMISS";
 
-export async function listSpaces(): Promise<ForumSpace[]> {
-  const res = await apiClient.get<{ items: ForumSpace[] }>("/forum/spaces");
+function langHeader(locale: string) {
+  return { headers: { "x-lang": locale === "en" ? "en" : "ar" } };
+}
+
+export async function listSpaces(locale: string): Promise<ForumSpace[]> {
+  const res = await apiClient.get<{ items: ForumSpace[] }>("/forum/spaces", langHeader(locale));
   return res.data.items;
 }
 
-export async function listPosts(spaceId: string): Promise<ForumPost[]> {
-  const res = await apiClient.get<{ items: ForumPost[] }>(`/forum/spaces/${spaceId}/posts`);
+export async function listPosts(spaceId: string, locale: string): Promise<ForumPost[]> {
+  const res = await apiClient.get<{ items: ForumPost[] }>(`/forum/spaces/${spaceId}/posts`, langHeader(locale));
   return res.data.items;
 }
 
-export async function createPost(spaceId: string, title: string, content: string): Promise<ForumPost> {
-  const res = await apiClient.post<ForumPost>(`/forum/spaces/${spaceId}/posts`, { title, content });
+export async function createPost(spaceId: string, title: string, content: string, locale: string): Promise<ForumPost> {
+  const res = await apiClient.post<ForumPost>(`/forum/spaces/${spaceId}/posts`, { title, content }, langHeader(locale));
   return res.data;
 }
 
-export async function listComments(postId: string): Promise<ForumComment[]> {
-  const res = await apiClient.get<{ items: ForumComment[] }>(`/forum/posts/${postId}/comments`);
+export async function listComments(postId: string, locale: string): Promise<ForumComment[]> {
+  const res = await apiClient.get<{ items: ForumComment[] }>(`/forum/posts/${postId}/comments`, langHeader(locale));
   return res.data.items;
 }
 
-export async function createComment(postId: string, content: string): Promise<ForumComment> {
-  const res = await apiClient.post<ForumComment>(`/forum/posts/${postId}/comments`, { content });
+export async function createComment(postId: string, content: string, locale: string): Promise<ForumComment> {
+  const res = await apiClient.post<ForumComment>(`/forum/posts/${postId}/comments`, { content }, langHeader(locale));
   return res.data;
 }
 
@@ -93,8 +97,8 @@ export async function reportTarget(
   await apiClient.post("/forum/reports", { target_type: targetType, target_id: targetId, reason });
 }
 
-export async function listOpenReports(): Promise<ForumReport[]> {
-  const res = await apiClient.get<{ items: ForumReport[] }>("/forum/reports?only_open=true");
+export async function listOpenReports(locale: string): Promise<ForumReport[]> {
+  const res = await apiClient.get<{ items: ForumReport[] }>("/forum/reports?only_open=true", langHeader(locale));
   return res.data.items;
 }
 
