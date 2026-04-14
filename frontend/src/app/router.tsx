@@ -13,6 +13,7 @@ import { TeacherDashboardPageV2 } from "./pages/TeacherDashboard";
 import { ParentDashboardPageV2 } from "./pages/ParentDashboard";
 import { PsychologistDashboardPageV2 } from "./pages/PsychologistDashboard";
 import { AdminDashboardPageV2 } from "./pages/AdminDashboard";
+import { ForumPage } from "./pages/ForumPage";
 import { PhaseCheckpointPage } from "../pages/checkpoint/PhaseCheckpointPage";
 
 function PlaceholderPage({ titleKey }: { titleKey: string }) {
@@ -205,14 +206,16 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-  { path: "/ar/forum", element: <PlaceholderPage titleKey="nav.forum" /> },
+  { path: "/ar/forum", element: <ForumPage /> },
   { path: "/ar/quizzes", element: <PlaceholderPage titleKey="nav.quizzes" /> },
   { path: "/ar/games", element: <PlaceholderPage titleKey="nav.games" /> },
   { path: "/ar/library", element: <PlaceholderPage titleKey="nav.library" /> },
   { path: "/ar/checkpoint", element: <PhaseCheckpointPage /> },
-  { path: "/en/forum", element: <PlaceholderPage titleKey="nav.forum" /> },
+  { path: "/en/forum", element: <ForumPage /> },
   { path: "/en/quizzes", element: <PlaceholderPage titleKey="nav.quizzes" /> },
   { path: "/en/games", element: <PlaceholderPage titleKey="nav.games" /> },
   { path: "/en/library", element: <PlaceholderPage titleKey="nav.library" /> },
   { path: "/en/checkpoint", element: <PhaseCheckpointPage /> },
+  { path: "/ar/settings", element: <SettingsPage /> },
+  { path: "/en/settings", element: <SettingsPage /> },
 ]);
