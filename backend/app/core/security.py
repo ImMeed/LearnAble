@@ -1,17 +1,17 @@
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
 
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 class CurrentUser(BaseModel):
@@ -21,11 +21,13 @@ class CurrentUser(BaseModel):
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    pre_hash = hashlib.sha256(password.encode("utf-8")).digest()
+    return bcrypt.hashpw(pre_hash, bcrypt.gensalt()).decode("utf-8")
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password(password: str, hashed_password: str) -> bool:
+    pre_hash = hashlib.sha256(password.encode("utf-8")).digest()
+    return bcrypt.checkpw(pre_hash, hashed_password.encode("utf-8"))
 
 
 def create_access_token(user_id: UUID, role: str, email: str) -> str:
@@ -47,7 +49,6 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Cur
         detail={"code": "UNAUTHORIZED", "message": "Invalid or expired token."},
         headers={"WWW-Authenticate": "Bearer"},
     )
-
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
         user_id = payload.get("sub")
@@ -55,8 +56,6 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Cur
         email = payload.get("email")
     except JWTError as exc:
         raise unauthorized from exc
-
     if not user_id or not role or not email:
         raise unauthorized
-
     return CurrentUser(user_id=UUID(user_id), role=role, email=email)

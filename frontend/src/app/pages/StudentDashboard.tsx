@@ -266,6 +266,34 @@ export function StudentDashboardPageV2() {
       <section className="dashboard-grid student-v2-grid">
         <section className="left-span student-v2-main-column">
           <article className={cx(surfaceClass, "p-5 sm:p-6")}>
+            <h2 className="text-[clamp(1.1rem,1.6vw,1.35rem)] font-semibold tracking-[-0.02em] text-foreground" style={{ marginBottom: "0.75rem" }}>
+              {t("dashboards.studentV2.quickTools", { defaultValue: "Quick Tools" })}
+            </h2>
+            <div className="student-tools-grid">
+              <Link className="student-tool-card" to={`${prefix}/games`}>
+                <span className="student-tool-icon">🎮</span>
+                <span className="student-tool-label">{t("nav.games", { defaultValue: "Games" })}</span>
+              </Link>
+              <Link className="student-tool-card" to={`${prefix}/quizzes`}>
+                <span className="student-tool-icon">🏆</span>
+                <span className="student-tool-label">{t("nav.quizzes", { defaultValue: "Quiz" })}</span>
+              </Link>
+              <Link className="student-tool-card" to={`${prefix}/flashcards`}>
+                <span className="student-tool-icon">🗂️</span>
+                <span className="student-tool-label">{t("flashcards.title", { defaultValue: "Flashcards" })}</span>
+              </Link>
+              <Link className="student-tool-card" to={`${prefix}/ai`}>
+                <span className="student-tool-icon">✦</span>
+                <span className="student-tool-label">{t("ai.title", { defaultValue: "AI Assistant" })}</span>
+              </Link>
+              <Link className="student-tool-card" to={`${prefix}/lessons`}>
+                <span className="student-tool-icon">✅</span>
+                <span className="student-tool-label">{t("lessons.title", { defaultValue: "Lessons" })}</span>
+              </Link>
+            </div>
+          </article>
+
+          <article className={cx(surfaceClass, "p-5 sm:p-6")}>
             <div className="section-title-row">
               <h2 className="text-[clamp(1.35rem,2vw,1.9rem)] font-semibold tracking-[-0.03em] text-foreground">
                 {t("dashboards.studentV2.continueLearning")}
@@ -430,6 +458,14 @@ export function StudentDashboardPageV2() {
           </article>
         </aside>
       </section>
+      <Link
+        className="forum-fab"
+        to={`${prefix}/forum`}
+        title={t("nav.forum", { defaultValue: "Forum" })}
+      >
+        <span className="forum-fab-icon">💬</span>
+        <span className="forum-fab-label">{t("nav.forum", { defaultValue: "Forum" })}</span>
+      </Link>
     </DashboardShell>
   );
 }

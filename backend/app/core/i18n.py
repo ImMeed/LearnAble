@@ -133,6 +133,14 @@ MESSAGES = {
         "ar": "تم قفل هذا المنشور ولا يقبل تعليقات جديدة.",
         "en": "This post is locked and does not accept new comments.",
     },
+    "INVALID_OTP": {
+        "ar": "رمز التحقق غير صحيح أو انتهت صلاحيته.",
+        "en": "Invalid or expired verification code.",
+    },
+    "TOTP_NOT_INITIALIZED": {
+        "ar": "لم يتم تهيئة المصادقة الثنائية بعد.",
+        "en": "Two-factor authentication has not been set up yet.",
+    },
 }
 
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { v4 as uuidv4 } from "uuid";
 
@@ -131,24 +132,40 @@ export function TeacherDashboardPageV2() {
 
   const students = [
     {
+      id: "s1",
       name: t("dashboards.teacher.sampleStudent1"),
       engagement: t("dashboards.teacher.highEngagement"),
+      engagementLevel: "high",
       progress: 76,
-      attendance: "18/20",
+      attendance: { present: 18, absent: 2, late: 1 },
+      prevNote: t("dashboards.teacher.sampleNote1", { defaultValue: "Excellent participation in class discussions" }),
     },
     {
+      id: "s2",
       name: t("dashboards.teacher.sampleStudent2"),
       engagement: t("dashboards.teacher.mediumEngagement"),
+      engagementLevel: "medium",
       progress: 44,
-      attendance: "15/19",
+      attendance: { present: 15, absent: 4, late: 2 },
+      prevNote: t("dashboards.teacher.sampleNote2", { defaultValue: "Needs more focus during lessons" }),
     },
     {
+      id: "s3",
       name: t("dashboards.teacher.sampleStudent3"),
       engagement: t("dashboards.teacher.highEngagement"),
+      engagementLevel: "high",
       progress: 88,
-      attendance: "20/21",
+      attendance: { present: 20, absent: 0, late: 1 },
+      prevNote: "",
     },
   ];
+
+  type AttStatus = "present" | "late" | "absent";
+  const [attendanceStatus, setAttendanceStatus] = useState<Record<string, AttStatus>>({
+    s1: "present",
+    s2: "late",
+    s3: "absent",
+  });
 
   return (
     <DashboardShell title={t("dashboards.teacher.title")} subtitle={t("dashboards.teacher.subtitle")}>
@@ -157,37 +174,61 @@ export function TeacherDashboardPageV2() {
       {activeTab === "overview" ? (
         <section className="portal-grid">
           <article className="card portal-main-card">
-            <h3>{t("dashboards.teacher.studentsOverview")}</h3>
+            <h3 className="teacher-section-title">{t("dashboards.teacher.studentsOverview")}</h3>
             <div className="stack-list">
               {students.map((student) => (
-                <article key={student.name} className="request-card">
-                  <div className="request-head-row">
+                <article key={student.id} className="teacher-student-card">
+                  <div className="teacher-student-header">
                     <strong>{student.name}</strong>
-                    <span className="status-chip">{student.engagement}</span>
+                    <div className="teacher-student-badges">
+                      {student.engagementLevel === "medium" && (
+                        <span className="teacher-needs-help-badge">⚠ Needs Help</span>
+                      )}
+                      <span className={`teacher-engagement-badge ${student.engagementLevel}`}>
+                        {student.engagement}
+                      </span>
+                    </div>
                   </div>
-                  <p className="muted">{t("dashboards.teacher.progressLabel")}</p>
+                  <div className="teacher-student-progress-row">
+                    <span className="muted">{t("dashboards.teacher.progressLabel")}</span>
+                  </div>
                   <div className="progress-track">
                     <span className="progress-fill" style={{ width: `${student.progress}%` }} />
                   </div>
-                  <p className="muted">{t("dashboards.teacher.attendance", { value: student.attendance })}</p>
+                  <div className="teacher-attendance-row">
+                    <span className="muted">{t("dashboards.teacher.attendanceLabel", { defaultValue: "Attendance" })}</span>
+                    <span className="att-present">✓ {student.attendance.present}</span>
+                    <span className="att-absent">✗ {student.attendance.absent}</span>
+                    <span className="att-late">⏰ {student.attendance.late}</span>
+                  </div>
+                  <button type="button" className="teacher-detail-link">
+                    {t("dashboards.teacher.clickDetailedAnalytics", { defaultValue: "Click for detailed analytics →" })}
+                  </button>
                 </article>
               ))}
             </div>
           </article>
 
           <aside className="portal-side-column">
-            <article className="card analytics-card">
-              <h4>{t("dashboards.teacher.classAnalytics")}</h4>
-              <p>{t("dashboards.teacher.avgCompletion", { value: 78 })}</p>
-              <p>{t("dashboards.teacher.activeTutorsOnline", { value: metrics?.active_tutors_online ?? 0 })}</p>
-              <p>{t("dashboards.teacher.pendingRequests", { count: metrics?.pending_requests ?? 0 })}</p>
+            <article className="card teacher-analytics-card">
+              <h4 className="teacher-analytics-title">📊 {t("dashboards.teacher.classAnalytics")}</h4>
+              <div className="teacher-analytics-row">
+                <span className="teacher-analytics-label">{t("dashboards.teacher.avgCompletion", { value: "" })}</span>
+                <span className="teacher-analytics-val blue">78%</span>
+              </div>
+              <div className="teacher-analytics-row">
+                <span className="teacher-analytics-label">{t("dashboards.teacher.activeStudentsLabel", { defaultValue: "Active Students" })}</span>
+                <span className="teacher-analytics-val green">
+                  18/{students.length * 8}
+                </span>
+              </div>
             </article>
 
             <article className="card">
-              <div className="request-head-row checkpoint-block">
+              <div className="teacher-presence-row">
                 <span className="muted">Status:</span>
-                <span className="status-chip" style={{ background: isOnline ? "var(--success, #22c55e)" : undefined }}>
-                  {isOnline ? "Online" : "Offline"}
+                <span className={`teacher-presence-chip ${isOnline ? "online" : "offline"}`}>
+                  {isOnline ? "● Online" : "○ Offline"}
                 </span>
               </div>
               <button
@@ -197,36 +238,72 @@ export function TeacherDashboardPageV2() {
               >
                 {isOnline ? "Go Offline" : "Go Online"}
               </button>
-              <p className="status-line checkpoint-block">{status || t("dashboards.common.idle")}</p>
-              <button type="button" className="secondary" onClick={() => void loadAll()}>
+              {status ? <p className="status-line checkpoint-block">{status}</p> : null}
+              <button type="button" className="secondary checkpoint-block" onClick={() => void loadAll()}>
                 {t("dashboards.common.refresh")}
               </button>
-              <p className="muted checkpoint-block">{profile?.email}</p>
             </article>
+
           </aside>
         </section>
       ) : null}
 
       {activeTab === "attendance" ? (
-        <section className="card portal-main-card">
-          <div className="request-head-row">
-            <h3>{t("dashboards.teacher.attendanceManagement")}</h3>
-            <p className="muted">{new Date().toLocaleDateString(locale === "en" ? "en-US" : "ar-EG")}</p>
+        <section>
+          <div className="teacher-att-header">
+            <h3>📋 {t("dashboards.teacher.attendanceManagement")}</h3>
+            <span className="teacher-att-date muted">
+              {new Date().toLocaleDateString(locale === "en" ? "en-US" : "ar-EG", {
+                weekday: "long", year: "numeric", month: "long", day: "numeric",
+              })}
+            </span>
           </div>
-          <div className="inline-actions">
-            <button type="button">{t("dashboards.teacher.present")}</button>
-            <button type="button" className="secondary">{t("dashboards.teacher.late")}</button>
-            <button type="button" className="secondary">{t("dashboards.teacher.absent")}</button>
+          <div className="stack-list">
+            {students.map((student) => (
+              <article key={student.id} className="card teacher-att-card">
+                <strong>{student.name}</strong>
+                <div className="teacher-att-buttons">
+                  <button
+                    type="button"
+                    className={`att-btn att-present-btn${attendanceStatus[student.id] === "present" ? " att-active-present" : ""}`}
+                    onClick={() => setAttendanceStatus((prev) => ({ ...prev, [student.id]: "present" }))}
+                  >
+                    👤 {t("dashboards.teacher.present")}
+                  </button>
+                  <button
+                    type="button"
+                    className={`att-btn att-late-btn${attendanceStatus[student.id] === "late" ? " att-active-late" : ""}`}
+                    onClick={() => setAttendanceStatus((prev) => ({ ...prev, [student.id]: "late" }))}
+                  >
+                    ⏰ {t("dashboards.teacher.late")}
+                  </button>
+                  <button
+                    type="button"
+                    className={`att-btn att-absent-btn${attendanceStatus[student.id] === "absent" ? " att-active-absent" : ""}`}
+                    onClick={() => setAttendanceStatus((prev) => ({ ...prev, [student.id]: "absent" }))}
+                  >
+                    👤✕ {t("dashboards.teacher.absent")}
+                  </button>
+                </div>
+                {student.prevNote ? (
+                  <div className="teacher-prev-note">
+                    <span className="muted">Previous Note:</span>
+                    <p className="teacher-prev-note-text">{student.prevNote}</p>
+                  </div>
+                ) : null}
+                <label className="teacher-obs-label">
+                  {t("dashboards.teacher.classObservation")}
+                  <textarea
+                    className="teacher-obs-textarea"
+                    rows={3}
+                    value={attendanceNote}
+                    onChange={(e) => setAttendanceNote(e.target.value)}
+                    placeholder={t("dashboards.teacher.classObservationPlaceholder")}
+                  />
+                </label>
+              </article>
+            ))}
           </div>
-          <label className="checkpoint-block">
-            {t("dashboards.teacher.classObservation")}
-            <textarea
-              rows={4}
-              value={attendanceNote}
-              onChange={(event) => setAttendanceNote(event.target.value)}
-              placeholder={t("dashboards.teacher.classObservationPlaceholder")}
-            />
-          </label>
         </section>
       ) : null}
 
@@ -380,6 +457,14 @@ export function TeacherDashboardPageV2() {
           </div>
         </section>
       ) : null}
+      <Link
+        className="forum-fab"
+        to={`${i18n.resolvedLanguage === "en" ? "/en" : "/ar"}/forum`}
+        title={t("nav.forum", { defaultValue: "Forum" })}
+      >
+        <span className="forum-fab-icon">💬</span>
+        <span className="forum-fab-label">{t("nav.forum", { defaultValue: "Forum" })}</span>
+      </Link>
     </DashboardShell>
   );
 }

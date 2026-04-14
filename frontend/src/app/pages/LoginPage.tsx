@@ -4,12 +4,13 @@ import { useTranslation } from "react-i18next";
 import { BookOpen, GraduationCap, Lock, Mail, Users } from "lucide-react";
 
 import { apiClient } from "../../api/client";
+import { loginWithOTP } from "../../api/authApi";
 import { AccessibilityToolbar } from "../components/AccessibilityToolbar";
 import { CompactLanguageSwitcher } from "../components/CompactLanguageSwitcher";
 import { PublicHeader } from "../components/PublicHeader";
 import { actionClass, cx, inputClass, pageShellClass, sectionFrameClass, surfaceClass } from "../components/uiStyles";
 import { getInitialLocale } from "../locale";
-import { setSession } from "../../state/auth";
+import { clearPendingOTP, getPendingOTP, setPendingOTP, setSession } from "../../state/auth";
 
 const ROLE_CHOICES = [
   { id: "student", labelKey: "login.roleStudent", Icon: GraduationCap, apiRole: "ROLE_STUDENT" },
@@ -67,6 +68,8 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState<"neutral" | "pending" | "error">("neutral");
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
 
   const selectedRoleConfig = ROLE_CHOICES.find((role) => role.id === selectedRole) ?? ROLE_CHOICES[0];
 
@@ -120,7 +123,15 @@ export function LoginPage() {
         { headers: { "x-lang": locale } },
       );
 
-      const data = response.data as { access_token: string; role: string };
+      const data = response.data as { access_token: string; role: string; totp_required?: boolean };
+
+      if (data.totp_required) {
+        setPendingOTP(email.trim());
+        setOtpStep(true);
+        setStatus("");
+        return;
+      }
+
       setSession({ accessToken: data.access_token, role: data.role });
 
       if (data.role === "ROLE_STUDENT" && localStorage.getItem("learnable_onboarding_pending") === "true") {
@@ -141,6 +152,78 @@ export function LoginPage() {
       setBusy(false);
     }
   };
+
+  const onOtpSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    const pendingEmail = getPendingOTP();
+    if (!pendingEmail || otpCode.length !== 6) return;
+
+    setBusy(true);
+    setStatus(t("login.submitPending"));
+    try {
+      const data = await loginWithOTP(pendingEmail, otpCode);
+      clearPendingOTP();
+      setSession({ accessToken: data.access_token, role: data.role });
+
+      const requestedFrom = (location.state as { from?: string } | undefined)?.from;
+      const safePath = requestedFrom && requestedFrom.startsWith("/") ? requestedFrom : routeFromRole(data.role);
+      const alreadyLocalized = safePath.startsWith("/en/") || safePath.startsWith("/ar/") || safePath === "/en" || safePath === "/ar";
+      const targetPath = alreadyLocalized ? safePath : safePath === "/" ? prefix : `${prefix}${safePath}`;
+      navigate(targetPath, { replace: true });
+    } catch (error) {
+      setStatus(`${t("login.authFailed")}: ${readError(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (otpStep) {
+    return (
+      <main className="auth-page">
+        <header className="public-header auth-header">
+          <div className="public-header-inner">
+            <span className="brand-text">{t("appTitle")}</span>
+          </div>
+        </header>
+        <section className="auth-content">
+          <h1>{t("login.2faTitle")}</h1>
+          <p className="muted">{t("login.2faSubtitle")}</p>
+          <article className="auth-card">
+            <form className="stack-form" onSubmit={(e) => void onOtpSubmit(e)}>
+              <label>
+                {t("login.2faCodeLabel")}
+                <div className="auth-input-wrap">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d{6}"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="000000"
+                    required
+                    autoFocus
+                    autoComplete="one-time-code"
+                  />
+                </div>
+              </label>
+              <button type="submit" disabled={busy || otpCode.length !== 6}>
+                {busy ? t("login.pleaseWait") : t("login.2faVerifyBtn")}
+              </button>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => { clearPendingOTP(); setOtpStep(false); setOtpCode(""); setStatus(""); }}
+              >
+                {t("common.back")}
+              </button>
+            </form>
+            {status ? <p className="status-line">{status}</p> : null}
+          </article>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className={pageShellClass}>
