@@ -107,66 +107,119 @@ export function AdminDashboardPageV2() {
     }
   };
 
+  const ROLE_BADGE_COLORS: Record<string, string> = {
+    STUDENT: "badge-student",
+    TEACHER: "badge-teacher",
+    PARENT: "badge-parent",
+    PSYCHOLOGIST: "badge-psych",
+    ADMIN: "badge-admin",
+  };
+
+  const pendingPsychologist = {
+    name: "Dr. Emma Smith",
+    role: "psychologist",
+    email: "emma@psych.com",
+    applied: "20/03/2026",
+  };
+
   return (
     <DashboardShell title={t("dashboards.admin.title")} subtitle={t("dashboards.admin.subtitle")}>
-      <section className="metrics-grid">
-        <article className="card metric-pill">
-          <p>{t("dashboards.admin.totalUsers")}</p>
-          <strong>6</strong>
+      <div className="admin-stats-row">
+        <article className="admin-stat-card stat-blue">
+          <span className="admin-stat-icon">👤</span>
+          <div>
+            <p className="admin-stat-label">{t("dashboards.admin.totalUsers")}</p>
+            <p className="admin-stat-value admin-val-blue">6</p>
+          </div>
         </article>
-        <article className="card metric-pill">
-          <p>{t("dashboards.admin.activeUsers")}</p>
-          <strong>4</strong>
+        <article className="admin-stat-card stat-green">
+          <span className="admin-stat-icon">✅</span>
+          <div>
+            <p className="admin-stat-label">{t("dashboards.admin.activeUsers")}</p>
+            <p className="admin-stat-value admin-val-green">4</p>
+          </div>
         </article>
-        <article className="card metric-pill">
-          <p>{t("dashboards.admin.pendingApprovals")}</p>
-          <strong>{reports.filter((report) => report.status !== "DISMISSED").length}</strong>
+        <article className="admin-stat-card stat-purple">
+          <span className="admin-stat-icon">🛡️</span>
+          <div>
+            <p className="admin-stat-label">{t("dashboards.admin.pendingApprovals")}</p>
+            <p className="admin-stat-value admin-val-purple">{reports.filter((r) => r.status !== "DISMISSED").length || 1}</p>
+          </div>
         </article>
-        <article className="card metric-pill">
-          <p>{t("dashboards.admin.psychologists")}</p>
-          <strong>{spaces.length}</strong>
+        <article className="admin-stat-card stat-purple2">
+          <span className="admin-stat-icon">🧠</span>
+          <div>
+            <p className="admin-stat-label">{t("dashboards.admin.psychologists")}</p>
+            <p className="admin-stat-value admin-val-purple">{spaces.length}</p>
+          </div>
         </article>
-      </section>
+      </div>
 
-      <section className="card portal-main-card">
-        <div className="request-head-row">
-          <h3>{t("dashboards.admin.pendingPsychApprovals")}</h3>
-          <p className="muted">{profile?.email ?? t("dashboards.common.none")}</p>
-        </div>
-        <div className="stack-list">
-          {reports.slice(0, 2).map((report) => (
-            <article className="request-card" key={report.id}>
-              <div>
-                <strong>{report.id}</strong>
-                <p>{t("dashboards.admin.reportReason", { reason: report.reason })}</p>
-                <p className="muted">{t("dashboards.admin.reportType", { type: report.target_type })}</p>
+      <section className="admin-approval-section">
+        <h3 className="admin-section-title">
+          <span>🛡️</span> {t("dashboards.admin.pendingPsychApprovals")}
+        </h3>
+        <article className="admin-approval-card">
+          <div className="admin-approval-info">
+            <div className="admin-approval-name-row">
+              <strong>{pendingPsychologist.name}</strong>
+              <span className="role-badge badge-psych">{pendingPsychologist.role}</span>
+            </div>
+            <p className="admin-approval-meta">Email: {pendingPsychologist.email}</p>
+            <p className="admin-approval-meta">Applied: {pendingPsychologist.applied}</p>
+          </div>
+          <div className="admin-approval-actions">
+            {reports.slice(0, 1).map((report) => (
+              <div key={report.id} className="inline-actions">
+                <button
+                  type="button"
+                  className="btn-approve"
+                  onClick={() => void moderateReport(report.id, "RESTORE")}
+                >
+                  ✓ {t("dashboards.admin.approve")}
+                </button>
+                <button
+                  type="button"
+                  className="btn-reject"
+                  onClick={() => void moderateReport(report.id, "REMOVE")}
+                >
+                  ✕ {t("dashboards.admin.reject")}
+                </button>
               </div>
+            ))}
+            {reports.length === 0 && (
               <div className="inline-actions">
-                <button type="button" onClick={() => void moderateReport(report.id, "RESTORE")}>
-                  {t("dashboards.admin.approve")}
-                </button>
-                <button type="button" className="secondary" onClick={() => void moderateReport(report.id, "REMOVE")}>
-                  {t("dashboards.admin.reject")}
-                </button>
+                <button type="button" className="btn-approve">✓ {t("dashboards.admin.approve")}</button>
+                <button type="button" className="btn-reject">✕ {t("dashboards.admin.reject")}</button>
               </div>
-            </article>
-          ))}
-        </div>
+            )}
+          </div>
+        </article>
       </section>
 
       <section className="card portal-main-card">
-        <div className="request-head-row">
+        <div className="admin-um-header">
           <h3>{t("dashboards.admin.userManagement")}</h3>
-          <button type="button">{t("dashboards.admin.addUser")}</button>
+          <button type="button" className="btn-primary btn-add-user">
+            👤+ {t("dashboards.admin.addUser")}
+          </button>
         </div>
 
-        <div className="inline-actions checkpoint-block">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t("dashboards.admin.searchPlaceholder")}
-          />
-          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
+        <div className="admin-um-filters">
+          <div className="admin-search-wrap">
+            <span className="admin-search-icon">🔍</span>
+            <input
+              className="admin-search-input"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("dashboards.admin.searchPlaceholder")}
+            />
+          </div>
+          <select
+            className="admin-role-filter"
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value)}
+          >
             <option value="ALL">{t("dashboards.admin.allRoles")}</option>
             <option value="STUDENT">{roleLabels.STUDENT}</option>
             <option value="TEACHER">{roleLabels.TEACHER}</option>
@@ -189,11 +242,17 @@ export function AdminDashboardPageV2() {
               <tr key={row.id}>
                 <td>{row.name}</td>
                 <td>{row.email}</td>
-                <td>{row.role === "STUDENT" ? roleLabels.STUDENT : roleLabels.TEACHER}</td>
-                <td>{row.status}</td>
+                <td>
+                  <span className={`role-badge ${ROLE_BADGE_COLORS[row.role] ?? "badge-student"}`}>
+                    {row.role === "STUDENT" ? roleLabels.STUDENT : roleLabels.TEACHER}
+                  </span>
+                </td>
+                <td>
+                  <span className="status-active">✓ {row.status}</span>
+                </td>
                 <td>{row.joined}</td>
                 <td>
-                  <button type="button" className="secondary">
+                  <button type="button" className="btn-outline btn-deactivate">
                     {t("dashboards.admin.deactivate")}
                   </button>
                 </td>
@@ -203,9 +262,11 @@ export function AdminDashboardPageV2() {
         </table>
       </section>
 
-      <section className="card">
-        <p className="status-line">{status || t("dashboards.common.idle")}</p>
-      </section>
+      {status ? (
+        <section className="card">
+          <p className="status-line">{status}</p>
+        </section>
+      ) : null}
     </DashboardShell>
   );
 }

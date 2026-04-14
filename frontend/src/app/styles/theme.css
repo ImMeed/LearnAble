@@ -120,8 +120,14 @@ html.dyslexia-mode {
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+  width: 100%;
+}
+
 body {
   margin: 0;
+  width: 100%;
   min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
@@ -131,6 +137,13 @@ body {
   letter-spacing: var(--letter-spacing);
   text-align: var(--text-align, left);
   zoom: var(--zoom-level);
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 button,

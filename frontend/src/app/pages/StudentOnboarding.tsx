@@ -185,7 +185,6 @@ export function StudentOnboardingPageV2() {
     if (!hasCompleteAnswers) {
       return;
     }
-  };
 
     setAutoSubmitted(true);
     setStatus(t("onboarding.submitting"));

@@ -9,6 +9,8 @@ import {
   get2FAStatus,
   type Enable2FAResponse,
 } from "../../api/authApi";
+import { OtpInput, type OtpStatus } from "../components/OtpInput";
+import { getSession } from "../../state/auth";
 
 type Step =
   | "idle"
@@ -22,6 +24,13 @@ type Step =
 function readError(error: unknown): string {
   if (typeof error === "object" && error && "response" in error) {
     const payload = (error as { response?: { data?: unknown } }).response?.data;
+    if (typeof payload === "object" && payload && "detail" in payload) {
+      const detail = (payload as { detail?: unknown }).detail;
+      if (typeof detail === "object" && detail && "message" in detail) {
+        return String((detail as { message?: unknown }).message);
+      }
+      if (typeof detail === "string") return detail;
+    }
     if (typeof payload === "object" && payload && "message" in payload) {
       return String((payload as { message: unknown }).message);
     }
@@ -29,9 +38,21 @@ function readError(error: unknown): string {
   return String(error);
 }
 
+function dashboardFromRole(role: string | undefined): string {
+  switch (role) {
+    case "ROLE_TUTOR": return "/teacher/dashboard";
+    case "ROLE_PARENT": return "/parent/dashboard";
+    case "ROLE_PSYCHOLOGIST": return "/psychologist/dashboard";
+    case "ROLE_ADMIN": return "/admin/dashboard";
+    default: return "/student/dashboard";
+  }
+}
+
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
   const prefix = i18n.resolvedLanguage === "en" ? "/en" : "/ar";
+  const session = getSession();
+  const backPath = `${prefix}${dashboardFromRole(session?.role)}`;
 
   const [totpEnabled, setTotpEnabled] = useState<boolean | null>(null);
   const [step, setStep] = useState<Step>("idle");
@@ -39,6 +60,7 @@ export function SettingsPage() {
   const [code, setCode] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [otpStatus, setOtpStatus] = useState<OtpStatus>("idle");
 
   useEffect(() => {
     get2FAStatus()
@@ -59,39 +81,55 @@ export function SettingsPage() {
     }
   };
 
-  const handleConfirmEnable = async (e: FormEvent) => {
-    e.preventDefault();
-    if (code.length !== 6) return;
+  const doConfirmEnable = async () => {
+    if (code.length !== 6 || otpStatus === "pending" || otpStatus === "success") return;
+    setOtpStatus("pending");
     setBusy(true);
     try {
       await confirm2FA(code);
+      setOtpStatus("success");
       setTotpEnabled(true);
-      setStep("success");
       setStatusMsg(t("settings.2fa.enabledSuccess"));
       setCode("");
       setQrData(null);
+      setTimeout(() => setStep("success"), 800);
     } catch (err) {
+      setOtpStatus("error");
       setStatusMsg(readError(err));
+      setTimeout(() => { setCode(""); setOtpStatus("idle"); }, 1800);
     } finally {
       setBusy(false);
     }
   };
 
-  const handleConfirmDisable = async (e: FormEvent) => {
+  const handleConfirmEnable = (e: FormEvent) => {
     e.preventDefault();
-    if (code.length !== 6) return;
+    void doConfirmEnable();
+  };
+
+  const doConfirmDisable = async () => {
+    if (code.length !== 6 || otpStatus === "pending" || otpStatus === "success") return;
+    setOtpStatus("pending");
     setBusy(true);
     try {
       await disable2FA(code);
+      setOtpStatus("success");
       setTotpEnabled(false);
-      setStep("success");
       setStatusMsg(t("settings.2fa.disabledSuccess"));
       setCode("");
+      setTimeout(() => setStep("success"), 800);
     } catch (err) {
+      setOtpStatus("error");
       setStatusMsg(readError(err));
+      setTimeout(() => { setCode(""); setOtpStatus("idle"); }, 1800);
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleConfirmDisable = (e: FormEvent) => {
+    e.preventDefault();
+    void doConfirmDisable();
   };
 
   const resetFlow = () => {
@@ -99,6 +137,7 @@ export function SettingsPage() {
     setCode("");
     setQrData(null);
     setStatusMsg("");
+    setOtpStatus("idle");
   };
 
   return (
@@ -107,7 +146,7 @@ export function SettingsPage() {
         <div className="public-header-inner">
           <span className="brand-text">{t("appTitle")}</span>
           <div className="public-header-actions">
-            <Link className="public-link" to={`${prefix}/student/dashboard`}>
+            <Link className="public-link" to={backPath}>
               {t("common.back")}
             </Link>
           </div>
@@ -118,7 +157,14 @@ export function SettingsPage() {
         <h1>{t("settings.title")}</h1>
 
         <article className="auth-card">
-          <h2 className="settings-section-title">{t("settings.2fa.title")}</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.4rem" }}>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--primary)", flexShrink: 0 }} aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              <circle cx="12" cy="16" r="1" fill="currentColor" stroke="none" />
+            </svg>
+            <h2 className="settings-section-title" style={{ margin: 0 }}>{t("settings.2fa.title")}</h2>
+          </div>
           <p className="muted">{t("settings.2fa.description")}</p>
 
           {totpEnabled === null && (
@@ -167,27 +213,26 @@ export function SettingsPage() {
           )}
 
           {step === "enabling-confirm" && (
-            <form className="stack-form" onSubmit={(e) => void handleConfirmEnable(e)}>
-              <p>{t("settings.2fa.enterCodeInstruction")}</p>
-              <label>
-                {t("settings.2fa.codeLabel")}
-                <div className="auth-input-wrap">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="\d{6}"
-                    maxLength={6}
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                    placeholder="000000"
-                    required
-                    autoComplete="one-time-code"
-                  />
-                </div>
-              </label>
-              <button type="submit" disabled={busy || code.length !== 6}>
-                {busy ? t("common.pleaseWait") : t("settings.2fa.confirmBtn")}
-              </button>
+            <form className="stack-form" onSubmit={handleConfirmEnable}>
+              <p style={{ textAlign: "center" }}>{t("settings.2fa.enterCodeInstruction")}</p>
+              <OtpInput
+                value={code}
+                onChange={(v) => {
+                  setCode(v);
+                  if (otpStatus === "error") setOtpStatus("idle");
+                  if (v.length === 6 && otpStatus === "idle") setTimeout(() => void doConfirmEnable(), 0);
+                }}
+                status={otpStatus}
+                autoFocus
+              />
+              {statusMsg && otpStatus === "error" && (
+                <p className="status-line" style={{ textAlign: "center", marginTop: "0.25rem" }}>{statusMsg}</p>
+              )}
+              {otpStatus !== "success" && (
+                <button type="submit" disabled={busy || code.length !== 6 || otpStatus === "pending"}>
+                  {busy ? t("common.pleaseWait") : t("settings.2fa.confirmBtn")}
+                </button>
+              )}
               <button type="button" className="link-button" onClick={resetFlow}>
                 {t("common.cancel")}
               </button>
@@ -195,27 +240,26 @@ export function SettingsPage() {
           )}
 
           {step === "disabling-confirm" && (
-            <form className="stack-form" onSubmit={(e) => void handleConfirmDisable(e)}>
-              <p>{t("settings.2fa.disableInstruction")}</p>
-              <label>
-                {t("settings.2fa.codeLabel")}
-                <div className="auth-input-wrap">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="\d{6}"
-                    maxLength={6}
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                    placeholder="000000"
-                    required
-                    autoComplete="one-time-code"
-                  />
-                </div>
-              </label>
-              <button type="submit" disabled={busy || code.length !== 6} className="btn-danger">
-                {busy ? t("common.pleaseWait") : t("settings.2fa.confirmDisableBtn")}
-              </button>
+            <form className="stack-form" onSubmit={handleConfirmDisable}>
+              <p style={{ textAlign: "center" }}>{t("settings.2fa.disableInstruction")}</p>
+              <OtpInput
+                value={code}
+                onChange={(v) => {
+                  setCode(v);
+                  if (otpStatus === "error") setOtpStatus("idle");
+                  if (v.length === 6 && otpStatus === "idle") setTimeout(() => void doConfirmDisable(), 0);
+                }}
+                status={otpStatus}
+                autoFocus
+              />
+              {statusMsg && otpStatus === "error" && (
+                <p className="status-line" style={{ textAlign: "center", marginTop: "0.25rem" }}>{statusMsg}</p>
+              )}
+              {otpStatus !== "success" && (
+                <button type="submit" disabled={busy || code.length !== 6 || otpStatus === "pending"} className="btn-danger">
+                  {busy ? t("common.pleaseWait") : t("settings.2fa.confirmDisableBtn")}
+                </button>
+              )}
               <button type="button" className="link-button" onClick={resetFlow}>
                 {t("common.cancel")}
               </button>
@@ -240,7 +284,7 @@ export function SettingsPage() {
             </div>
           )}
 
-          {statusMsg && step !== "success" && step !== "error" && (
+          {statusMsg && step !== "success" && step !== "error" && otpStatus !== "error" && (
             <p className="status-line">{statusMsg}</p>
           )}
         </article>

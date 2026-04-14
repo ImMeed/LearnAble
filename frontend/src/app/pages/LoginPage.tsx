@@ -10,7 +10,7 @@ import { CompactLanguageSwitcher } from "../components/CompactLanguageSwitcher";
 import { PublicHeader } from "../components/PublicHeader";
 import { actionClass, cx, inputClass, pageShellClass, sectionFrameClass, surfaceClass } from "../components/uiStyles";
 import { getInitialLocale } from "../locale";
-import { setSession } from "../../state/auth";
+import { clearPendingOTP, getPendingOTP, setPendingOTP, setSession } from "../../state/auth";
 
 const ROLE_CHOICES = [
   { id: "student", labelKey: "login.roleStudent", Icon: GraduationCap, apiRole: "ROLE_STUDENT" },
@@ -68,6 +68,8 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState<"neutral" | "pending" | "error">("neutral");
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
 
   const selectedRoleConfig = ROLE_CHOICES.find((role) => role.id === selectedRole) ?? ROLE_CHOICES[0];
 
