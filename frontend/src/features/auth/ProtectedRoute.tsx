@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
-import { getPathLocale } from "../../app/locale";
+import { getInitialLocale } from "../../app/locale";
 import { getSession } from "../../state/auth";
 
 type ProtectedRouteProps = {
@@ -12,7 +12,7 @@ type ProtectedRouteProps = {
 export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
   const location = useLocation();
   const session = getSession();
-  const localePrefix = getPathLocale(location.pathname) === "en" ? "/en" : "/ar";
+  const localePrefix = getInitialLocale(location.pathname) === "en" ? "/en" : "/ar";
 
   if (!session?.accessToken) {
     return <Navigate to={`${localePrefix}/login`} replace state={{ from: location.pathname }} />;

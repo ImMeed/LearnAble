@@ -81,8 +81,8 @@ def main() -> None:
 
         # === Create economy records ===
         session.add(PointsWallet(user_id=demo_student.id, balance_points=150))
-        session.add(XpLedger(user_id=demo_student.id, earned_xp=75))
-        session.add(XpLedger(user_id=demo_tutor.id, earned_xp=250))
+        session.add(XpLedger(user_id=demo_student.id, xp_delta=75, reason="seed_demo_en"))
+        session.add(XpLedger(user_id=demo_tutor.id, xp_delta=250, reason="seed_demo_en"))
         session.flush()
 
         # === Study Module ===
@@ -228,7 +228,7 @@ def main() -> None:
             tutor_user_id=demo_tutor.id,
             topic="Comprehension Strategy",
             message="Can you help me with identifying the main idea in complex texts?",
-            status="PENDING",
+            status="REQUESTED",
         )
         session.add(assistance)
         session.flush()

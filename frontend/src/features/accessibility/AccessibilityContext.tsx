@@ -224,6 +224,7 @@ function applyDocumentState(settings: AccessibilitySettings): void {
   root.style.setProperty("--line-height", String(settings.lineSpacing));
   root.style.setProperty("--zoom-level", `${settings.zoomLevel}%`);
   root.style.setProperty("--text-align", settings.textAlignment);
+  root.style.fontSize = `${settings.fontSize}px`;
 }
 
 export function AccessibilityProvider({ children }: { children: ReactNode }) {

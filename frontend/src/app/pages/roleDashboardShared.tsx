@@ -1,9 +1,12 @@
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { BookOpen, CalendarDays, ClipboardList, LayoutDashboard, LogOut, MessageSquare, School, type LucideIcon } from "lucide-react";
 
 import { AccessibilityToolbar } from "../components/AccessibilityToolbar";
-import { clearSession, getSession } from "../../state/auth";
+import { BrandLogo } from "../components/BrandLogo";
+import { cx, surfaceClass } from "../components/uiStyles";
+import { clearSession } from "../../state/auth";
 
 export type NotificationItem = {
   id: string;
@@ -117,7 +120,6 @@ export function DashboardShell({
 }) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const session = getSession();
 
   const onLogout = () => {
     clearSession();
@@ -125,29 +127,44 @@ export function DashboardShell({
   };
 
   return (
-    <main className="page dashboard-page portal-page">
-      <section className="card dashboard-header portal-header">
+    <main className="page dashboard-page portal-page mx-auto grid max-w-[1240px] gap-4 px-4 py-4 sm:px-6">
+      <section
+        className={cx(
+          surfaceClass,
+          "dashboard-header portal-header flex flex-col gap-5 px-5 py-5 backdrop-blur sm:px-6 lg:flex-row lg:items-center lg:justify-between",
+        )}
+      >
         <div className="portal-brand">
-          <h1>{t("appTitle")}</h1>
-          <p className="muted">{subtitle}</p>
-          <p className="muted">{t("dashboards.shell.activeRole", { role: session?.role ?? t("dashboards.common.none") })}</p>
+          <Link className="portal-brand-link" to={localePrefix(i18n.resolvedLanguage)} aria-label={t("dashboards.shell.backHome")}>
+            <div className="flex items-start gap-4">
+              <BrandLogo className="shrink-0 text-primary" size={40} />
+              <div>
+                <h1 className="text-[clamp(1.8rem,2.4vw,2.5rem)] font-semibold tracking-[-0.04em] text-foreground">
+                  {t("appTitle")}
+                </h1>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{subtitle}</p>
+              </div>
+            </div>
+          </Link>
         </div>
         <div className="dashboard-header-actions">
-          <Link className="secondary-link" to={localePrefix(i18n.resolvedLanguage)}>
-            {t("dashboards.shell.backHome")}
-          </Link>
-          <Link className="secondary-link" to={`${localePrefix(i18n.resolvedLanguage)}/settings`}>
-            {t("settings.title")}
-          </Link>
-          <button type="button" className="secondary" onClick={onLogout}>
-            {t("dashboards.shell.logout")}
+          <div className="dashboard-header-toolbar-wrap">
+            <AccessibilityToolbar />
+          </div>
+          <button
+            type="button"
+            className="dashboard-logout-icon"
+            onClick={onLogout}
+            aria-label={t("dashboards.shell.logout")}
+            title={t("dashboards.shell.logout")}
+          >
+            <LogOut aria-hidden="true" size={18} />
           </button>
-          <AccessibilityToolbar />
         </div>
       </section>
 
-      <section className="portal-section-head">
-        <h2>{title}</h2>
+      <section className="portal-section-head flex items-center justify-between gap-3">
+        <h2 className="text-[clamp(1.4rem,2vw,2rem)] font-semibold tracking-[-0.03em] text-foreground">{title}</h2>
       </section>
 
       {children}
@@ -157,18 +174,26 @@ export function DashboardShell({
 
 export function TeacherTabs({ active, onChange }: { active: TeacherTab; onChange: (tab: TeacherTab) => void }) {
   const { t } = useTranslation();
-  const tabs: TeacherTab[] = ["overview", "attendance", "classrooms", "courses", "schedule", "messages"];
+  const tabs: Array<{ id: TeacherTab; Icon: LucideIcon }> = [
+    { id: "overview", Icon: LayoutDashboard },
+    { id: "attendance", Icon: ClipboardList },
+    { id: "classrooms", Icon: School },
+    { id: "courses", Icon: BookOpen },
+    { id: "schedule", Icon: CalendarDays },
+    { id: "messages", Icon: MessageSquare },
+  ];
 
   return (
-    <nav className="portal-tabs" aria-label={t("dashboards.teacher.tabsLabel")}>
+    <nav className="teacher-tabbar" aria-label={t("dashboards.teacher.tabsLabel")}>
       {tabs.map((tab) => (
         <button
-          key={tab}
+          key={tab.id}
           type="button"
-          className={active === tab ? "active" : ""}
-          onClick={() => onChange(tab)}
+          className={cx("teacher-tab", active === tab.id && "is-active")}
+          onClick={() => onChange(tab.id)}
         >
-          {t(`dashboards.tabs.${tab}`)}
+          <tab.Icon className="h-4 w-4" aria-hidden="true" />
+          <span>{t(`dashboards.tabs.${tab.id}`)}</span>
         </button>
       ))}
     </nav>

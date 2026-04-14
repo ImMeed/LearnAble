@@ -205,30 +205,6 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-  {
-    path: "/settings",
-    element: (
-      <ProtectedRoute roles={["ROLE_STUDENT", "ROLE_TUTOR", "ROLE_PARENT", "ROLE_PSYCHOLOGIST", "ROLE_ADMIN"]}>
-        <SettingsPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/ar/settings",
-    element: (
-      <ProtectedRoute roles={["ROLE_STUDENT", "ROLE_TUTOR", "ROLE_PARENT", "ROLE_PSYCHOLOGIST", "ROLE_ADMIN"]}>
-        <SettingsPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/en/settings",
-    element: (
-      <ProtectedRoute roles={["ROLE_STUDENT", "ROLE_TUTOR", "ROLE_PARENT", "ROLE_PSYCHOLOGIST", "ROLE_ADMIN"]}>
-        <SettingsPage />
-      </ProtectedRoute>
-    ),
-  },
   { path: "/ar/forum", element: <PlaceholderPage titleKey="nav.forum" /> },
   { path: "/ar/quizzes", element: <PlaceholderPage titleKey="nav.quizzes" /> },
   { path: "/ar/games", element: <PlaceholderPage titleKey="nav.games" /> },

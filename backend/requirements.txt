@@ -16,3 +16,4 @@ qrcode
 pillow
 cryptography
 nh3
+websockets==13.1

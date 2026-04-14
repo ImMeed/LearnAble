@@ -3,8 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../api/client";
-import { BrandLogo } from "../components/BrandLogo";
-import { useAccessibility } from "../../features/accessibility/AccessibilityContext";
+import { actionClass, cx, inputClass, surfaceClass } from "../components/uiStyles";
+import { DashboardShell, errorMessage, localePrefix, localeRequestConfig } from "./roleDashboardShared";
 
 type LessonDetail = {
   id: string;
@@ -29,30 +29,6 @@ type ChatMessage = {
   role: "user" | "ai";
   text: string;
 };
-
-function localeRequestConfig(resolvedLanguage: string | undefined) {
-  return {
-    headers: {
-      "x-lang": resolvedLanguage === "en" ? "en" : "ar",
-    },
-  };
-}
-
-function localePrefix(resolvedLanguage: string | undefined): string {
-  return resolvedLanguage === "en" ? "/en" : "/ar";
-}
-
-function errorMessage(error: unknown): string {
-  if (typeof error === "object" && error && "response" in error) {
-    const response = (error as { response?: { data?: unknown } }).response;
-    const payload = response?.data;
-    if (typeof payload === "object" && payload && "detail" in payload) {
-      const detail = (payload as { detail?: unknown }).detail;
-      return typeof detail === "string" ? detail : String(detail);
-    }
-  }
-  return String(error);
-}
 
 function formatDuration(seconds: number): string {
   const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
@@ -98,7 +74,6 @@ export function CoursePageV2() {
   const { id } = useParams();
   const lessonId = id ?? "";
   const { t, i18n } = useTranslation();
-  const { settings } = useAccessibility();
   const navigate = useNavigate();
 
   const [status, setStatus] = useState("");
@@ -220,24 +195,32 @@ export function CoursePageV2() {
   const current = sections[currentSection];
 
   return (
-    <main className={`page dashboard-page course-v2-page ${settings.dyslexiaMode ? "dyslexia-mode" : ""}`}>
-      <section className="card course-v2-header">
-        <Link className="secondary-link" to={`${prefix}/student/dashboard`}>
+    <DashboardShell title={t("dashboards.course.title")} subtitle={t("dashboards.course.subtitle")}>
+      <section className={cx(surfaceClass, "course-v2-header px-5 py-4 sm:px-6")}>
+        <Link className={actionClass("soft")} to={`${prefix}/student/dashboard`}>
           {t("dashboards.course.backToDashboard")}
         </Link>
-        <div className="student-v2-brand">
-          <BrandLogo className="brand-icon" />
-          <h1>{t("appTitle")}</h1>
+        <div className="min-w-0 flex-1 text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            {lesson?.difficulty ?? t("dashboards.course.lesson")}
+          </p>
+          <h2 className="mt-2 text-[clamp(1.4rem,2vw,2rem)] font-semibold tracking-[-0.03em] text-foreground">
+            {lesson?.title ?? t("dashboards.course.loading")}
+          </h2>
         </div>
-        <p className="muted"><TimeIcon /> {formatDuration(timeSpent)}</p>
+        <p className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-muted-foreground">
+          <TimeIcon /> {formatDuration(timeSpent)}
+        </p>
       </section>
 
       <section className="course-v2-layout">
         <section className="course-v2-content">
-          <article className="card">
+          <article className={cx(surfaceClass, "p-5 sm:p-6")}>
             <div className="section-title-row">
-              <h2>{lesson?.title ?? t("dashboards.course.loading")}</h2>
-              <button type="button" className="secondary" onClick={() => setIsReading((prev) => !prev)}>
+              <h2 className="text-[clamp(1.35rem,2vw,1.9rem)] font-semibold tracking-[-0.03em] text-foreground">
+                {lesson?.title ?? t("dashboards.course.loading")}
+              </h2>
+              <button type="button" className={actionClass("soft")} onClick={() => setIsReading((prev) => !prev)}>
                 {isReading ? t("dashboards.course.stopReading") : t("dashboards.course.readAloud")}
               </button>
             </div>
@@ -247,17 +230,17 @@ export function CoursePageV2() {
               <p>{current?.content}</p>
             </article>
             <div className="inline-actions checkpoint-block">
-              <button type="button" className="secondary" onClick={markCurrentSectionDone}>
+              <button type="button" className={actionClass("soft")} onClick={markCurrentSectionDone}>
                 {t("dashboards.course.markSectionDone")}
               </button>
             </div>
           </article>
 
           {showAIChat ? (
-            <article className="card checkpoint-block">
+            <article className={cx(surfaceClass, "checkpoint-block p-5 sm:p-6")}>
               <div className="section-title-row">
-                <h3>{t("dashboards.course.aiChat")}</h3>
-                <button type="button" className="secondary" onClick={() => setShowAIChat(false)}>
+                <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">{t("dashboards.course.aiChat")}</h3>
+                <button type="button" className={actionClass("soft")} onClick={() => setShowAIChat(false)}>
                   {t("common.close")}
                 </button>
               </div>
@@ -273,25 +256,26 @@ export function CoursePageV2() {
               </div>
               <div className="inline-actions checkpoint-block">
                 <input
+                  className={inputClass}
                   value={chatInput}
                   onChange={(event) => setChatInput(event.target.value)}
                   placeholder={t("dashboards.course.chatPlaceholder")}
                 />
-                <button type="button" onClick={() => void sendAi()} disabled={!chatInput.trim()}>
+                <button type="button" className={actionClass()} onClick={() => void sendAi()} disabled={!chatInput.trim()}>
                   {t("dashboards.studentV2.send")}
                 </button>
               </div>
             </article>
           ) : (
-            <button type="button" className="secondary checkpoint-block" onClick={() => setShowAIChat(true)}>
+            <button type="button" className={cx(actionClass("soft"), "checkpoint-block")} onClick={() => setShowAIChat(true)}>
               {t("dashboards.course.reopenAi")}
             </button>
           )}
         </section>
 
         <aside className="course-v2-sidebar">
-          <article className="card">
-            <h3>{t("dashboards.course.sections")}</h3>
+          <article className={cx(surfaceClass, "p-5 sm:p-6")}>
+            <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">{t("dashboards.course.sections")}</h3>
             <div className="stack-list">
               {sections.map((section, index) => (
                 <button
@@ -307,10 +291,10 @@ export function CoursePageV2() {
             </div>
           </article>
 
-          <article className="card checkpoint-block">
-            <h3>{t("dashboards.course.actions")}</h3>
+          <article className={cx(surfaceClass, "checkpoint-block p-5 sm:p-6")}>
+            <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">{t("dashboards.course.actions")}</h3>
             <div className="course-v2-actions-grid">
-              <button type="button" onClick={() => setStatus(flashcards.length ? flashcards[0].front : t("dashboards.course.noFlashcards"))}>
+              <button type="button" className={actionClass()} onClick={() => setStatus(flashcards.length ? flashcards[0].front : t("dashboards.course.noFlashcards"))}>
                 {t("dashboards.course.openFlashcards")}
               </button>
               <button type="button" className="danger" onClick={() => void askForHelp()} disabled={showHelpRequest}>
@@ -324,16 +308,16 @@ export function CoursePageV2() {
               </button>
             </div>
             <div className="inline-actions checkpoint-block">
-              <button type="button" className="secondary" onClick={() => setStatus(t("dashboards.course.reviewQueued"))}>
+              <button type="button" className={actionClass("soft")} onClick={() => setStatus(t("dashboards.course.reviewQueued"))}>
                 {t("dashboards.course.reviewLesson")}
               </button>
-              <button type="button" className="secondary" onClick={() => setStatus(games.length ? games[0].objective : t("dashboards.course.noGames"))}>
+              <button type="button" className={actionClass("soft")} onClick={() => setStatus(games.length ? games[0].objective : t("dashboards.course.noGames"))}>
                 {t("dashboards.course.videoTutorial")}
               </button>
             </div>
           </article>
 
-          <article className="card checkpoint-block">
+          <article className={cx(surfaceClass, "checkpoint-block p-5 sm:p-6")}>
             <button type="button" className="course-v2-complete" onClick={() => setShowCompletionModal(true)}>
               {t("dashboards.course.markCourseComplete")}
             </button>
@@ -344,16 +328,22 @@ export function CoursePageV2() {
 
       {showCompletionModal ? (
         <div className="course-v2-modal-backdrop" role="presentation" onClick={() => setShowCompletionModal(false)}>
-          <article className="card course-v2-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+          <article
+            className={cx(surfaceClass, "course-v2-modal p-5 sm:p-6")}
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
             <p className="course-v2-modal-icon"><CheckIcon /></p>
             <h3>{t("dashboards.course.completeTitle")}</h3>
             <p>{t("dashboards.course.completeDescription")}</p>
             <div className="inline-actions checkpoint-block">
-              <button type="button" className="secondary" onClick={() => setShowCompletionModal(false)}>
+              <button type="button" className={actionClass("soft")} onClick={() => setShowCompletionModal(false)}>
                 {t("dashboards.course.cancel")}
               </button>
               <button
                 type="button"
+                className={actionClass()}
                 onClick={() => {
                   setShowCompletionModal(false);
                   setStatus(t("dashboards.course.completed"));
@@ -365,6 +355,6 @@ export function CoursePageV2() {
           </article>
         </div>
       ) : null}
-    </main>
+    </DashboardShell>
   );
 }

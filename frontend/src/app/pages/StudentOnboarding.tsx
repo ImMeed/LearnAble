@@ -1,11 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "react-router-dom";
 
 import { apiClient } from "../../api/client";
 import { AccessibilityToolbar } from "../components/AccessibilityToolbar";
-import { BrandLogo } from "../components/BrandLogo";
-import { LanguageSwitcher } from "../../features/accessibility/LanguageSwitcher";
+import { CompactLanguageSwitcher } from "../components/CompactLanguageSwitcher";
+import { PublicHeader } from "../components/PublicHeader";
+import { actionClass, cx, inputClass, pageShellClass, sectionFrameClass, surfaceClass } from "../components/uiStyles";
 import { getSession } from "../../state/auth";
 
 const ONBOARDING_NAME_KEY = "learnable_onboarding_name";
@@ -95,6 +96,7 @@ export function StudentOnboardingPageV2() {
   const [name, setName] = useState(() => localStorage.getItem(ONBOARDING_NAME_KEY) ?? "");
   const [answers, setAnswers] = useState<Record<number, string>>(() => readStoredAnswers());
   const [status, setStatus] = useState("");
+  const [statusTone, setStatusTone] = useState<"neutral" | "pending" | "success" | "error">("neutral");
   const [autoSubmitted, setAutoSubmitted] = useState(false);
 
   const current = STEPS[step];
@@ -142,6 +144,7 @@ export function StudentOnboardingPageV2() {
       );
       clearOnboardingDraft();
       setStatus(t("onboarding.saved"));
+      setStatusTone("success");
       navigate(`${prefix}/student/dashboard`, { replace: true });
     } catch (error) {
       if (
@@ -152,6 +155,7 @@ export function StudentOnboardingPageV2() {
       ) {
         clearOnboardingDraft();
         setStatus(t("onboarding.saved"));
+        setStatusTone("success");
         navigate(`${prefix}/student/dashboard`, { replace: true });
         return;
       }
@@ -164,6 +168,7 @@ export function StudentOnboardingPageV2() {
             )
           : String(error);
       setStatus(`${t("onboarding.notice")}: ${message}`);
+      setStatusTone("error");
     }
   };
 
@@ -180,9 +185,11 @@ export function StudentOnboardingPageV2() {
     if (!hasCompleteAnswers) {
       return;
     }
+  };
 
     setAutoSubmitted(true);
     setStatus(t("onboarding.submitting"));
+    setStatusTone("pending");
     void submitScreening();
   }, [autoSubmitted, hasCompleteAnswers, session?.accessToken, session?.role, t]);
 
@@ -200,100 +207,131 @@ export function StudentOnboardingPageV2() {
     // If logged in, submit screening immediately
     if (session?.accessToken) {
       setStatus(t("onboarding.submitting"));
+      setStatusTone("pending");
       await submitScreening();
     } else {
       // If not logged in, mark as pending and redirect to registration
       localStorage.setItem(ONBOARDING_PENDING_KEY, "true");
       setStatus(t("onboarding.saved"));
+      setStatusTone("success");
       navigate(`${prefix}/login`, { replace: true });
     }
   };
 
   return (
-    <main className="onboarding-v2-page">
-      <header className="public-header auth-header">
-        <div className="public-header-inner">
-          <Link className="brand-link" to={prefix}>
-            <BrandLogo className="brand-icon" />
-            <span className="brand-text">{t("appTitle")}</span>
-          </Link>
-          <div className="public-header-actions auth-header-actions">
-            <LanguageSwitcher />
+    <main className={pageShellClass}>
+      <PublicHeader
+        className="bg-background"
+        actions={
+          <>
+            <CompactLanguageSwitcher />
             <AccessibilityToolbar />
-            <Link className="public-link" to={`${prefix}/login`}>
+            <Link className={actionClass("ghost")} to={`${prefix}/login`}>
               {t("onboarding.signInLink")}
             </Link>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
-      <section className="onboarding-v2-content">
-        <div className="onboarding-progress-track" aria-label={t("onboarding.progressLabel")}>
+      <section className={cx(sectionFrameClass, "py-12 sm:py-16")}>
+        <div className="mx-auto max-w-3xl">
+          <div className="flex items-center justify-center" aria-label={t("onboarding.progressLabel")}>
+            <div className="flex items-center justify-center gap-0">
           {STEPS.map((_, index) => {
             const active = index <= step;
             return (
-              <div className="onboarding-progress-item" key={index}>
-                <span className={active ? "onboarding-dot active" : "onboarding-dot"}>{index + 1}</span>
-                {index < STEPS.length - 1 ? <span className="onboarding-progress-line" aria-hidden="true" /> : null}
-              </div>
-            );
-          })}
-        </div>
-
-        <p className="muted onboarding-step-label">
-          {t("onboarding.stepCounter", { current: step + 1, total: STEPS.length })}
-        </p>
-
-        <article className="onboarding-v2-card">
-          <h1>{t(current.titleKey)}</h1>
-          <p>{t(current.descriptionKey)}</p>
-
-          <form className="stack-form" onSubmit={(event) => void onSubmit(event)}>
-            <label>
-              {t(current.promptKey)}
-              {step === 0 ? (
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder={t("onboarding.answerPlaceholder")}
-                  required
-                />
-              ) : (
-                <select
-                  value={answers[step] ?? ""}
-                  onChange={(event) => setAnswers((prev) => ({ ...prev, [step]: event.target.value }))}
-                  required
-                >
-                  <option value="">{t("common.chooseOne")}</option>
-                  {current.choices?.map((choice) => (
-                    <option value={choice} key={choice}>
-                      {t(choice)}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </label>
-
-            <div className="inline-actions onboarding-actions">
-              <button
-                type="button"
-                className="secondary"
-                disabled={step === 0}
-                onClick={() => setStep((prev) => Math.max(0, prev - 1))}
-              >
-                {t("common.back")}
-              </button>
-              <button type="submit">{step < STEPS.length - 1 ? t("common.continue") : t("common.finish")}</button>
+                  <div className="flex items-center" key={index}>
+                    <span
+                      className={cx(
+                        "inline-flex h-11 w-11 items-center justify-center rounded-full border text-sm font-semibold transition duration-200",
+                        active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground",
+                      )}
+                    >
+                      {index + 1}
+                    </span>
+                    {index < STEPS.length - 1 ? (
+                      <span className="mx-2 h-0.5 w-12 bg-border sm:w-20" aria-hidden="true" />
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
-          </form>
+          </div>
 
-          {status ? <p className="status-line">{status}</p> : null}
-        </article>
+          <p className="mt-5 text-center text-sm font-medium text-muted-foreground">
+            {t("onboarding.stepCounter", { current: step + 1, total: STEPS.length })}
+          </p>
 
-        <p className="muted onboarding-helper-text">
-          {t("onboarding.helperText")}
-        </p>
+          <article className={cx(surfaceClass, "mx-auto mt-6 max-w-[40rem] p-6 sm:p-8")}>
+            <h1 className="text-balance text-[clamp(2rem,3vw,2.8rem)] font-semibold tracking-[-0.04em] text-foreground">
+              {t(current.titleKey)}
+            </h1>
+            <p className="mt-3 text-base leading-7 text-muted-foreground">{t(current.descriptionKey)}</p>
+
+            <form className="mt-6 grid gap-5" onSubmit={(event) => void onSubmit(event)}>
+              <label>
+                <span className="mb-2 block text-sm font-semibold text-foreground">{t(current.promptKey)}</span>
+                {step === 0 ? (
+                  <input
+                    className={inputClass}
+                    type="text"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder={t("onboarding.answerPlaceholder")}
+                    required
+                  />
+                ) : (
+                  <select
+                    className={inputClass}
+                    value={answers[step] ?? ""}
+                    onChange={(event) => setAnswers((prev) => ({ ...prev, [step]: event.target.value }))}
+                    required
+                  >
+                    <option value="">{t("common.chooseOne")}</option>
+                    {current.choices?.map((choice) => (
+                      <option value={choice} key={choice}>
+                        {t(choice)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </label>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <button
+                  type="button"
+                  className={actionClass("soft")}
+                  disabled={step === 0}
+                  onClick={() => setStep((prev) => Math.max(0, prev - 1))}
+                >
+                  {t("common.back")}
+                </button>
+                <button className={actionClass()} type="submit">
+                  {step < STEPS.length - 1 ? t("common.continue") : t("common.finish")}
+                </button>
+              </div>
+            </form>
+
+            {status ? (
+              <p
+                className={cx(
+                  "mt-5 rounded-[1rem] border px-4 py-3 text-sm leading-6",
+                  statusTone === "error"
+                    ? "border-destructive bg-destructive/10 text-foreground"
+                    : statusTone === "success"
+                      ? "border-secondary bg-secondary/10 text-foreground"
+                      : "border-border bg-background text-muted-foreground",
+                )}
+              >
+                {status}
+              </p>
+            ) : null}
+          </article>
+
+          <p className="mx-auto mt-6 max-w-2xl text-center text-sm leading-7 text-muted-foreground">
+            {t("onboarding.helperText")}
+          </p>
+        </div>
       </section>
     </main>
   );
