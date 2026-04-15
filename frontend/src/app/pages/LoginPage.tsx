@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { BookOpen, GraduationCap, Lock, Mail, Users } from "lucide-react";
+import axios from "axios";
 
 import { apiClient } from "../../api/client";
 import { AccessibilityToolbar } from "../components/AccessibilityToolbar";
@@ -21,6 +22,9 @@ type SelectedRole = (typeof ROLE_CHOICES)[number]["id"];
 type Mode = "login" | "register";
 
 function readError(error: unknown): string {
+  if (axios.isAxiosError(error) && !error.response) {
+    return "Unable to reach the API server. Check that the backend is running and that the frontend origin is allowed by CORS.";
+  }
   if (typeof error === "object" && error && "response" in error) {
     const payload = (error as { response?: { data?: unknown } }).response?.data;
     if (typeof payload === "object" && payload && "message" in payload) {
@@ -63,6 +67,7 @@ export function LoginPage() {
   const [mode, setMode] = useState<Mode>("login");
   const [selectedRole, setSelectedRole] = useState<SelectedRole>("student");
   const [email, setEmail] = useState("");
+  const [studentAge, setStudentAge] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -94,6 +99,7 @@ export function LoginPage() {
             email: email.trim(),
             password,
             role: selectedRoleConfig.apiRole,
+            student_age_years: selectedRoleConfig.apiRole === "ROLE_STUDENT" ? Number(studentAge) : null,
           },
           { headers: { "x-lang": locale } },
         );
@@ -226,6 +232,22 @@ export function LoginPage() {
                 />
               </div>
             </label>
+            {mode === "register" && selectedRoleConfig.apiRole === "ROLE_STUDENT" ? (
+              <label className={cx(locale === "ar" ? "text-right" : "text-left")}>
+                <span className={cx("mb-2 block text-sm font-semibold text-foreground", locale === "ar" ? "text-right" : "text-left")}>
+                  {t("login.ageLabel")}
+                </span>
+                <input
+                  className={inputClass}
+                  type="number"
+                  value={studentAge}
+                  onChange={(event) => setStudentAge(event.target.value)}
+                  placeholder={t("login.agePlaceholder")}
+                  min={3}
+                  required
+                />
+              </label>
+            ) : null}
             <label className={cx(locale === "ar" ? "text-right" : "text-left") }>
               <span className={cx("mb-2 block text-sm font-semibold text-foreground", locale === "ar" ? "text-right" : "text-left")}>{t("login.passwordLabel")}</span>
               <div className="relative" dir={inputDirection}>
@@ -251,7 +273,12 @@ export function LoginPage() {
             <button
               type="submit"
               className={cx(mode === "register" ? actionClass("secondary") : actionClass(), "mt-2 w-full")}
-              disabled={busy || !email.trim() || !password.trim()}
+              disabled={
+                busy ||
+                !email.trim() ||
+                !password.trim() ||
+                (mode === "register" && selectedRoleConfig.apiRole === "ROLE_STUDENT" && !studentAge.trim())
+              }
             >
               {busy
                 ? t("login.pleaseWait")

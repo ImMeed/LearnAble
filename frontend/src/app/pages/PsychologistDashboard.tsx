@@ -1,7 +1,9 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../api/client";
+import { SupportManagementCard, type ReadingLabChildOption, type ReadingLabPlan } from "../components/SupportManagementCard";
+import { READING_LAB_ENABLED } from "../features";
 import {
   DashboardShell,
   errorMessage,
@@ -49,8 +51,9 @@ export function PsychologistDashboardPageV2() {
   const [reviewOffset, setReviewOffset] = useState(0);
   const [reviewSearchInput, setReviewSearchInput] = useState("");
   const [reviewSearch, setReviewSearch] = useState("");
-  const [supportLevel, setSupportLevel] = useState("MEDIUM");
-  const [supportNotes, setSupportNotes] = useState("");
+  const [linkedChildren, setLinkedChildren] = useState<ReadingLabChildOption[]>([]);
+  const [readingLabPlan, setReadingLabPlan] = useState<ReadingLabPlan | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState(false);
 
   const monitoringRows = useMemo(() => {
     return reviews
@@ -77,6 +80,26 @@ export function PsychologistDashboardPageV2() {
   const mediumRiskCount = monitoringRows.filter((row) => row.tone === "status-accent").length;
   const lowRiskCount = monitoringRows.filter((row) => row.tone === "status-success").length;
 
+  const isLinkedChild = (candidateStudentId: string) =>
+    linkedChildren.some((child) => child.student_user_id === candidateStudentId);
+
+  const loadPlan = async (studentId: string) => {
+    if (!READING_LAB_ENABLED || !studentId) {
+      setReadingLabPlan(null);
+      return;
+    }
+    setLoadingPlan(true);
+    try {
+      const response = await apiClient.get<ReadingLabPlan>(`/reading-lab/support/students/${studentId}`, requestConfig);
+      setReadingLabPlan(response.data);
+    } catch (error) {
+      setReadingLabPlan(null);
+      setStatus(errorMessage(error));
+    } finally {
+      setLoadingPlan(false);
+    }
+  };
+
   const loadAll = async (nextOffset: number = reviewOffset, nextSearch: string = reviewSearch) => {
     setStatus(t("dashboards.common.loading"));
     try {
@@ -87,9 +110,12 @@ export function PsychologistDashboardPageV2() {
         params.set("search", nextSearch.trim());
       }
 
-      const [notificationsRes, reviewsRes] = await Promise.all([
+      const [notificationsRes, reviewsRes, childrenRes] = await Promise.all([
         apiClient.get<{ items: NotificationItem[] }>("/notifications", requestConfig),
         apiClient.get<PsychologistReviewListResponse>(`/psychologist/reviews/students?${params.toString()}`, requestConfig),
+        READING_LAB_ENABLED
+          ? apiClient.get<{ items: ReadingLabChildOption[] }>("/reading-lab/children", requestConfig)
+          : Promise.resolve({ data: { items: [] } }),
       ]);
       setNotifications(notificationsRes.data.items || []);
       const loadedReviews = reviewsRes.data.items || [];
@@ -97,9 +123,19 @@ export function PsychologistDashboardPageV2() {
       setReviewTotal(reviewsRes.data.total || 0);
       setReviewOffset(nextOffset);
       setReviewSearch(nextSearch);
+      const children = childrenRes.data.items || [];
+      setLinkedChildren(children);
 
-      if (!studentId && loadedReviews.length > 0) {
-        setStudentId(loadedReviews[0].student_user_id);
+      const nextStudentId = studentId || children[0]?.student_user_id || loadedReviews[0]?.student_user_id || "";
+      if (nextStudentId) {
+        setStudentId(nextStudentId);
+        if (children.some((child) => child.student_user_id === nextStudentId)) {
+          await loadPlan(nextStudentId);
+        } else {
+          setReadingLabPlan(null);
+        }
+      } else {
+        setReadingLabPlan(null);
       }
       setStatus(t("dashboards.psych.loaded"));
     } catch (error) {
@@ -140,27 +176,36 @@ export function PsychologistDashboardPageV2() {
     }
   };
 
-  const confirmSupport = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!studentId.trim()) return;
-    try {
-      await apiClient.post(
-        `/psychologist/support/${studentId}/confirm`,
-        {
-          support_level: supportLevel,
-          notes: supportNotes,
-        },
-        requestConfig,
-      );
-      setStatus(t("dashboards.psych.confirmed"));
-      await loadAll();
-    } catch (error) {
-      setStatus(errorMessage(error));
+  const saveReadingLabPlan = async (nextPlan: ReadingLabPlan) => {
+    if (!studentId) return;
+    const response = await apiClient.put<ReadingLabPlan>(
+      `/reading-lab/support/students/${studentId}`,
+      nextPlan,
+      requestConfig,
+    );
+    setReadingLabPlan(response.data);
+    const refreshedChildren = await apiClient.get<{ items: ReadingLabChildOption[] }>("/reading-lab/children", requestConfig);
+    setLinkedChildren(refreshedChildren.data.items || []);
+  };
+
+  const linkStudent = async (studentLinkId: string) => {
+    await apiClient.post(
+      "/reading-lab/children/link",
+      { student_link_id: studentLinkId.trim().toUpperCase() },
+      requestConfig,
+    );
+    const refreshedChildren = await apiClient.get<{ items: ReadingLabChildOption[] }>("/reading-lab/children", requestConfig);
+    const items = refreshedChildren.data.items || [];
+    setLinkedChildren(items);
+    if (!studentId && items[0]?.student_user_id) {
+      const firstId = items[0].student_user_id;
+      setStudentId(firstId);
+      await loadPlan(firstId);
     }
   };
 
   return (
-    <DashboardShell title={t("dashboards.psych.title")} subtitle={t("dashboards.psych.subtitle")}>
+    <DashboardShell title={t("dashboards.psych.title")}>
       <section className="portal-grid">
         <article className="card portal-main-card">
           <h3>{t("dashboards.psych.monitoring")}</h3>
@@ -187,7 +232,31 @@ export function PsychologistDashboardPageV2() {
           </div>
           <div className="stack-list">
             {monitoringRows.length > 0 ? monitoringRows.map((row) => (
-              <article key={row.id} className="request-card" onClick={() => setStudentId(row.id)}>
+              <article
+                key={row.id}
+                className="request-card psych-clickable-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setStudentId(row.id);
+                  if (isLinkedChild(row.id)) {
+                    void loadPlan(row.id);
+                  } else {
+                    setReadingLabPlan(null);
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setStudentId(row.id);
+                    if (isLinkedChild(row.id)) {
+                      void loadPlan(row.id);
+                    } else {
+                      setReadingLabPlan(null);
+                    }
+                  }
+                }}
+              >
                 <div className="request-head-row">
                   <strong>{row.name}</strong>
                   <span className={`status-chip ${row.tone}`}>{row.risk}</span>
@@ -202,32 +271,32 @@ export function PsychologistDashboardPageV2() {
 
           <section className="card portal-inner-card checkpoint-block">
             <h4>{t("dashboards.psych.notesRecommendations")}</h4>
-            <form className="stack-form" onSubmit={(event) => void confirmSupport(event)}>
-              <label>
-                {t("dashboards.psych.studentId")}
-                <input value={studentId} onChange={(event) => setStudentId(event.target.value)} />
-              </label>
-              <label>
-                {t("dashboards.psych.supportLevel")}
-                <input value={supportLevel} onChange={(event) => setSupportLevel(event.target.value)} />
-              </label>
-              <label>
-                {t("dashboards.psych.notes")}
-                <textarea rows={3} value={supportNotes} onChange={(event) => setSupportNotes(event.target.value)} />
-              </label>
-              <div className="inline-actions">
-                <button type="button" className="secondary" onClick={() => void loadReview()}>
-                  {t("dashboards.psych.loadReview")}
-                </button>
-                <button type="submit">{t("dashboards.psych.confirmPlan")}</button>
-              </div>
-            </form>
+            <div className="inline-actions checkpoint-block">
+              <button type="button" className="secondary" onClick={() => void loadReview()}>
+                {t("dashboards.psych.loadReview")}
+              </button>
+            </div>
             <pre className="json-box checkpoint-block">{reviewData || t("dashboards.psych.noReview")}</pre>
           </section>
+
+          {READING_LAB_ENABLED ? (
+            <SupportManagementCard
+              children={linkedChildren}
+              selectedStudentId={studentId}
+              plan={readingLabPlan}
+              loading={loadingPlan}
+              onSelectStudent={(nextStudentId) => {
+                setStudentId(nextStudentId);
+                void loadPlan(nextStudentId);
+              }}
+              onSave={saveReadingLabPlan}
+              onLinkStudent={linkStudent}
+            />
+          ) : null}
         </article>
 
         <aside className="portal-side-column">
-          <article className="card analytics-card">
+          <article className="card portal-inner-card analytics-card">
             <h4>{t("dashboards.psych.overview")}</h4>
             <p>{t("dashboards.psych.totalStudents", { count: reviewTotal })}</p>
             <p>{t("dashboards.psych.highRiskCount", { count: highRiskCount })}</p>
@@ -235,7 +304,7 @@ export function PsychologistDashboardPageV2() {
             <p>{t("dashboards.psych.lowRiskCount", { count: lowRiskCount })}</p>
           </article>
 
-          <article className="card">
+          <article className="card portal-inner-card">
             <h4>{t("dashboards.psych.recentAlerts")}</h4>
             <div className="stack-list">
               {notifications.slice(0, 2).map((item) => (
@@ -250,7 +319,7 @@ export function PsychologistDashboardPageV2() {
             </div>
           </article>
 
-          <article className="card">
+          <article className="card portal-inner-card">
             <p className="status-line">{status || t("dashboards.common.idle")}</p>
             <button type="button" className="secondary" onClick={() => void loadAll(reviewOffset, reviewSearch)}>
               {t("dashboards.common.refresh")}

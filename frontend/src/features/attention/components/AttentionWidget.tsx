@@ -1,4 +1,4 @@
-import { useState, useEffect, CSSProperties } from 'react';
+import { useState, useEffect, useMemo, CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ResponsiveContainer,
@@ -96,9 +96,13 @@ export default function AttentionWidget({
   active,
   unavailable,
 }: AttentionWidgetProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [mode, setMode] = useState<WidgetMode>('compact');
-  const { corner, isDragging, dragPos, widgetRef, onDragHandleMouseDown } = useDraggableSnap('bottom-right');
+  const defaultCorner = useMemo(
+    () => (i18n.dir(i18n.resolvedLanguage) === 'rtl' ? 'bottom-left' : 'bottom-right'),
+    [i18n, i18n.resolvedLanguage],
+  );
+  const { corner, isDragging, dragPos, widgetRef, onDragHandleMouseDown } = useDraggableSnap(defaultCorner);
 
   // Reset widget state when call ends or teacher deselected
   useEffect(() => {
@@ -145,6 +149,7 @@ export default function AttentionWidget({
   const chartData  = toChartData(timeline);
   const showChart  = timeline.length >= MIN_CHART_POINTS;
   const distractionPoints = chartData.filter((p) => p.distraction);
+  const scoreText = hasData && !isStale && !unavailable ? `${currentScore}%` : t('attention.widget.noScore');
 
   // ─────────────────────────────────────────────────────────────────────────
   // MINIMIZED pill
@@ -157,9 +162,9 @@ export default function AttentionWidget({
         style={{ ...posStyle, '--aw-border': borderColor } as CSSProperties}
         onMouseDown={onDragHandleMouseDown}
         onClick={() => setMode('compact')}
-        title={labelText}
+        title={t('attention.widget.minimizedTooltip', { label: labelText, score: scoreText })}
         role="button"
-        aria-label={`${t('attention.widget.restore')} — ${labelText} ${hasData && !isStale && !unavailable ? currentScore + '%' : ''}`}
+        aria-label={t('attention.widget.restoreAria', { label: labelText, score: scoreText })}
       >
         <span className="aw-mini__dot" style={{ background: borderColor }} />
         <span className="aw-mini__score" style={{ color: scoreColor }}>
@@ -177,13 +182,13 @@ export default function AttentionWidget({
       ref={widgetRef}
       className={`aw${mode === 'expanded' ? ' aw--expanded' : ''}${isDragging ? ' aw--dragging' : ''}${isDistracted ? ' aw--distracted' : ''}`}
       style={{ ...posStyle, '--aw-border': borderColor } as CSSProperties}
-      aria-label="Attention monitor"
+      aria-label={t('attention.widget.monitorAria')}
     >
       {/* ── Drag handle / header ── */}
       <div
         className="aw__header"
         onMouseDown={onDragHandleMouseDown}
-        title="Drag to move"
+        title={t('attention.widget.dragToMove')}
         tabIndex={-1}
       >
         <span className="aw__drag-hint">⠿</span>

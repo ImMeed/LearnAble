@@ -221,6 +221,7 @@ export function StudentOnboardingPageV2() {
     <main className={pageShellClass}>
       <PublicHeader
         className="bg-background"
+        logoClassName="translate-y-[6px]"
         actions={
           <>
             <CompactLanguageSwitcher />

@@ -1,12 +1,24 @@
 import type { ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { BookOpen, CalendarDays, ClipboardList, LayoutDashboard, LogOut, MessageSquare, School, type LucideIcon } from "lucide-react";
+import {
+  BookOpen,
+  CalendarDays,
+  ClipboardList,
+  FlaskConical,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  School,
+  type LucideIcon,
+} from "lucide-react";
 
 import { AccessibilityToolbar } from "../components/AccessibilityToolbar";
 import { BrandLogo } from "../components/BrandLogo";
 import { cx, surfaceClass } from "../components/uiStyles";
+import { CLASSROOM_SYSTEM_ENABLED, READING_LAB_ENABLED } from "../features";
 import { clearSession } from "../../state/auth";
+import { FocusTimerPortal } from "../../features/focus-timer";
 
 export type NotificationItem = {
   id: string;
@@ -62,7 +74,7 @@ export type TeacherDashboardMetrics = {
   active_tutors_online: number;
 };
 
-export type TeacherTab = "overview" | "attendance" | "classrooms" | "courses" | "schedule" | "messages";
+export type TeacherTab = "overview" | "attendance" | "classrooms" | "courses" | "schedule" | "messages" | "readingLab";
 
 export function errorMessage(error: unknown): string {
   if (typeof error === "object" && error && "response" in error) {
@@ -111,15 +123,15 @@ export function formatDate(value: string | null, locale: "ar" | "en", emptyLabel
 
 export function DashboardShell({
   title,
-  subtitle,
   children,
 }: {
   title: string;
-  subtitle: string;
   children: ReactNode;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, i18n } = useTranslation();
+  const isStudentLikeRoute = /\/(ar|en)?\/?student\//.test(location.pathname);
 
   const onLogout = () => {
     clearSession();
@@ -135,14 +147,14 @@ export function DashboardShell({
         )}
       >
         <div className="portal-brand">
-          <Link className="portal-brand-link" to={localePrefix(i18n.resolvedLanguage)} aria-label={t("dashboards.shell.backHome")}>
+          <Link className="portal-brand-link" to={`${localePrefix(i18n.resolvedLanguage)}/home`} aria-label={t("dashboards.shell.backHome")}>
             <div className="flex items-start gap-4">
-              <BrandLogo className="shrink-0 text-primary" size={40} />
+              <BrandLogo className="shrink-0 translate-y-[6px] text-primary" size={40} />
               <div>
                 <h1 className="text-[clamp(1.8rem,2.4vw,2.5rem)] font-semibold tracking-[-0.04em] text-foreground">
                   {t("appTitle")}
                 </h1>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">{subtitle}</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{title}</p>
               </div>
             </div>
           </Link>
@@ -163,11 +175,8 @@ export function DashboardShell({
         </div>
       </section>
 
-      <section className="portal-section-head flex items-center justify-between gap-3">
-        <h2 className="text-[clamp(1.4rem,2vw,2rem)] font-semibold tracking-[-0.03em] text-foreground">{title}</h2>
-      </section>
-
       {children}
+      {isStudentLikeRoute ? <FocusTimerPortal /> : null}
     </main>
   );
 }
@@ -177,10 +186,11 @@ export function TeacherTabs({ active, onChange }: { active: TeacherTab; onChange
   const tabs: Array<{ id: TeacherTab; Icon: LucideIcon }> = [
     { id: "overview", Icon: LayoutDashboard },
     { id: "attendance", Icon: ClipboardList },
-    { id: "classrooms", Icon: School },
+    ...(CLASSROOM_SYSTEM_ENABLED ? [{ id: "classrooms" as TeacherTab, Icon: School }] : []),
     { id: "courses", Icon: BookOpen },
     { id: "schedule", Icon: CalendarDays },
     { id: "messages", Icon: MessageSquare },
+    ...(READING_LAB_ENABLED ? [{ id: "readingLab" as TeacherTab, Icon: FlaskConical }] : []),
   ];
 
   return (

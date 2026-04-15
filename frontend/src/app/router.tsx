@@ -5,14 +5,17 @@ import { ProtectedRoute } from "../features/auth/ProtectedRoute";
 import CallPage, { CallRedirect } from "../pages/CallPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
+import { READING_LAB_ENABLED } from "./features";
 import { StudentOnboardingPageV2 } from "./pages/StudentOnboarding";
 import { StudentDashboardPageV2 } from "./pages/StudentDashboard";
 import { CoursePageV2 } from "./pages/CoursePage";
+import { ReadingLabPageV2 } from "./pages/ReadingLab";
 import { TeacherDashboardPageV2 } from "./pages/TeacherDashboard";
 import { ParentDashboardPageV2 } from "./pages/ParentDashboard";
 import { PsychologistDashboardPageV2 } from "./pages/PsychologistDashboard";
 import { AdminDashboardPageV2 } from "./pages/AdminDashboard";
 import { PhaseCheckpointPage } from "../pages/checkpoint/PhaseCheckpointPage";
+import { AuthenticatedHomePage } from "../pages/AuthenticatedHomePage";
 
 function PlaceholderPage({ titleKey }: { titleKey: string }) {
   const { t } = useTranslation();
@@ -37,6 +40,14 @@ export const router = createBrowserRouter([
   { path: "/ar/login", element: <LoginPage /> },
   { path: "/en/login", element: <LoginPage /> },
   {
+    path: "/home",
+    element: (
+      <ProtectedRoute>
+        <AuthenticatedHomePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/onboarding",
     element: <StudentOnboardingPageV2 />,
   },
@@ -60,6 +71,16 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  ...(READING_LAB_ENABLED
+    ? [{
+        path: "/student/reading-lab",
+        element: (
+          <ProtectedRoute roles={["ROLE_STUDENT"]}>
+            <ReadingLabPageV2 />
+          </ProtectedRoute>
+        ),
+      }]
+    : []),
   {
     path: "/teacher/dashboard",
     element: (
@@ -97,6 +118,14 @@ export const router = createBrowserRouter([
     element: <StudentOnboardingPageV2 />,
   },
   {
+    path: "/ar/home",
+    element: (
+      <ProtectedRoute>
+        <AuthenticatedHomePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/ar/student/onboarding",
     element: <StudentOnboardingPageV2 />,
   },
@@ -116,6 +145,16 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  ...(READING_LAB_ENABLED
+    ? [{
+        path: "/ar/student/reading-lab",
+        element: (
+          <ProtectedRoute roles={["ROLE_STUDENT"]}>
+            <ReadingLabPageV2 />
+          </ProtectedRoute>
+        ),
+      }]
+    : []),
   {
     path: "/ar/teacher/dashboard",
     element: (
@@ -153,6 +192,14 @@ export const router = createBrowserRouter([
     element: <StudentOnboardingPageV2 />,
   },
   {
+    path: "/en/home",
+    element: (
+      <ProtectedRoute>
+        <AuthenticatedHomePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/en/student/onboarding",
     element: <StudentOnboardingPageV2 />,
   },
@@ -172,6 +219,16 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  ...(READING_LAB_ENABLED
+    ? [{
+        path: "/en/student/reading-lab",
+        element: (
+          <ProtectedRoute roles={["ROLE_STUDENT"]}>
+            <ReadingLabPageV2 />
+          </ProtectedRoute>
+        ),
+      }]
+    : []),
   {
     path: "/en/teacher/dashboard",
     element: (

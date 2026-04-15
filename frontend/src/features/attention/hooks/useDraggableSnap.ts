@@ -28,6 +28,7 @@ export function useDraggableSnap(defaultCorner: SnapCorner = 'bottom-right'): Us
   const [corner, setCorner] = useState<SnapCorner>(defaultCorner);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPos, setDragPos] = useState<DragPos | null>(null);
+  const hasUserDraggedRef = useRef(false);
 
   const widgetRef = useRef<HTMLDivElement | null>(null);
   const dragOriginRef = useRef<{ mouseX: number; mouseY: number; elemX: number; elemY: number } | null>(null);
@@ -47,6 +48,12 @@ export function useDraggableSnap(defaultCorner: SnapCorner = 'bottom-right'): Us
   }, []);
 
   useEffect(() => {
+    if (!hasUserDraggedRef.current) {
+      setCorner(defaultCorner);
+    }
+  }, [defaultCorner]);
+
+  useEffect(() => {
     if (!isDragging) return;
 
     const onMouseMove = (e: MouseEvent) => {
@@ -63,6 +70,7 @@ export function useDraggableSnap(defaultCorner: SnapCorner = 'bottom-right'): Us
       setIsDragging(false);
       setDragPos(null);
       setCorner(getClosestCorner(e.clientX, e.clientY));
+      hasUserDraggedRef.current = true;
       dragOriginRef.current = null;
     };
 

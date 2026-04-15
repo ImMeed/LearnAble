@@ -1,0 +1,42 @@
+<svg width="960" height="640" viewBox="0 0 960 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="learnable-book-left" x1="150" y1="180" x2="406" y2="460" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5CA2F4" />
+      <stop offset="1" stop-color="#2F63D9" />
+    </linearGradient>
+    <linearGradient id="learnable-book-right" x1="810" y1="180" x2="554" y2="460" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#83E1B0" />
+      <stop offset="1" stop-color="#39B978" />
+    </linearGradient>
+    <linearGradient id="learnable-path" x1="480" y1="160" x2="480" y2="454" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3B0" />
+      <stop offset="1" stop-color="#FFFFFF" />
+    </linearGradient>
+    <filter id="learnable-shadow" x="82" y="99" width="796" height="397" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#16315E" flood-opacity="0.16" />
+    </filter>
+  </defs>
+
+  <rect width="960" height="640" rx="48" fill="#F8FAFF" />
+
+  <g filter="url(#learnable-shadow)">
+    <path d="M480 460C361.136 399.857 259.373 381.462 150 397.86V176.76C254.859 150.32 357.229 163.022 480 237.894V460Z" fill="url(#learnable-book-left)" />
+    <path d="M480 460C598.864 399.857 700.627 381.462 810 397.86V176.76C705.141 150.32 602.771 163.022 480 237.894V460Z" fill="url(#learnable-book-right)" />
+
+    <path d="M480 428.4C375.179 381.34 283.654 365.522 184.71 375.6" stroke="#EAF4FF" stroke-width="22" stroke-linecap="round" />
+    <path d="M480 428.4C584.821 381.34 676.346 365.522 775.29 375.6" stroke="#F1FFF7" stroke-width="22" stroke-linecap="round" />
+    <path d="M480 381.6C395.241 344.739 320.951 330.189 243.886 339.013" stroke="#EAF4FF" stroke-width="16" stroke-linecap="round" opacity="0.75" />
+    <path d="M480 381.6C564.759 344.739 639.049 330.189 716.114 339.013" stroke="#F1FFF7" stroke-width="16" stroke-linecap="round" opacity="0.75" />
+
+    <path d="M150 176.76C254.859 150.32 357.229 163.022 480 237.894" stroke="#20498F" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M810 176.76C705.141 150.32 602.771 163.022 480 237.894" stroke="#1C8156" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" />
+
+    <path d="M480 132C431.944 132 394 169.944 394 218V291.867C394 348.015 362.149 396.475 312 420" stroke="url(#learnable-path)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M480 132C528.056 132 566 169.944 566 218V291.867C566 348.015 597.851 396.475 648 420" stroke="url(#learnable-path)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M480 151.2V451.4" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" />
+
+    <path d="M480 79L497.2 120.8L539 138L497.2 155.2L480 197L462.8 155.2L421 138L462.8 120.8L480 79Z" fill="#FFD93D" />
+
+    <path d="M150 397.86C259.373 381.462 361.136 399.857 480 460C598.864 399.857 700.627 381.462 810 397.86" stroke="#18325E" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>

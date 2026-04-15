@@ -582,39 +582,389 @@ a:focus-visible {
 }
 
 .focus-timer-card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.focus-pomodoro-card {
+  border-radius: 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, var(--primary) 22%);
+  background:
+    radial-gradient(circle at top center, color-mix(in srgb, var(--primary) 16%, transparent) 0, transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--card) 95%, white 5%), color-mix(in srgb, var(--card) 88%, var(--primary) 12%));
+  box-shadow: 0 18px 34px color-mix(in srgb, var(--foreground) 14%, transparent);
+  display: grid;
+  gap: 1rem;
+  padding: 1.15rem;
+  color: var(--foreground);
+}
+
+.focus-pomodoro-card--compact {
+  width: 100%;
+}
+
+.focus-pomodoro-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.focus-pomodoro-head h3 {
+  margin: 0;
+  font-size: clamp(1.55rem, 2.4vw, 1.95rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+}
+
+.focus-pomodoro-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.focus-pomodoro-head-btn {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, var(--primary) 22%);
+  background: color-mix(in srgb, var(--input-background) 86%, var(--card) 14%);
+  color: var(--foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.focus-pomodoro-head-btn--stop {
+  border-color: color-mix(in srgb, var(--destructive) 58%, var(--border));
+  background: color-mix(in srgb, var(--destructive) 14%, transparent);
+  color: color-mix(in srgb, var(--destructive) 88%, #fff 12%);
+}
+
+.focus-pomodoro-ring-wrap {
+  position: relative;
+  width: min(100%, 290px);
+  margin-inline: auto;
+  aspect-ratio: 1 / 1;
+}
+
+.focus-pomodoro-ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.focus-pomodoro-ring-track,
+.focus-pomodoro-ring-progress {
+  fill: none;
+  stroke-width: 12;
+}
+
+.focus-pomodoro-ring-track {
+  stroke: color-mix(in srgb, var(--muted) 76%, var(--border) 24%);
+}
+
+.focus-pomodoro-ring-progress {
+  stroke: color-mix(in srgb, var(--primary) 80%, #9fd2ff 20%);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 260ms linear;
+}
+
+.focus-pomodoro-time-wrap {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 0.2rem;
+}
+
+.focus-pomodoro-time {
+  font-size: clamp(2.2rem, 4.6vw, 3.2rem);
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+}
+
+.focus-pomodoro-time-wrap span {
+  color: var(--muted-foreground);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.focus-pomodoro-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+}
+
+.focus-pomodoro-primary,
+.focus-pomodoro-reset,
+.focus-pomodoro-pill,
+.focus-timer-inline-open,
+.focus-floating-mini {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+}
+
+.focus-pomodoro-primary {
+  min-height: 58px;
+  background: color-mix(in srgb, var(--primary) 88%, white 12%);
+  color: var(--primary-foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-weight: 700;
+  font-size: 1.12rem;
+}
+
+.focus-pomodoro-primary:disabled {
+  opacity: 0.68;
+  cursor: not-allowed;
+}
+
+.focus-pomodoro-reset {
+  min-width: 58px;
+  min-height: 58px;
+  border-color: color-mix(in srgb, var(--border) 78%, var(--primary) 22%);
+  background: color-mix(in srgb, var(--input-background) 88%, var(--card) 12%);
+  color: var(--foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.focus-pomodoro-quick {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.focus-pomodoro-quick p {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--muted-foreground);
+  font-weight: 600;
+}
+
+.focus-pomodoro-quick-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.focus-pomodoro-pill {
+  min-height: 48px;
+  border-color: color-mix(in srgb, var(--border) 78%, var(--primary) 22%);
+  background: color-mix(in srgb, var(--input-background) 90%, var(--card) 10%);
+  color: var(--foreground);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.focus-pomodoro-pill.is-active {
+  border-color: color-mix(in srgb, var(--primary) 82%, var(--border));
+  background: color-mix(in srgb, var(--primary) 86%, white 14%);
+  color: var(--primary-foreground);
+}
+
+.focus-pomodoro-complete-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: color-mix(in srgb, #8de0b2 84%, #9ff6ca 16%);
+  font-weight: 600;
+}
+
+.focus-timer-inline-indicator {
+  border: 1px dashed color-mix(in srgb, var(--primary) 48%, var(--border));
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--card) 93%, var(--primary) 7%);
   display: grid;
   gap: 0.65rem;
 }
 
-.timer-label {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 600;
-}
-
-.timer-mode-tabs,
-.timer-actions {
-  display: flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-}
-
-.timer-mode-tabs button {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--foreground);
-}
-
-.timer-mode-tabs button.active {
-  background: color-mix(in srgb, var(--primary) 18%, transparent);
-  border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
-}
-
-.timer-header-row {
+.focus-timer-inline-indicator-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.7rem;
+}
+
+.focus-timer-inline-indicator-title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted-foreground);
+  font-weight: 600;
+}
+
+.focus-timer-inline-indicator-row strong {
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.focus-timer-inline-open {
+  min-height: 40px;
+  border-color: color-mix(in srgb, var(--primary) 66%, var(--border));
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.focus-floating-root {
+  pointer-events: auto;
+}
+
+.focus-floating-shell {
+  width: 100%;
+  position: relative;
+}
+
+.focus-floating-shell--card {
+  border-radius: 1.1rem;
+  box-shadow: 0 30px 45px rgba(8, 19, 36, 0.36);
+}
+
+.focus-floating-shell--card .focus-pomodoro-card {
+  padding-top: 1.5rem;
+}
+
+.focus-floating-drag {
+  position: absolute;
+  top: 0.5rem;
+  inset-inline-start: 0.65rem;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  cursor: grab;
+  background: color-mix(in srgb, var(--input-background) 86%, var(--card) 14%);
+  border: 1px solid color-mix(in srgb, var(--border) 78%, var(--primary) 22%);
+}
+
+.focus-floating-drag:active {
+  cursor: grabbing;
+}
+
+.focus-floating-mini {
+  min-height: 52px;
+  width: 100%;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-color: color-mix(in srgb, var(--primary) 68%, var(--border));
+  background: color-mix(in srgb, var(--card) 90%, var(--primary) 10%);
+  color: var(--foreground);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.focus-floating-confirm {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
+  bottom: calc(100% + 0.55rem);
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, var(--primary) 22%);
+  background: color-mix(in srgb, var(--card) 94%, var(--primary) 6%);
+  box-shadow: 0 16px 28px rgba(8, 19, 35, 0.3);
+  padding: 0.7rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.focus-floating-confirm p {
+  margin: 0;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+html.dark .focus-pomodoro-card {
+  background:
+    radial-gradient(circle at top center, color-mix(in srgb, var(--primary) 18%, transparent) 0, transparent 56%),
+    color-mix(in srgb, var(--card) 90%, #1a2d46 10%);
+  color: #f3f7fd;
+}
+
+html.dark .focus-pomodoro-head h3,
+html.dark .focus-pomodoro-time {
+  color: #f6f9ff;
+}
+
+html.dark .focus-pomodoro-time-wrap span {
+  color: color-mix(in srgb, #d9e6f7 82%, #8ea8c5 18%);
+}
+
+html.dark .focus-pomodoro-pill,
+html.dark .focus-pomodoro-reset,
+html.dark .focus-floating-mini,
+html.dark .focus-pomodoro-head-btn {
+  color: #deebfa;
+}
+
+html.sepia .focus-pomodoro-ring-progress {
+  stroke: color-mix(in srgb, var(--primary) 82%, #b38d60 18%);
+}
+
+html.sepia .focus-pomodoro-primary,
+html.sepia .focus-pomodoro-pill.is-active {
+  background: color-mix(in srgb, var(--primary) 88%, #a7855e 12%);
+}
+
+html.sepia .focus-pomodoro-card,
+html.sepia .focus-floating-confirm,
+html.sepia .focus-timer-inline-indicator {
+  border-color: color-mix(in srgb, var(--border) 70%, #a98f6d 30%);
+}
+
+.focus-floating-confirm-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.focus-floating-confirm-actions .focus-pomodoro-pill,
+.focus-floating-confirm-actions .focus-pomodoro-primary {
+  min-height: 38px;
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .focus-pomodoro-card {
+    padding: 0.95rem;
+    gap: 0.75rem;
+  }
+
+  .focus-pomodoro-head h3 {
+    font-size: 1.3rem;
+  }
+
+  .focus-pomodoro-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .focus-pomodoro-reset {
+    width: 100%;
+  }
+
+  .focus-floating-root {
+    width: min(100vw - 1.1rem, 360px) !important;
+  }
 }
 
 .progress-bar {
@@ -636,48 +986,119 @@ a:focus-visible {
 
 .adhd-todo-list {
   display: grid;
+  gap: 0.85rem;
+}
+
+.adhd-compact-board {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 18%, transparent) 0, transparent 54%),
+    linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, white 6%), color-mix(in srgb, var(--card) 90%, var(--primary) 10%));
+  padding: 0.95rem;
+}
+
+.adhd-compact-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 0.75rem;
 }
 
-.todo-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.todo-header h3,
-.todo-header p {
+.adhd-compact-head h3,
+.adhd-compact-head p {
   margin: 0;
 }
 
-.todo-add-row {
-  display: grid;
-  gap: 0.45rem;
+.adhd-compact-head h3 {
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
 }
 
-.todo-label {
-  font-size: 0.875rem;
-  font-weight: 500;
+.adhd-compact-head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
 }
 
-.todo-add-controls {
-  display: flex;
-  align-items: stretch;
-  gap: 0.5rem;
-}
-
-.todo-input {
-  min-height: 44px;
+.adhd-compact-head-right strong {
+  color: color-mix(in srgb, var(--primary) 78%, white 22%);
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
 }
 
 .todo-add-button {
-  min-width: 44px;
-  min-height: 44px;
-  border-radius: 0.5rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+
+.compact-add-btn {
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 70%, var(--border));
+  background: color-mix(in srgb, var(--primary) 22%, var(--card));
+  color: var(--primary);
+}
+
+.todo-input {
+  border: 1px solid color-mix(in srgb, var(--border) 82%, white 18%);
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--input-background) 88%, var(--card) 12%);
+  color: var(--foreground);
+  min-height: 42px;
+  padding: 0.55rem 0.75rem;
+}
+
+.todo-input::placeholder {
+  color: color-mix(in srgb, var(--muted-foreground) 85%, white 15%);
+}
+
+.adhd-compact-progress {
+  width: 100%;
+  height: 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
+  background: color-mix(in srgb, var(--muted) 78%, var(--card) 22%);
+  overflow: hidden;
+}
+
+.adhd-compact-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #48a4ff 0%, #79b8ff 48%, #9bc6ff 100%);
+  transition: width 180ms ease;
+}
+
+.adhd-task-editor {
+  border: 1px solid color-mix(in srgb, var(--border) 80%, #4f77ad 20%);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--card) 90%, var(--muted) 10%);
+  padding: 0.7rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.adhd-task-editor-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.adhd-task-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.adhd-duration-input {
+  width: min(100%, 180px);
 }
 
 .todo-list {
@@ -685,19 +1106,43 @@ a:focus-visible {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.5rem;
+  gap: 0.6rem;
+}
+
+.adhd-compact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  max-height: none;
+  overflow: visible;
+  padding-inline-end: 0.2rem;
+  align-items: stretch;
 }
 
 .todo-row {
   min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.7rem;
+  background: color-mix(in srgb, var(--card) 88%, white 12%);
+}
+
+.adhd-compact-task {
+  display: grid;
+  gap: 0.55rem;
+  border-radius: 0.85rem;
+  border-color: color-mix(in srgb, var(--border) 80%, #4f77ad 20%);
+  background: color-mix(in srgb, var(--card) 92%, var(--primary) 8%);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.adhd-task-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 0.6rem;
-  padding: 0.5rem 0.65rem;
-  background: color-mix(in srgb, var(--card) 88%, white 12%);
+  gap: 0.6rem;
 }
 
 .todo-checkbox-wrap {
@@ -709,14 +1154,66 @@ a:focus-visible {
   cursor: pointer;
 }
 
+.adhd-task-title-wrap {
+  min-height: 36px;
+}
+
 .todo-checkbox-wrap input {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
+}
+
+.adhd-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, #547cae 24%);
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--card) 92%, var(--muted) 8%);
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+}
+
+.adhd-checkbox::before {
+  content: "";
+  width: 0.55rem;
+  height: 0.32rem;
+  border-left: 2px solid #f6fbff;
+  border-bottom: 2px solid #f6fbff;
+  transform: rotate(-45deg) scale(0);
+  transform-origin: center;
+  transition: transform 120ms ease;
+}
+
+.adhd-checkbox:checked {
+  border-color: #60adff;
+  background: linear-gradient(180deg, #67b2ff 0%, #4c9df5 100%);
+}
+
+.adhd-checkbox:checked::before {
+  transform: rotate(-45deg) scale(1);
+}
+
+.adhd-checkbox:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 80%, white 20%);
+  outline-offset: 2px;
 }
 
 .todo-text {
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+.adhd-task-title {
+  font-weight: 600;
+}
+
+.adhd-task-title.done {
+  opacity: 0.75;
 }
 
 .todo-text-done {
@@ -725,8 +1222,8 @@ a:focus-visible {
 }
 
 .todo-delete {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 36px;
+  min-height: 36px;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   background: transparent;
@@ -736,15 +1233,225 @@ a:focus-visible {
   justify-content: center;
 }
 
+.adhd-task-delete {
+  border-color: color-mix(in srgb, var(--destructive) 35%, var(--border));
+  color: color-mix(in srgb, var(--destructive) 75%, white 25%);
+}
+
 .todo-action-icon {
   width: 1rem;
   height: 1rem;
+}
+
+.adhd-task-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.todo-priority-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.todo-priority-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 88%, white 12%);
+  color: var(--muted-foreground);
+  min-height: 24px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.todo-priority-chip.is-low.is-active {
+  border-color: color-mix(in srgb, #2cc884 70%, var(--border));
+  color: #47d39a;
+}
+
+.todo-priority-chip.is-medium.is-active {
+  border-color: color-mix(in srgb, #7b6cff 72%, var(--border));
+  color: #9f95ff;
+}
+
+.todo-priority-chip.is-high.is-active {
+  border-color: color-mix(in srgb, var(--destructive) 72%, var(--border));
+  color: color-mix(in srgb, var(--destructive) 80%, white 20%);
+}
+
+.todo-duration-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.76rem;
+  color: var(--muted-foreground);
+}
+
+.adhd-subtasks {
+  list-style: none;
+  margin: 0;
+  margin-left: 0.5rem;
+  padding: 0;
+  padding-left: 0.9rem;
+  display: grid;
+  gap: 0.04rem;
+  border-left: 2px solid color-mix(in srgb, var(--border) 78%, #5578a4 22%);
+}
+
+.adhd-subtask-row {
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.adhd-subtask-label {
+  min-height: 30px;
+  gap: 0.5rem;
+}
+
+.adhd-subtask-text {
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+.adhd-subtask-text.done {
+  text-decoration: line-through;
+  color: var(--muted-foreground);
+}
+
+.adhd-subtask-summary {
+  margin: 0;
+  font-size: 0.84rem;
+}
+
+.adhd-subtask-editor {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: 0.1rem;
+}
+
+.adhd-subtask-editor-input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.adhd-task-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.adhd-task-action-btn {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  min-height: 32px;
+  padding: 0.28rem 0.72rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  background: color-mix(in srgb, var(--card) 92%, var(--muted) 8%);
+  color: var(--foreground);
+}
+
+.adhd-task-action-btn.primary {
+  border-color: color-mix(in srgb, var(--primary) 70%, var(--border));
+  background: color-mix(in srgb, var(--primary) 22%, var(--card));
+  color: var(--primary);
+}
+
+.adhd-task-action-btn.primary.is-running {
+  border-color: color-mix(in srgb, var(--accent) 68%, var(--border));
+  background: color-mix(in srgb, var(--accent) 26%, var(--card));
+  color: var(--accent);
+}
+
+.adhd-task-action-btn.secondary {
+  border-color: color-mix(in srgb, var(--border) 75%, white 25%);
+}
+
+html.dark .adhd-compact-board {
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 22%, transparent) 0, transparent 52%),
+    color-mix(in srgb, var(--card) 92%, #0d203a 8%);
+}
+
+html.dark .adhd-compact-task {
+  background: color-mix(in srgb, var(--card) 84%, #12213a 16%);
+}
+
+html.dark .todo-input {
+  background: color-mix(in srgb, var(--card) 78%, #213652 22%);
+}
+
+html.dark .adhd-task-editor {
+  background: color-mix(in srgb, var(--card) 84%, #152641 16%);
+}
+
+html.dark .adhd-compact-progress {
+  background: color-mix(in srgb, var(--card) 68%, #0b1728 32%);
+}
+
+html.dark .adhd-checkbox {
+  background: color-mix(in srgb, var(--card) 72%, #1f3451 28%);
+}
+
+html.sepia .adhd-compact-board {
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 14%, transparent) 0, transparent 56%),
+    linear-gradient(145deg, color-mix(in srgb, var(--card) 96%, #fff8e8 4%), color-mix(in srgb, var(--card) 89%, #d8c2a1 11%));
+}
+
+html.sepia .adhd-compact-task {
+  background: color-mix(in srgb, var(--card) 95%, #e4d3b8 5%);
 }
 
 .todo-empty {
   border: 1px dashed var(--border);
   border-radius: 0.6rem;
   padding: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .adhd-compact-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .adhd-compact-head-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .adhd-task-actions {
+    flex-wrap: wrap;
+  }
+
+  .adhd-task-editor-actions {
+    width: 100%;
+  }
+
+  .adhd-duration-input {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .adhd-subtask-editor-input {
+    flex: 1 1 100%;
+  }
 }
 
 .onboarding-page {
@@ -964,10 +1671,10 @@ a:focus-visible {
 }
 
 .notification-item {
-  border: 1px solid var(--border);
-  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, white 14%);
+  border-radius: 0.9rem;
   padding: 0.7rem;
-  background: color-mix(in srgb, var(--card) 88%, white 12%);
+  background: color-mix(in srgb, var(--card) 91%, white 9%);
 }
 
 .notification-item p {
@@ -1133,15 +1840,31 @@ a:focus-visible {
 
 .portal-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(290px, 1fr);
-  gap: 0.9rem;
+  grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr);
+  gap: 1rem;
   align-items: start;
 }
 
 .portal-main-card,
 .portal-side-column {
   display: grid;
-  gap: 0.8rem;
+  gap: 0.9rem;
+}
+
+.portal-main-card {
+  border-radius: 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  padding: 1.1rem;
+  background:
+    linear-gradient(165deg, color-mix(in srgb, var(--card) 94%, white 6%), color-mix(in srgb, var(--card) 86%, var(--primary) 14%));
+  box-shadow: 0 16px 34px rgba(18, 24, 38, 0.12);
+}
+
+.portal-side-column > .card {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
+  background: color-mix(in srgb, var(--card) 92%, white 8%);
+  box-shadow: 0 12px 26px rgba(18, 24, 38, 0.08);
 }
 
 .portal-block-header h3 {
@@ -1161,7 +1884,7 @@ a:focus-visible {
 .subject-card {
   border: 1px solid var(--border);
   border-radius: 1rem;
-  background: color-mix(in srgb, var(--card) 88%, white 12%);
+  background: linear-gradient(165deg, color-mix(in srgb, var(--card) 93%, white 7%), color-mix(in srgb, var(--card) 86%, var(--primary) 14%));
   color: var(--foreground);
   text-align: start;
   padding: 0.95rem;
@@ -1170,24 +1893,56 @@ a:focus-visible {
 }
 
 .subject-card.active {
-  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
-  background: color-mix(in srgb, var(--primary) 22%, white 78%);
+  border-color: color-mix(in srgb, var(--primary) 70%, var(--border));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--primary) 28%, white 72%), color-mix(in srgb, var(--primary) 20%, var(--card) 80%));
+  box-shadow: 0 10px 24px rgba(74, 144, 226, 0.2);
 }
 
 .portal-inner-card {
-  border-radius: 0.95rem;
-  box-shadow: none;
+  border-radius: 1rem;
+  border-color: color-mix(in srgb, var(--border) 88%, white 12%);
+  background: color-mix(in srgb, var(--card) 92%, white 8%);
+  box-shadow: 0 10px 22px rgba(18, 24, 38, 0.06);
 }
 
 .request-card {
-  border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--border));
-  border-radius: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+  border-radius: 1rem;
   padding: 1rem;
   display: flex;
   justify-content: space-between;
   gap: 0.7rem;
   flex-wrap: wrap;
-  background: color-mix(in srgb, var(--card) 90%, white 10%);
+  background: linear-gradient(170deg, color-mix(in srgb, var(--card) 92%, white 8%), color-mix(in srgb, var(--card) 86%, var(--primary) 14%));
+  box-shadow: 0 8px 20px rgba(16, 22, 34, 0.06);
+}
+
+.teacher-student-card {
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.teacher-student-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(16, 22, 34, 0.14);
+}
+
+.teacher-student-card:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 70%, white 30%);
+  outline-offset: 2px;
+}
+
+.psych-clickable-card {
+  cursor: pointer;
+}
+
+.psych-clickable-card:hover {
+  transform: translateY(-1px);
+}
+
+.psych-clickable-card:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 65%, white 35%);
+  outline-offset: 2px;
 }
 
 .request-head-row {
@@ -1218,7 +1973,10 @@ a:focus-visible {
 }
 
 .metric-pill {
-  box-shadow: none;
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  background: color-mix(in srgb, var(--card) 90%, white 10%);
+  box-shadow: 0 9px 18px rgba(16, 22, 34, 0.06);
 }
 
 .metric-pill p,
@@ -1274,11 +2032,17 @@ a:focus-visible {
 }
 
 .admin-table {
+  min-width: 680px;
   width: 100%;
   border-collapse: collapse;
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   overflow: hidden;
+}
+
+.admin-table-wrap {
+  width: 100%;
+  overflow-x: auto;
 }
 
 .admin-table th,
@@ -1325,6 +2089,319 @@ a:focus-visible {
 
 .student-v2-grid {
   align-items: start;
+}
+
+.student-v2-progress-hero {
+  border-radius: 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--card) 90%, white 10%), color-mix(in srgb, var(--card) 84%, var(--primary) 16%));
+  display: grid;
+  gap: 0.95rem;
+}
+
+.student-v2-progress-hero h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 2.6vw, 2.35rem);
+  letter-spacing: -0.03em;
+}
+
+.student-v2-progress-hero p {
+  margin: 0;
+}
+
+.student-v2-progress-hero-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.student-v2-progress-meta {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: end;
+}
+
+.student-v2-progress-meta > p {
+  margin: 0;
+  padding: 0.32rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, white 30%);
+  background: color-mix(in srgb, var(--card) 90%, white 10%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--card) 84%, white 16%);
+}
+
+.student-v2-progress-meta > p:nth-child(1) {
+  color: #ff8f3f;
+  border-color: color-mix(in srgb, #ff8f3f 60%, var(--border));
+  background: color-mix(in srgb, #ff8f3f 16%, var(--card));
+}
+
+.student-v2-progress-meta > p:nth-child(2) {
+  color: #ffd24d;
+  border-color: color-mix(in srgb, #ffd24d 60%, var(--border));
+  background: color-mix(in srgb, #ffd24d 16%, var(--card));
+}
+
+.student-v2-progress-meta .ui-prefix-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, currentColor 35%, transparent));
+}
+
+.student-v2-progress-bar-wrap {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.student-v2-progress-bar-wrap .progress-track {
+  height: 13px;
+}
+
+.student-v2-section-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+  border-radius: 1rem;
+}
+
+.student-v2-section-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 52px;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, white 14%);
+  background: color-mix(in srgb, var(--card) 90%, white 10%);
+  color: var(--foreground);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+}
+
+.student-v2-section-tab .ui-prefix-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.student-v2-section-tab.is-active {
+  border-color: color-mix(in srgb, var(--primary) 74%, var(--border));
+  background: color-mix(in srgb, var(--primary) 24%, var(--card));
+  box-shadow: 0 10px 24px rgba(74, 144, 226, 0.18);
+}
+
+.student-courses-layout {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.student-courses-reading-lab {
+  order: 1;
+}
+
+.student-courses-panel {
+  border-radius: 1rem;
+  order: 2;
+}
+
+.student-courses-link-id-card {
+  order: 3;
+  width: min(100%, 980px);
+  margin-inline: auto;
+  display: grid;
+  gap: 0.55rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.student-courses-link-id-card strong,
+.student-courses-link-id-card p {
+  margin: 0;
+}
+
+.student-courses-link-id-card p {
+  font-size: clamp(1.2rem, 1.7vw, 1.55rem);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.student-courses-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.student-courses-head h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 2vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+.student-courses-link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  min-height: 36px;
+  padding: 0.3rem 0;
+}
+
+.student-courses-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.student-course-card {
+  display: grid;
+  gap: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
+  border-radius: 0.9rem;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--card) 92%, white 8%);
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.student-course-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+}
+
+.student-course-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.student-course-subject {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  color: color-mix(in srgb, var(--primary) 80%, white 20%);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.28rem 0.6rem;
+}
+
+.student-course-chevron {
+  color: var(--muted-foreground);
+  font-size: 1rem;
+}
+
+.student-course-card h3 {
+  margin: 0;
+  font-size: clamp(1.2rem, 1.8vw, 1.75rem);
+  letter-spacing: -0.01em;
+}
+
+.student-course-next {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.96rem;
+}
+
+.student-course-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  color: var(--muted-foreground);
+  font-size: 0.86rem;
+}
+
+.student-course-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.student-courses-subheading {
+  margin: 0;
+  font-size: clamp(1.2rem, 1.7vw, 1.5rem);
+  letter-spacing: -0.01em;
+}
+
+.student-courses-more-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.student-courses-more-card {
+  border: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
+  border-radius: 0.85rem;
+  padding: 1.15rem;
+  background: color-mix(in srgb, var(--card) 90%, white 10%);
+  color: var(--foreground);
+  text-decoration: none;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.student-courses-more-card strong,
+.student-courses-more-card p {
+  margin: 0;
+}
+
+.student-courses-more-card p {
+  color: var(--muted-foreground);
+}
+
+.student-courses-more-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.student-courses-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.student-courses-icon-wrap .ui-prefix-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.student-courses-icon-wrap.is-plus {
+  color: var(--secondary);
+  border-color: color-mix(in srgb, var(--secondary) 50%, var(--border));
+  background: color-mix(in srgb, var(--secondary) 14%, transparent);
+}
+
+.student-courses-more-play strong,
+.student-courses-more-join strong {
+  font-size: clamp(1.25rem, 1.9vw, 1.7rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.student-courses-more-play p,
+.student-courses-more-join p {
+  font-size: clamp(0.98rem, 1.3vw, 1.15rem);
+  line-height: 1.4;
+}
+
+.student-courses-more-muted {
+  border-style: dashed;
+}
+
+.student-courses-more-join {
+  border-color: color-mix(in srgb, var(--border) 74%, white 26%);
 }
 
 .student-v2-main-column,
@@ -1503,6 +2580,130 @@ a:focus-visible {
   margin: 0.2rem 0 0.4rem;
 }
 
+.teacher-student-modal {
+  width: min(1040px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  text-align: start;
+  display: grid;
+  gap: 1rem;
+  border-radius: 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, white 14%);
+  background: linear-gradient(165deg, color-mix(in srgb, var(--card) 95%, white 5%), color-mix(in srgb, var(--card) 88%, var(--primary) 12%));
+}
+
+.teacher-student-modal-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.9rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 86%, white 14%);
+  padding-bottom: 0.9rem;
+}
+
+.teacher-student-modal-header h3 {
+  margin: 0;
+  font-size: clamp(1.55rem, 2.2vw, 2.15rem);
+  letter-spacing: -0.02em;
+}
+
+.teacher-student-modal-header p {
+  margin: 0.35rem 0 0;
+}
+
+.teacher-student-close {
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.teacher-student-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.teacher-student-kpi {
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border));
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.4rem;
+  background: color-mix(in srgb, var(--card) 88%, white 12%);
+}
+
+.teacher-student-kpi p,
+.teacher-student-kpi strong {
+  margin: 0;
+}
+
+.teacher-student-kpi strong {
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+}
+
+.teacher-student-kpi-progress {
+  border-color: color-mix(in srgb, var(--primary) 62%, var(--border));
+}
+
+.teacher-student-kpi-lessons {
+  border-color: color-mix(in srgb, var(--secondary) 64%, var(--border));
+}
+
+.teacher-student-kpi-attendance {
+  border-color: color-mix(in srgb, var(--accent) 64%, var(--border));
+}
+
+.teacher-student-kpi-time {
+  border-color: color-mix(in srgb, var(--border) 94%, white 6%);
+}
+
+.teacher-student-progress-panel {
+  border: 1px solid color-mix(in srgb, var(--border) 84%, white 16%);
+  border-radius: 0.95rem;
+  padding: 0.9rem;
+  background: color-mix(in srgb, var(--card) 89%, white 11%);
+}
+
+.teacher-student-progress-panel h4 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.teacher-student-course-row {
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+  border-radius: 0.85rem;
+  padding: 0.8rem;
+  display: grid;
+  gap: 0.45rem;
+  background: color-mix(in srgb, var(--card) 90%, white 10%);
+}
+
+.teacher-student-course-row p {
+  margin: 0;
+}
+
+.teacher-student-modal-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 86%, white 14%);
+  padding-top: 1rem;
+}
+
+.teacher-student-modal-actions button {
+  width: 100%;
+  min-height: 46px;
+}
+
+.teacher-student-message-btn {
+  background: color-mix(in srgb, var(--secondary) 70%, white 30%);
+  border-color: color-mix(in srgb, var(--secondary) 74%, var(--border));
+  color: color-mix(in srgb, var(--foreground) 88%, #0f172a 12%);
+}
+
 @media (max-width: 900px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
@@ -1516,6 +2717,22 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .student-v2-progress-hero-head {
+    flex-direction: column;
+  }
+
+  .student-v2-progress-meta {
+    justify-items: start;
+  }
+
+  .student-v2-section-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .student-courses-more-grid {
+    grid-template-columns: 1fr;
+  }
+
   .course-v2-layout {
     grid-template-columns: 1fr;
   }
@@ -1524,9 +2741,16 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .teacher-student-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .teacher-student-modal-actions {
+    grid-template-columns: 1fr;
+  }
+
   .admin-table {
-    display: block;
-    overflow-x: auto;
+    min-width: 620px;
   }
 }
 
@@ -1713,4 +2937,159 @@ a:focus-visible {
   min-height: 44px;
   line-height: 44px;
   padding-block: 0;
+}
+
+/* ═══════════════════════════════════════════
+   Child Attention Patterns
+   ═══════════════════════════════════════════ */
+
+.kid-attention-panel {
+  position: relative;
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255, 214, 102, 0.24), transparent 38%),
+    radial-gradient(circle at 84% 12%, rgba(111, 207, 151, 0.18), transparent 36%),
+    linear-gradient(160deg, color-mix(in srgb, var(--card) 95%, white 5%), color-mix(in srgb, var(--card) 82%, var(--primary) 18%));
+}
+
+.kid-metric-pill {
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--card) 95%, white 5%), color-mix(in srgb, var(--card) 80%, var(--secondary) 20%));
+  box-shadow: 0 10px 22px rgba(20, 32, 52, 0.1);
+}
+
+.kid-focus-chip {
+  border-width: 1.5px;
+  font-weight: 700;
+}
+
+.kid-focus-chip:nth-child(3n + 1) {
+  border-color: color-mix(in srgb, var(--primary) 66%, var(--border));
+  background: color-mix(in srgb, var(--primary) 22%, white 78%);
+}
+
+.kid-focus-chip:nth-child(3n + 2) {
+  border-color: color-mix(in srgb, var(--secondary) 66%, var(--border));
+  background: color-mix(in srgb, var(--secondary) 24%, white 76%);
+}
+
+.kid-focus-chip:nth-child(3n + 3) {
+  border-color: color-mix(in srgb, #f5a524 68%, var(--border));
+  background: color-mix(in srgb, #f5a524 22%, white 78%);
+}
+
+.kid-activity-card {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, white 6%), color-mix(in srgb, var(--card) 79%, var(--accent) 21%));
+  box-shadow: 0 12px 24px rgba(24, 34, 56, 0.11);
+}
+
+.kid-lesson-card {
+  border-color: color-mix(in srgb, var(--secondary) 42%, var(--border));
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--card) 95%, white 5%), color-mix(in srgb, var(--card) 80%, var(--secondary) 20%));
+}
+
+.kid-lesson-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(18, 28, 44, 0.14);
+}
+
+.kid-round-card {
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--card) 95%, white 5%), color-mix(in srgb, var(--card) 80%, #ffd666 20%));
+}
+
+.kid-choice-btn,
+.kid-tile-btn {
+  min-height: 46px;
+  font-weight: 700;
+}
+
+.kid-choice-btn {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+
+.kid-tile-btn {
+  border-color: color-mix(in srgb, var(--secondary) 44%, var(--border));
+}
+
+.kid-choice-btn:hover,
+.kid-tile-btn:hover {
+  transform: translateY(-1px);
+}
+
+@keyframes kid-fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.kid-stagger-item {
+  opacity: 0;
+  animation: kid-fade-rise 420ms ease forwards;
+}
+
+.kid-stagger-list > * {
+  opacity: 0;
+  animation: kid-fade-rise 420ms ease forwards;
+}
+
+.kid-stagger-list > :nth-child(1) {
+  animation-delay: 40ms;
+}
+
+.kid-stagger-list > :nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.kid-stagger-list > :nth-child(3) {
+  animation-delay: 200ms;
+}
+
+.kid-activity-stagger > * {
+  opacity: 0;
+  animation: kid-fade-rise 360ms ease forwards;
+}
+
+.kid-activity-stagger > :nth-child(1) {
+  animation-delay: 40ms;
+}
+
+.kid-activity-stagger > :nth-child(2) {
+  animation-delay: 90ms;
+}
+
+.kid-activity-stagger > :nth-child(3) {
+  animation-delay: 140ms;
+}
+
+.kid-activity-stagger > :nth-child(4) {
+  animation-delay: 190ms;
+}
+
+.kid-activity-stagger > :nth-child(5) {
+  animation-delay: 240ms;
+}
+
+.kid-activity-stagger > :nth-child(6) {
+  animation-delay: 290ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kid-stagger-item,
+  .kid-stagger-list > *,
+  .kid-activity-stagger > * {
+    opacity: 1;
+    animation: none;
+    transform: none;
+  }
 }

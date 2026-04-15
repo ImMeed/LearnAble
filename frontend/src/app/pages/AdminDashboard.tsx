@@ -67,6 +67,11 @@ export function AdminDashboardPageV2() {
     return roleMatched && searchMatched;
   });
 
+  const openReportsCount = useMemo(
+    () => reports.filter((report) => report.status !== "DISMISSED").length,
+    [reports],
+  );
+
   const loadAll = async () => {
     setStatus(t("dashboards.common.loading"));
     try {
@@ -108,103 +113,130 @@ export function AdminDashboardPageV2() {
   };
 
   return (
-    <DashboardShell title={t("dashboards.admin.title")} subtitle={t("dashboards.admin.subtitle")}>
-      <section className="metrics-grid">
-        <article className="card metric-pill">
-          <p>{t("dashboards.admin.totalUsers")}</p>
-          <strong>6</strong>
-        </article>
-        <article className="card metric-pill">
-          <p>{t("dashboards.admin.activeUsers")}</p>
-          <strong>4</strong>
-        </article>
-        <article className="card metric-pill">
-          <p>{t("dashboards.admin.pendingApprovals")}</p>
-          <strong>{reports.filter((report) => report.status !== "DISMISSED").length}</strong>
-        </article>
-        <article className="card metric-pill">
-          <p>{t("dashboards.admin.psychologists")}</p>
-          <strong>{spaces.length}</strong>
-        </article>
-      </section>
-
-      <section className="card portal-main-card">
-        <div className="request-head-row">
-          <h3>{t("dashboards.admin.pendingPsychApprovals")}</h3>
-          <p className="muted">{profile?.email ?? t("dashboards.common.none")}</p>
-        </div>
-        <div className="stack-list">
-          {reports.slice(0, 2).map((report) => (
-            <article className="request-card" key={report.id}>
-              <div>
-                <strong>{report.id}</strong>
-                <p>{t("dashboards.admin.reportReason", { reason: report.reason })}</p>
-                <p className="muted">{t("dashboards.admin.reportType", { type: report.target_type })}</p>
-              </div>
-              <div className="inline-actions">
-                <button type="button" onClick={() => void moderateReport(report.id, "RESTORE")}>
-                  {t("dashboards.admin.approve")}
-                </button>
-                <button type="button" className="secondary" onClick={() => void moderateReport(report.id, "REMOVE")}>
-                  {t("dashboards.admin.reject")}
-                </button>
-              </div>
+    <DashboardShell title={t("dashboards.admin.title")}>
+      <section className="portal-grid">
+        <article className="card portal-main-card">
+          <section className="metrics-grid">
+            <article className="card metric-pill">
+              <p>{t("dashboards.admin.totalUsers")}</p>
+              <strong>{userRows.length}</strong>
             </article>
-          ))}
-        </div>
-      </section>
+            <article className="card metric-pill">
+              <p>{t("dashboards.admin.activeUsers")}</p>
+              <strong>{userRows.filter((row) => row.status === t("dashboards.admin.statusActive")).length}</strong>
+            </article>
+            <article className="card metric-pill">
+              <p>{t("dashboards.admin.pendingApprovals")}</p>
+              <strong>{openReportsCount}</strong>
+            </article>
+            <article className="card metric-pill">
+              <p>{t("dashboards.admin.psychologists")}</p>
+              <strong>{spaces.length}</strong>
+            </article>
+          </section>
 
-      <section className="card portal-main-card">
-        <div className="request-head-row">
-          <h3>{t("dashboards.admin.userManagement")}</h3>
-          <button type="button">{t("dashboards.admin.addUser")}</button>
-        </div>
+          <section className="card portal-inner-card checkpoint-block">
+            <div className="request-head-row">
+              <h3>{t("dashboards.admin.pendingPsychApprovals")}</h3>
+              <p className="muted">{profile?.email ?? t("dashboards.common.none")}</p>
+            </div>
+            <div className="stack-list">
+              {reports.slice(0, 3).map((report) => (
+                <article className="request-card" key={report.id}>
+                  <div>
+                    <strong>{report.id}</strong>
+                    <p>{t("dashboards.admin.reportReason", { reason: report.reason })}</p>
+                    <p className="muted">{t("dashboards.admin.reportType", { type: report.target_type })}</p>
+                  </div>
+                  <div className="inline-actions">
+                    <button type="button" onClick={() => void moderateReport(report.id, "RESTORE")}>
+                      {t("dashboards.admin.approve")}
+                    </button>
+                    <button type="button" className="secondary" onClick={() => void moderateReport(report.id, "REMOVE")}>
+                      {t("dashboards.admin.reject")}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
 
-        <div className="inline-actions checkpoint-block">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t("dashboards.admin.searchPlaceholder")}
-          />
-          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
-            <option value="ALL">{t("dashboards.admin.allRoles")}</option>
-            <option value="STUDENT">{roleLabels.STUDENT}</option>
-            <option value="TEACHER">{roleLabels.TEACHER}</option>
-          </select>
-        </div>
+          <section className="card portal-inner-card checkpoint-block">
+            <div className="request-head-row">
+              <h3>{t("dashboards.admin.userManagement")}</h3>
+              <button type="button">{t("dashboards.admin.addUser")}</button>
+            </div>
 
-        <table className="admin-table checkpoint-block">
-          <thead>
-            <tr>
-              <th>{t("dashboards.admin.colName")}</th>
-              <th>{t("dashboards.admin.colEmail")}</th>
-              <th>{t("dashboards.admin.colRole")}</th>
-              <th>{t("dashboards.admin.colStatus")}</th>
-              <th>{t("dashboards.admin.colJoined")}</th>
-              <th>{t("dashboards.admin.colActions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.name}</td>
-                <td>{row.email}</td>
-                <td>{row.role === "STUDENT" ? roleLabels.STUDENT : roleLabels.TEACHER}</td>
-                <td>{row.status}</td>
-                <td>{row.joined}</td>
-                <td>
-                  <button type="button" className="secondary">
-                    {t("dashboards.admin.deactivate")}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+            <div className="inline-actions checkpoint-block">
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t("dashboards.admin.searchPlaceholder")}
+              />
+              <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
+                <option value="ALL">{t("dashboards.admin.allRoles")}</option>
+                <option value="STUDENT">{roleLabels.STUDENT}</option>
+                <option value="TEACHER">{roleLabels.TEACHER}</option>
+              </select>
+            </div>
 
-      <section className="card">
-        <p className="status-line">{status || t("dashboards.common.idle")}</p>
+            <div className="admin-table-wrap checkpoint-block">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>{t("dashboards.admin.colName")}</th>
+                    <th>{t("dashboards.admin.colEmail")}</th>
+                    <th>{t("dashboards.admin.colRole")}</th>
+                    <th>{t("dashboards.admin.colStatus")}</th>
+                    <th>{t("dashboards.admin.colJoined")}</th>
+                    <th>{t("dashboards.admin.colActions")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.name}</td>
+                      <td>{row.email}</td>
+                      <td>{row.role === "STUDENT" ? roleLabels.STUDENT : roleLabels.TEACHER}</td>
+                      <td>{row.status}</td>
+                      <td>{row.joined}</td>
+                      <td>
+                        <button type="button" className="secondary">
+                          {t("dashboards.admin.deactivate")}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </article>
+
+        <aside className="portal-side-column">
+          <article className="card portal-inner-card analytics-card">
+            <h4>{t("dashboards.admin.title")}</h4>
+            <p>{t("dashboards.admin.totalUsers")}: {userRows.length}</p>
+            <p>{t("dashboards.admin.pendingApprovals")}: {openReportsCount}</p>
+            <p>{t("dashboards.admin.psychologists")}: {spaces.length}</p>
+          </article>
+
+          <article className="card portal-inner-card">
+            <h4>{t("dashboards.admin.pendingPsychApprovals")}</h4>
+            <div className="stack-list">
+              {spaces.slice(0, 4).map((space) => (
+                <article key={space.id} className="notification-item">
+                  <strong>{space.name}</strong>
+                  <p className="muted">/{space.slug}</p>
+                </article>
+              ))}
+            </div>
+          </article>
+
+          <article className="card portal-inner-card">
+            <p className="status-line">{status || t("dashboards.common.idle")}</p>
+          </article>
+        </aside>
       </section>
     </DashboardShell>
   );

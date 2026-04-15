@@ -195,7 +195,7 @@ export function CoursePageV2() {
   const current = sections[currentSection];
 
   return (
-    <DashboardShell title={t("dashboards.course.title")} subtitle={t("dashboards.course.subtitle")}>
+    <DashboardShell title={t("dashboards.course.title")}>
       <section className={cx(surfaceClass, "course-v2-header px-5 py-4 sm:px-6")}>
         <Link className={actionClass("soft")} to={`${prefix}/student/dashboard`}>
           {t("dashboards.course.backToDashboard")}
