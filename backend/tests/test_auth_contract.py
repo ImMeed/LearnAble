@@ -19,6 +19,35 @@ def test_register_accepts_password_over_72_bytes_with_supported_bcrypt_runtime()
             "email": unique_email,
             "password": "a" * 73,
             "role": "ROLE_STUDENT",
+            "student_age_years": 10,
+        },
+    )
+    assert response.status_code == 200
+
+
+def test_register_student_requires_age() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/auth/register",
+        json={
+            "email": f"student-age-missing-{uuid4().hex}@example.com",
+            "password": "test123456",
+            "role": "ROLE_STUDENT",
+        },
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "STUDENT_AGE_REQUIRED"
+
+
+def test_register_student_accepts_age_outside_reading_lab_band() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/auth/register",
+        json={
+            "email": f"student-age-older-{uuid4().hex}@example.com",
+            "password": "test123456",
+            "role": "ROLE_STUDENT",
+            "student_age_years": 19,
         },
     )
     assert response.status_code == 200

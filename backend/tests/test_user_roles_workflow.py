@@ -53,7 +53,12 @@ def _provision_and_login(client: TestClient, session: Session, role: str) -> dic
     else:
         register_response = client.post(
             "/auth/register",
-            json={"email": email, "password": password, "role": role},
+            json={
+                "email": email,
+                "password": password,
+                "role": role,
+                "student_age_years": 10 if role == "ROLE_STUDENT" else None,
+            },
         )
         assert register_response.status_code == 200
         register_payload = register_response.json()

@@ -19,6 +19,10 @@ ALLOWED_SELF_REGISTER_ROLES = {
 def register_user(session: Session, payload: RegisterRequest, locale: str) -> AuthResponse:
     if payload.role not in ALLOWED_SELF_REGISTER_ROLES:
         raise localized_http_exception(status.HTTP_403_FORBIDDEN, "FORBIDDEN", locale)
+    if payload.role == UserRole.ROLE_STUDENT and payload.student_age_years is None:
+        raise localized_http_exception(status.HTTP_422_UNPROCESSABLE_ENTITY, "STUDENT_AGE_REQUIRED", locale)
+    if payload.role != UserRole.ROLE_STUDENT:
+        payload.student_age_years = None
 
     existing_user = repository.get_user_by_email(session, payload.email)
     if existing_user:
@@ -29,6 +33,7 @@ def register_user(session: Session, payload: RegisterRequest, locale: str) -> Au
         email=payload.email,
         password_hash=hash_password(payload.password),
         role=payload.role,
+        student_age_years=payload.student_age_years,
     )
     session.add(PointsWallet(user_id=user.id, balance_points=0))
 
