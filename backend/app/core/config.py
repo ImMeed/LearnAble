@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://learnable:learnable@localhost:5433/learnable"
     gemini_api_key: str = ""
     require_call_auth: bool = True
+    reading_lab_enabled: bool = False
+    classroom_system_enabled: bool = False
 
     @field_validator("jwt_secret_key")
     @classmethod

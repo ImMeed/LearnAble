@@ -12,12 +12,14 @@ from app.core.i18n import get_request_locale, resolve_request_locale, translate
 from app.modules.ai.router import router as ai_router
 from app.modules.auth.router import router as auth_router
 from app.modules.call.router import router as call_router, http_router as call_http_router, _cleanup_stale_rooms
+from app.modules.classrooms.router import router as classrooms_router
 from app.modules.forum.router import router as forum_router
 from app.modules.gamification.router import router as gamification_router
 from app.modules.library.router import router as library_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.psychologist.router import router as psychologist_router
 from app.modules.quiz.router import router as quiz_router
+from app.modules.reading_lab.router import router as reading_lab_router
 from app.modules.study.router import router as study_router
 from app.modules.teacher.router import router as teacher_router
 from app.modules.users.router import router as users_router
@@ -43,8 +45,10 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(users_router)
+    app.include_router(classrooms_router)
     app.include_router(study_router)
     app.include_router(quiz_router)
+    app.include_router(reading_lab_router)
     app.include_router(gamification_router)
     app.include_router(forum_router)
     app.include_router(library_router)
@@ -60,8 +64,11 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=[
             "http://localhost:3001",
+            "http://127.0.0.1:3001",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
+            "http://localhost:4173",
+            "http://127.0.0.1:4173",
         ],
         allow_credentials=True,
         allow_methods=["*"],

@@ -26,7 +26,7 @@ from app.modules.study.service import (
 	get_lesson_detail,
 	get_lesson_flashcards,
 	get_lesson_reading_games,
-	get_lessons,
+	get_lessons_for_user,
 	submit_screening,
 )
 
@@ -49,13 +49,22 @@ def complete_screening(
 
 
 @router.get("/lessons", response_model=LessonListResponse)
-def list_lessons(request: Request, session: Session = Depends(get_db_session)) -> LessonListResponse:
-	return get_lessons(session, get_request_locale(request))
+def list_lessons(
+	request: Request,
+	current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_STUDENT, UserRole.ROLE_TUTOR)),
+	session: Session = Depends(get_db_session),
+) -> LessonListResponse:
+	return get_lessons_for_user(session, get_request_locale(request), current_user)
 
 
 @router.get("/lessons/{lesson_id}", response_model=LessonDetailResponse)
-def lesson_detail(lesson_id: UUID, request: Request, session: Session = Depends(get_db_session)) -> LessonDetailResponse:
-	return get_lesson_detail(session, lesson_id, get_request_locale(request))
+def lesson_detail(
+	lesson_id: UUID,
+	request: Request,
+	current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_STUDENT, UserRole.ROLE_TUTOR)),
+	session: Session = Depends(get_db_session),
+) -> LessonDetailResponse:
+	return get_lesson_detail(session, lesson_id, get_request_locale(request), current_user)
 
 
 @router.post("/lessons/{lesson_id}/assist", response_model=AssistResponse)
@@ -66,22 +75,27 @@ def lesson_assist(
 	current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_STUDENT)),
 	session: Session = Depends(get_db_session),
 ) -> AssistResponse:
-	_ = current_user
-	return get_lesson_assist(session, lesson_id, payload, get_request_locale(request))
+	return get_lesson_assist(session, lesson_id, payload, get_request_locale(request), current_user)
 
 
 @router.get("/lessons/{lesson_id}/flashcards", response_model=FlashcardListResponse)
 def lesson_flashcards(
 	lesson_id: UUID,
 	request: Request,
+	current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_STUDENT, UserRole.ROLE_TUTOR)),
 	session: Session = Depends(get_db_session),
 ) -> FlashcardListResponse:
-	return get_lesson_flashcards(session, lesson_id, get_request_locale(request))
+	return get_lesson_flashcards(session, lesson_id, get_request_locale(request), current_user)
 
 
 @router.get("/lessons/{lesson_id}/games", response_model=ReadingGameListResponse)
-def lesson_games(lesson_id: UUID, request: Request, session: Session = Depends(get_db_session)) -> ReadingGameListResponse:
-	return get_lesson_reading_games(session, lesson_id, get_request_locale(request))
+def lesson_games(
+	lesson_id: UUID,
+	request: Request,
+	current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_STUDENT, UserRole.ROLE_TUTOR)),
+	session: Session = Depends(get_db_session),
+) -> ReadingGameListResponse:
+	return get_lesson_reading_games(session, lesson_id, get_request_locale(request), current_user)
 
 
 @router.get("/awareness", response_model=AwarenessResponse)

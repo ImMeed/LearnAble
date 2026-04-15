@@ -3,8 +3,11 @@ from uuid import UUID
 from fastapi import status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.i18n import localized_http_exception
+from app.core.roles import UserRole
 from app.core.security import CurrentUser
+from app.modules.classrooms import repository as classrooms_repository
 from app.modules.study import repository
 from app.modules.study.schemas import (
     AssistRequest,
@@ -77,8 +80,38 @@ def get_lessons(session: Session, locale: str) -> LessonListResponse:
     return LessonListResponse(items=items)
 
 
-def get_lesson_detail(session: Session, lesson_id: UUID, locale: str) -> LessonDetailResponse:
-    lesson = repository.get_lesson(session, lesson_id)
+def _get_scoped_lesson(
+    session: Session,
+    lesson_id: UUID,
+    current_user: CurrentUser,
+):
+    if settings.classroom_system_enabled and current_user.role == UserRole.ROLE_STUDENT:
+        return classrooms_repository.get_active_lesson_for_student_by_classroom_membership(
+            session,
+            student_id=current_user.user_id,
+            lesson_id=lesson_id,
+        )
+    return repository.get_lesson(session, lesson_id)
+
+
+def get_lessons_for_user(session: Session, locale: str, current_user: CurrentUser) -> LessonListResponse:
+    if settings.classroom_system_enabled and current_user.role == UserRole.ROLE_STUDENT:
+        lessons = classrooms_repository.list_active_lessons_for_student_by_classroom_membership(
+            session,
+            current_user.user_id,
+        )
+    else:
+        lessons = repository.list_lessons(session)
+
+    items = [
+        LessonSummary(id=lesson.id, title=_lesson_title(lesson, locale), difficulty=lesson.difficulty)
+        for lesson in lessons
+    ]
+    return LessonListResponse(items=items)
+
+
+def get_lesson_detail(session: Session, lesson_id: UUID, locale: str, current_user: CurrentUser) -> LessonDetailResponse:
+    lesson = _get_scoped_lesson(session, lesson_id, current_user)
     if lesson is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "LESSON_NOT_FOUND", locale)
     return LessonDetailResponse(
@@ -89,8 +122,14 @@ def get_lesson_detail(session: Session, lesson_id: UUID, locale: str) -> LessonD
     )
 
 
-def get_lesson_assist(session: Session, lesson_id: UUID, payload: AssistRequest, locale: str) -> AssistResponse:
-    lesson = repository.get_lesson(session, lesson_id)
+def get_lesson_assist(
+    session: Session,
+    lesson_id: UUID,
+    payload: AssistRequest,
+    locale: str,
+    current_user: CurrentUser,
+) -> AssistResponse:
+    lesson = _get_scoped_lesson(session, lesson_id, current_user)
     if lesson is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "LESSON_NOT_FOUND", locale)
 
@@ -123,8 +162,13 @@ def get_lesson_assist(session: Session, lesson_id: UUID, payload: AssistRequest,
     return AssistResponse(mode=payload.mode, content=content)
 
 
-def get_lesson_flashcards(session: Session, lesson_id: UUID, locale: str) -> FlashcardListResponse:
-    lesson = repository.get_lesson(session, lesson_id)
+def get_lesson_flashcards(
+    session: Session,
+    lesson_id: UUID,
+    locale: str,
+    current_user: CurrentUser,
+) -> FlashcardListResponse:
+    lesson = _get_scoped_lesson(session, lesson_id, current_user)
     if lesson is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "LESSON_NOT_FOUND", locale)
 
@@ -139,8 +183,13 @@ def get_lesson_flashcards(session: Session, lesson_id: UUID, locale: str) -> Fla
     return FlashcardListResponse(items=items)
 
 
-def get_lesson_reading_games(session: Session, lesson_id: UUID, locale: str) -> ReadingGameListResponse:
-    lesson = repository.get_lesson(session, lesson_id)
+def get_lesson_reading_games(
+    session: Session,
+    lesson_id: UUID,
+    locale: str,
+    current_user: CurrentUser,
+) -> ReadingGameListResponse:
+    lesson = _get_scoped_lesson(session, lesson_id, current_user)
     if lesson is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "LESSON_NOT_FOUND", locale)
 

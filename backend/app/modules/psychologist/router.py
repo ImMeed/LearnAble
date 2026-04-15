@@ -29,10 +29,11 @@ router = APIRouter(prefix="/psychologist", tags=["psychologist"])
 def submit_questionnaire(
     student_id: UUID,
     payload: TeacherQuestionnaireCreateRequest,
+    request: Request,
     current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_TUTOR)),
     session: Session = Depends(get_db_session),
 ) -> TeacherQuestionnaireResponse:
-    return submit_teacher_questionnaire(session, student_id, payload, current_user)
+    return submit_teacher_questionnaire(session, student_id, payload, current_user, get_request_locale(request))
 
 
 @router.get("/reviews/students/{student_id}", response_model=PsychologistReviewResponse)

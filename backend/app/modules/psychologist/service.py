@@ -3,8 +3,11 @@ from uuid import UUID
 from fastapi import status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.i18n import localized_http_exception
 from app.core.security import CurrentUser
+from app.core.roles import UserRole
+from app.modules.classrooms.scope import ensure_teacher_student_scope
 from app.modules.notifications import repository as notifications_repository
 from app.modules.psychologist import repository
 from app.modules.psychologist.schemas import (
@@ -15,6 +18,49 @@ from app.modules.psychologist.schemas import (
     TeacherQuestionnaireCreateRequest,
     TeacherQuestionnaireResponse,
 )
+
+
+def sync_psychologist_support_confirmation(
+    session: Session,
+    student_id: UUID,
+    support_level: str,
+    notes: str,
+    current_user: CurrentUser,
+    locale: str,
+    *,
+    commit: bool = False,
+) -> tuple:
+    if not repository.is_student_linked_to_psychologist(session, student_id, current_user.user_id):
+        raise localized_http_exception(status.HTTP_403_FORBIDDEN, "STUDENT_PSYCHOLOGIST_LINK_NOT_FOUND", locale)
+
+    confirmation = repository.upsert_support_confirmation(
+        session=session,
+        student_user_id=student_id,
+        psychologist_user_id=current_user.user_id,
+        support_level=support_level,
+        notes=notes,
+    )
+
+    parent_ids = repository.list_parent_ids_for_student(session, student_id)
+    for parent_id in parent_ids:
+        notifications_repository.create_notification(
+            session=session,
+            user_id=parent_id,
+            type="PSYCHOLOGIST_SUPPORT_CONFIRMED",
+            title="تأكيد خطة دعم تعليمية",
+            body="تم تأكيد خطة دعم تعليمية للطالب المرتبط بك من قبل المختص النفسي.",
+            metadata={
+                "student_user_id": str(student_id),
+                "support_level": support_level,
+                "title_en": "Educational support plan confirmed",
+                "body_en": "The psychologist has confirmed an educational support plan for your linked student.",
+            },
+        )
+
+    if commit:
+        session.commit()
+
+    return confirmation, len(parent_ids)
 
 
 def _build_review_response(session: Session, student_id: UUID) -> PsychologistReviewResponse:
@@ -72,7 +118,11 @@ def submit_teacher_questionnaire(
     student_id: UUID,
     payload: TeacherQuestionnaireCreateRequest,
     current_user: CurrentUser,
+    locale: str,
 ) -> TeacherQuestionnaireResponse:
+    if settings.classroom_system_enabled and current_user.role == UserRole.ROLE_TUTOR:
+        ensure_teacher_student_scope(session, current_user.user_id, student_id, locale)
+
     record = repository.create_teacher_questionnaire(
         session=session,
         student_user_id=student_id,
@@ -128,39 +178,20 @@ def confirm_student_support(
     current_user: CurrentUser,
     locale: str,
 ) -> SupportConfirmResponse:
-    if not repository.is_student_linked_to_psychologist(session, student_id, current_user.user_id):
-        raise localized_http_exception(status.HTTP_403_FORBIDDEN, "STUDENT_PSYCHOLOGIST_LINK_NOT_FOUND", locale)
-
-    confirmation = repository.upsert_support_confirmation(
+    confirmation, parent_notifications_sent = sync_psychologist_support_confirmation(
         session=session,
-        student_user_id=student_id,
-        psychologist_user_id=current_user.user_id,
+        student_id=student_id,
         support_level=payload.support_level,
         notes=payload.notes,
+        current_user=current_user,
+        locale=locale,
+        commit=True,
     )
-
-    parent_ids = repository.list_parent_ids_for_student(session, student_id)
-    for parent_id in parent_ids:
-        notifications_repository.create_notification(
-            session=session,
-            user_id=parent_id,
-            type="PSYCHOLOGIST_SUPPORT_CONFIRMED",
-            title="تأكيد خطة دعم تعليمية",
-            body="تم تأكيد خطة دعم تعليمية للطالب المرتبط بك من قبل المختص النفسي.",
-            metadata={
-                "student_user_id": str(student_id),
-                "support_level": payload.support_level,
-                "title_en": "Educational support plan confirmed",
-                "body_en": "The psychologist has confirmed an educational support plan for your linked student.",
-            },
-        )
-
-    session.commit()
     return SupportConfirmResponse(
         id=confirmation.id,
         student_user_id=confirmation.student_user_id,
         psychologist_user_id=confirmation.psychologist_user_id,
         support_level=confirmation.support_level,
         confirmed_at=confirmation.confirmed_at,
-        parent_notifications_sent=len(parent_ids),
+        parent_notifications_sent=parent_notifications_sent,
     )

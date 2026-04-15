@@ -17,6 +17,10 @@ MESSAGES = {
         "ar": "بيانات تسجيل الدخول غير صحيحة.",
         "en": "Invalid email or password.",
     },
+    "STUDENT_AGE_REQUIRED": {
+        "ar": "عمر الطالب مطلوب عند إنشاء حساب الطالب.",
+        "en": "Student age is required when creating a student account.",
+    },
     "USER_NOT_FOUND": {
         "ar": "المستخدم غير موجود.",
         "en": "User does not exist.",
@@ -100,6 +104,74 @@ MESSAGES = {
     "STUDENT_SCREENING_NOT_FOUND": {
         "ar": "لا توجد نتائج تقييم لهذا الطالب.",
         "en": "No screening results were found for this student.",
+    },
+    "READING_LAB_DISABLED": {
+        "ar": "ميزة مختبر القراءة غير مفعلة حالياً.",
+        "en": "Reading Lab is currently disabled.",
+    },
+    "READING_SUPPORT_ACCESS_DENIED": {
+        "ar": "لا توجد صلاحية لإدارة خطة مختبر القراءة لهذا الطالب.",
+        "en": "You do not have access to manage this student's Reading Lab plan.",
+    },
+    "READING_SUPPORT_PLAN_NOT_FOUND": {
+        "ar": "لا توجد خطة دعم مختبر قراءة لهذا الطالب بعد.",
+        "en": "No Reading Lab support plan exists for this student yet.",
+    },
+    "READING_LAB_SESSION_NOT_FOUND": {
+        "ar": "جلسة مختبر القراءة غير موجودة.",
+        "en": "Reading Lab session was not found.",
+    },
+    "READING_LAB_SESSION_COMPLETED": {
+        "ar": "تم إكمال جلسة مختبر القراءة مسبقاً.",
+        "en": "This Reading Lab session has already been completed.",
+    },
+    "READING_LAB_SESSION_OUT_OF_SYNC": {
+        "ar": "حالة الجلسة غير متزامنة. يرجى إعادة المحاولة.",
+        "en": "The session state is out of sync. Please retry.",
+    },
+    "READING_LAB_ACTIVITY_INVALID": {
+        "ar": "نشاط مختبر القراءة المطلوب غير صالح.",
+        "en": "The requested Reading Lab activity is invalid.",
+    },
+    "READING_LAB_LINK_ID_NOT_FOUND": {
+        "ar": "معرف ربط الطالب غير صحيح أو غير موجود.",
+        "en": "Student link ID is invalid or was not found.",
+    },
+    "READING_LAB_LINK_ID_GENERATION_FAILED": {
+        "ar": "تعذر إنشاء معرف ربط الطالب حالياً. حاول مرة أخرى.",
+        "en": "Unable to generate a student link ID right now. Please retry.",
+    },
+    "CLASSROOM_SYSTEM_DISABLED": {
+        "ar": "ميزة الفصول غير مفعلة حالياً.",
+        "en": "Classroom system is currently disabled.",
+    },
+    "CLASSROOM_INVITE_GENERATION_FAILED": {
+        "ar": "تعذر إنشاء رمز دعوة الصف حالياً. حاول مرة أخرى.",
+        "en": "Unable to generate a classroom invite code right now. Please retry.",
+    },
+    "CLASSROOM_NOT_FOUND": {
+        "ar": "الصف غير موجود.",
+        "en": "Classroom was not found.",
+    },
+    "CLASSROOM_INVITE_NOT_FOUND": {
+        "ar": "رمز دعوة الصف غير صحيح أو غير موجود.",
+        "en": "Classroom invite code is invalid or was not found.",
+    },
+    "CLASSROOM_INACTIVE": {
+        "ar": "هذا الصف غير نشط حالياً.",
+        "en": "This classroom is currently inactive.",
+    },
+    "CLASSROOM_ALREADY_JOINED": {
+        "ar": "تم الانضمام إلى هذا الصف مسبقاً.",
+        "en": "You have already joined this classroom.",
+    },
+    "CLASSROOM_ENROLLMENT_NOT_FOUND": {
+        "ar": "لا يوجد اشتراك صف مطابق لهذا الطالب.",
+        "en": "No matching classroom enrollment was found for this student.",
+    },
+    "CLASSROOM_SCOPE_ACCESS_DENIED": {
+        "ar": "لا يمكن الوصول إلى بيانات طالب خارج فصولك.",
+        "en": "You cannot access student data outside your classrooms.",
     },
     "FORUM_SPACE_NOT_FOUND": {
         "ar": "مساحة المنتدى غير موجودة.",
