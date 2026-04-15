@@ -38,6 +38,7 @@ export type AccessibilitySettings = {
   breakAlerts: boolean;
   teacherMessages: boolean;
   psychologistAlerts: boolean;
+  ttsRate: number;
 };
 
 type AccessibilityContextValue = {
@@ -48,6 +49,7 @@ type AccessibilityContextValue = {
   setFocusMode: (enabled: boolean) => void;
   setReadingMode: (mode: ReadingMode) => void;
   setFontSize: (size: number) => void;
+  setTtsRate: (rate: number) => void;
 };
 
 const STORAGE_KEY = "learnable_accessibility_settings";
@@ -84,6 +86,7 @@ const DEFAULT_SETTINGS: AccessibilitySettings = {
   breakAlerts: true,
   teacherMessages: true,
   psychologistAlerts: true,
+  ttsRate: 1.0,
 };
 
 const AccessibilityContext = createContext<AccessibilityContextValue | undefined>(undefined);
@@ -185,6 +188,7 @@ function normalizeSettings(payload: Partial<AccessibilitySettings>): Accessibili
     breakAlerts: asBoolean(merged.breakAlerts, DEFAULT_SETTINGS.breakAlerts),
     teacherMessages: asBoolean(merged.teacherMessages, DEFAULT_SETTINGS.teacherMessages),
     psychologistAlerts: asBoolean(merged.psychologistAlerts, DEFAULT_SETTINGS.psychologistAlerts),
+    ttsRate: clamp(asNumber(merged.ttsRate, DEFAULT_SETTINGS.ttsRate), 0.5, 2.0),
   };
 }
 
@@ -269,6 +273,9 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
       },
       setFontSize: (size: number) => {
         setSettings((prev) => normalizeSettings({ ...prev, fontSize: clamp(size, 12, 24) }));
+      },
+      setTtsRate: (rate: number) => {
+        setSettings((prev) => normalizeSettings({ ...prev, ttsRate: clamp(rate, 0.5, 2.0) }));
       },
     };
   }, [settings]);

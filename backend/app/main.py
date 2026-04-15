@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.core.i18n import get_request_locale, resolve_request_locale, translate
 from app.modules.ai.router import router as ai_router
 from app.modules.auth.router import router as auth_router
+from app.modules.courses.router import student_router as courses_student_router, teacher_router as courses_teacher_router
 from app.modules.call.router import router as call_router, http_router as call_http_router, _cleanup_stale_rooms
 from app.modules.classrooms.router import router as classrooms_router
 from app.modules.forum.router import router as forum_router
@@ -55,6 +56,8 @@ def create_app() -> FastAPI:
     app.include_router(notifications_router)
     app.include_router(ai_router)
     app.include_router(teacher_router)
+    app.include_router(courses_teacher_router)
+    app.include_router(courses_student_router)
     app.include_router(psychologist_router)
     app.include_router(call_http_router)
     app.include_router(call_router)

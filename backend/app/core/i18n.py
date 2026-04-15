@@ -205,6 +205,46 @@ MESSAGES = {
         "ar": "تم قفل هذا المنشور ولا يقبل تعليقات جديدة.",
         "en": "This post is locked and does not accept new comments.",
     },
+    "PROGRESS_CONFLICT": {
+        "ar": "هذا القسم مكتمل بالفعل.",
+        "en": "This section is already marked complete.",
+    },
+    "COURSE_NOT_FOUND": {
+        "ar": "المقرر غير موجود.",
+        "en": "Course was not found.",
+    },
+    "COURSE_FORBIDDEN": {
+        "ar": "ليس لديك صلاحية الوصول إلى هذا المقرر.",
+        "en": "You do not have access to this course.",
+    },
+    "COURSE_NOT_PUBLISHED": {
+        "ar": "هذا المقرر غير منشور بعد.",
+        "en": "This course has not been published yet.",
+    },
+    "INVALID_COURSE_LANGUAGE": {
+        "ar": "اللغة يجب أن تكون ar أو en.",
+        "en": "Language must be ar or en.",
+    },
+    "PDF_TOO_LARGE": {
+        "ar": "حجم الملف يتجاوز 10 ميغابايت.",
+        "en": "File size exceeds 10 MB.",
+    },
+    "PDF_TOO_MANY_PAGES": {
+        "ar": "عدد الصفحات يتجاوز 50 صفحة.",
+        "en": "PDF exceeds 50 pages.",
+    },
+    "INVALID_FILE_TYPE": {
+        "ar": "يجب رفع ملف PDF فقط.",
+        "en": "Only PDF files are accepted.",
+    },
+    "AI_EXTRACTION_FAILED": {
+        "ar": "فشل استخراج المحتوى من الملف. حاول مجددًا.",
+        "en": "Failed to extract content from the file. Please try again.",
+    },
+    "SECTION_NOT_FOUND": {
+        "ar": "القسم غير موجود في هذا المقرر.",
+        "en": "Section was not found in this course.",
+    },
 }
 
 

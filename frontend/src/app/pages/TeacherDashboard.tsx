@@ -18,6 +18,8 @@ import {
   TeacherTabs,
 } from "./roleDashboardShared";
 
+import { TeacherCoursesTab } from "./TeacherCoursesTab";
+
 const POLL_MS = 8000;
 
 export function TeacherDashboardPageV2() {
@@ -999,41 +1001,7 @@ export function TeacherDashboardPageV2() {
       ) : null}
 
       {activeTab === "courses" ? (
-        <section className="card portal-main-card">
-          <h3>{t("dashboards.teacher.coursesTitle")}</h3>
-          <div className="subject-grid">
-            {(lessons.length > 0
-              ? lessons.slice(0, 6).map((lesson, index) => ({
-                  key: lesson.id,
-                  title: lesson.title,
-                  meta: lesson.difficulty,
-                  active: index === 0,
-                }))
-              : [{
-                  key: "example-course",
-                  title: t("dashboards.teacher.course1"),
-                  meta: t("dashboards.teacher.courseMeta", { lessons: 1 }),
-                  active: true,
-                }]
-            ).map((course) => (
-              <article className={course.active ? "subject-card active" : "subject-card"} key={course.key}>
-                <strong>{course.title}</strong>
-                <span>{course.meta}</span>
-                {CLASSROOM_SYSTEM_ENABLED ? (
-                  <span className="muted">
-                    {(() => {
-                      const assignment = courseAssignments.find((item) => item.course_id === course.key);
-                      if (!assignment || assignment.classroom_names.length === 0) {
-                        return t("classroom.teacher.notAssigned");
-                      }
-                      return t("classroom.teacher.assignedTo", { classrooms: assignment.classroom_names.join(", ") });
-                    })()}
-                  </span>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        </section>
+        <TeacherCoursesTab />
       ) : null}
 
       {activeTab === "schedule" ? (

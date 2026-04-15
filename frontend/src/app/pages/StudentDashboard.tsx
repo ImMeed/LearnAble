@@ -18,6 +18,19 @@ type LessonSummary = {
   difficulty: string;
 };
 
+type CourseListItem = {
+  id: string;
+  title: string;
+  language: string;
+  status: string;
+  source_page_count: number | null;
+  created_at: string;
+};
+
+type CourseOrLesson = 
+  | (LessonSummary & { type: "lesson" })
+  | (CourseListItem & { type: "course" });
+
 type BadgeItem = {
   code: string;
   title: string;
@@ -109,6 +122,7 @@ type CoursePreviewCard = {
   nextTopic: string;
   minutes: number;
   completion: number;
+  itemType: "lesson" | "course";
 };
 
 type BadgeIconVariant = "streak" | "quiz" | "focus" | "xp" | "default";
@@ -237,7 +251,7 @@ export function StudentDashboardPageV2() {
   const navigate = useNavigate();
 
   const [status, setStatus] = useState("");
-  const [lessons, setLessons] = useState<LessonSummary[]>([]);
+  const [coursesAndLessons, setCoursesAndLessons] = useState<CourseOrLesson[]>([]);
   const [progression, setProgression] = useState<Progression | null>(null);
   const [goals, setGoals] = useState<GoalItem[]>([]);
   const [showTodoList, setShowTodoList] = useState(true);
@@ -266,6 +280,8 @@ export function StudentDashboardPageV2() {
     { id: "goal-minutes", title: t("dashboards.studentV2.goalMinutes"), current: 22, target: 30 },
     { id: "goal-xp", title: t("dashboards.studentV2.goalXp"), current: 150, target: 200 },
   ];
+  const courses = coursesAndLessons.filter((i) => i.type === "course") as Array<CourseListItem & { type: "course" }>;
+  const lessons = coursesAndLessons.filter((i) => i.type === "lesson") as Array<LessonSummary & { type: "lesson" }>;
   const visibleLessons = lessons.slice(0, 6);
   const shouldGateCourses = CLASSROOM_SYSTEM_ENABLED && studentClassrooms.length === 0;
   const xpCurrent = progression?.total_xp ?? 0;
@@ -296,18 +312,36 @@ export function StudentDashboardPageV2() {
       t("dashboards.studentV2.courseNextTopic3"),
     ];
 
-    return visibleLessons.slice(0, 3).map((lesson, index) => {
+    const courseCards: CoursePreviewCard[] = courses.slice(0, 3).map((course, index) => {
+      const seeded = course.title.length % 12;
+      return {
+        id: course.id,
+        title: course.title,
+        subject: t("dashboards.studentV2.subjectPdfCourse"),
+        nextTopic: nextTopics[index] ?? nextTopics[nextTopics.length - 1],
+        minutes: 20 + index * 5,
+        completion: Math.max(10, Math.min(80, 30 + seeded * 3)),
+        itemType: "course",
+      };
+    });
+
+    const remainingSlots = Math.max(0, 3 - courseCards.length);
+    const lessonCards: CoursePreviewCard[] = visibleLessons.slice(0, remainingSlots).map((lesson, index) => {
       const seeded = lesson.title.length % 12;
+      const overallIndex = courseCards.length + index;
       return {
         id: lesson.id,
         title: lesson.title,
         subject: lesson.difficulty || t("dashboards.studentV2.subjectGeneral"),
-        nextTopic: nextTopics[index] ?? nextTopics[nextTopics.length - 1],
-        minutes: 20 + index * 5,
-        completion: Math.max(28, Math.min(94, 82 - index * 18 + seeded)),
+        nextTopic: nextTopics[overallIndex] ?? nextTopics[nextTopics.length - 1],
+        minutes: 20 + overallIndex * 5,
+        completion: Math.max(28, Math.min(94, 82 - overallIndex * 18 + seeded)),
+        itemType: "lesson",
       };
     });
-  }, [t, visibleLessons]);
+
+    return [...courseCards, ...lessonCards];
+  }, [t, visibleLessons, courses]);
 
   const forumHighlights = useMemo<ForumHighlight[]>(() => {
     const highlights: ForumHighlight[] = [];
@@ -455,25 +489,25 @@ export function StudentDashboardPageV2() {
 
   const loadDashboard = async () => {
     setStatus(t("dashboards.common.loading"));
-    try {
-      const classroomPromise = CLASSROOM_SYSTEM_ENABLED
-        ? apiClient.get<{ items: StudentClassroomItem[] }>("/classrooms/student/me", requestConfig)
-        : Promise.resolve({ data: { items: [] as StudentClassroomItem[] } });
 
-      const [lessonRes, progressionRes, activeTeachersRes, requestsRes, classroomRes] = await Promise.all([
-        apiClient.get<{ items: LessonSummary[] }>("/study/lessons", requestConfig),
-        apiClient.get<Progression>("/gamification/progression/me", requestConfig),
-        apiClient.get<{ items: TeacherPresenceItem[] }>("/teacher/presence/active", requestConfig),
-        apiClient.get<{ items: AssistanceRequestItem[] }>("/teacher/assistance/requests", requestConfig),
-        classroomPromise,
-      ]);
+    const classroomPromise = CLASSROOM_SYSTEM_ENABLED
+      ? apiClient.get<{ items: StudentClassroomItem[] }>("/classrooms/student/me", requestConfig)
+      : Promise.resolve({ data: { items: [] as StudentClassroomItem[] } });
 
-      setLessons(lessonRes.data.items || []);
-      setProgression(progressionRes.data);
-      setActiveTeachers(activeTeachersRes.data.items || []);
-      setAssistanceRequests(requestsRes.data.items || []);
-      setStudentClassrooms(classroomRes.data.items || []);
-      if (READING_LAB_ENABLED) {
+    const [lessonsResult, coursesResult, progressionResult, classroomResult] = await Promise.allSettled([
+      apiClient.get<{ items: LessonSummary[] }>("/study/lessons", requestConfig),
+      apiClient.get<CourseListItem[]>("/courses/", requestConfig),
+      apiClient.get<Progression>("/gamification/progression/me", requestConfig),
+      classroomPromise,
+    ]);
+
+    setStudentClassrooms(classroomResult.status === "fulfilled" ? classroomResult.value.data.items || [] : []);
+    if (!CLASSROOM_SYSTEM_ENABLED) {
+      setJoinPreview(null);
+    }
+
+    if (READING_LAB_ENABLED) {
+      try {
         const readingLabRes = await apiClient.get<ReadingLabSummary>("/reading-lab/summary/me", requestConfig);
         const linkIdRes = await apiClient.get<StudentLinkIdResponse>("/reading-lab/link-id/me", requestConfig);
         setReadingLabSummary(readingLabRes.data);
@@ -482,22 +516,53 @@ export function StudentDashboardPageV2() {
           setShowReadingLab((readingLabRes.data.student_age_years ?? 0) <= 12);
           setReadingLabVisibilityInitialized(true);
         }
-      } else {
+      } catch {
         setReadingLabSummary(null);
         setStudentLinkId("");
-        setShowReadingLab(true);
-        setReadingLabVisibilityInitialized(false);
       }
+    } else {
+      setReadingLabSummary(null);
+      setStudentLinkId("");
+      setShowReadingLab(true);
+      setReadingLabVisibilityInitialized(false);
+    }
 
-      if (!CLASSROOM_SYSTEM_ENABLED) {
-        setJoinPreview(null);
-      }
+    const lessons =
+      lessonsResult.status === "fulfilled"
+        ? (lessonsResult.value.data.items || []).map(l => ({ ...l, type: "lesson" as const }))
+        : [];
+    const courses =
+      coursesResult.status === "fulfilled" && Array.isArray(coursesResult.value.data)
+        ? coursesResult.value.data.map(c => ({ ...c, type: "course" as const }))
+        : [];
 
-      setGoals(fallbackGoals);
+    // Courses first so they always appear, then lessons
+    setCoursesAndLessons([...courses, ...lessons]);
 
+    if (progressionResult.status === "fulfilled") {
+      setProgression(progressionResult.value.data);
+    }
+    setGoals(fallbackGoals);
+
+    if (coursesResult.status === "rejected") {
+      console.error("Courses load error:", coursesResult.reason);
+      setStatus(errorMessage(coursesResult.reason));
+    } else {
       setStatus(t("dashboards.studentV2.loaded"));
-    } catch (error) {
-      setStatus(errorMessage(error));
+    }
+
+    // Load teacher presence and assistance requests independently so failures don't block the dashboard
+    try {
+      const activeTeachersRes = await apiClient.get<{ items: TeacherPresenceItem[] }>("/teacher/presence/active", requestConfig);
+      setActiveTeachers(activeTeachersRes.data.items || []);
+    } catch {
+      setActiveTeachers([]);
+    }
+    try {
+      const requestsRes = await apiClient.get<{ items: AssistanceRequestItem[] }>("/teacher/assistance/requests", requestConfig);
+      setAssistanceRequests(requestsRes.data.items || []);
+    } catch {
+      setAssistanceRequests([]);
     }
   };
 
@@ -624,23 +689,28 @@ export function StudentDashboardPageV2() {
 
             <div className="student-courses-list checkpoint-block">
               {shouldGateCourses ? <p className="muted">{t("classroom.student.mustJoinClassroom")}</p> : null}
-              {!shouldGateCourses ? coursePreviewCards.map((course) => (
-                <Link className="student-course-card" to={`${prefix}/student/course/${course.id}`} key={course.id}>
-                  <div className="student-course-head">
-                    <span className="student-course-subject">{course.subject}</span>
-                    <span className="student-course-chevron" aria-hidden="true">{">"}</span>
-                  </div>
-                  <h3>{course.title}</h3>
-                  <p className="student-course-next">{t("dashboards.studentV2.courseNext", { topic: course.nextTopic })}</p>
-                  <div className="student-course-meta">
-                    <span>{course.minutes} min</span>
-                    <span>{course.completion}% {t("dashboards.studentV2.courseComplete")}</span>
-                  </div>
-                  <div className="progress-track">
-                    <span className="progress-fill" style={{ width: `${course.completion}%` }} />
-                  </div>
-                </Link>
-              )) : null}
+              {!shouldGateCourses ? coursePreviewCards.map((course) => {
+                const url = course.itemType === "course"
+                  ? `${prefix}/student/courses/${course.id}`
+                  : `${prefix}/student/course/${course.id}`;
+                return (
+                  <Link className="student-course-card" to={url} key={`${course.itemType}-${course.id}`}>
+                    <div className="student-course-head">
+                      <span className="student-course-subject">{course.subject}</span>
+                      <span className="student-course-chevron" aria-hidden="true">{">"}</span>
+                    </div>
+                    <h3>{course.title}</h3>
+                    <p className="student-course-next">{t("dashboards.studentV2.courseNext", { topic: course.nextTopic })}</p>
+                    <div className="student-course-meta">
+                      <span>{course.minutes} min</span>
+                      <span>{course.completion}% {t("dashboards.studentV2.courseComplete")}</span>
+                    </div>
+                    <div className="progress-track">
+                      <span className="progress-fill" style={{ width: `${course.completion}%` }} />
+                    </div>
+                  </Link>
+                );
+              }) : null}
               {!shouldGateCourses && coursePreviewCards.length === 0 ? <p className="muted">{t("classroom.student.noCoursesYet")}</p> : null}
             </div>
 

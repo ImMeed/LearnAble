@@ -1,4 +1,8 @@
 from app.db.models.classroom import Classroom, ClassroomCourse, ClassroomEnrollment
+from app.db.models.course import Course, CourseStatus
+from app.db.models.course_last_visited import CourseLastVisited
+from app.db.models.quiz_attempt import CourseQuizAttempt
+from app.db.models.section_progress import SectionProgress
 from app.db.models.economy import PointTransaction, PointsWallet, XpLedger
 from app.db.models.forum import ForumComment, ForumPost, ForumReport, ForumSpace, ForumVote
 from app.db.models.library import Book, DigitalPurchase
@@ -20,6 +24,11 @@ __all__ = [
     "Classroom",
     "ClassroomCourse",
     "ClassroomEnrollment",
+    "Course",
+    "CourseLastVisited",
+    "CourseStatus",
+    "CourseQuizAttempt",
+    "SectionProgress",
     "DigitalPurchase",
     "ForumComment",
     "ForumPost",
