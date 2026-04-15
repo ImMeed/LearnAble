@@ -37,3 +37,7 @@ ui/
 first-session/
 .qodo/
 .claude/
+implementation-roadmap.md
+design.md
+attention-score-phases/
+reading-lab-audit.md
