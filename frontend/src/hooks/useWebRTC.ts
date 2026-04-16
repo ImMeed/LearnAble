@@ -326,7 +326,7 @@ export function useWebRTC({
 
     // Some browser/driver combinations are more reliable with track events.
     peer.on("track", (track, stream) => {
-      const firstStream = stream && stream.length > 0 ? stream[0] : null;
+      const firstStream = stream ?? null;
       if (firstStream) {
         setRemoteStream(firstStream);
         setPeerConnected(true);

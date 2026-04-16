@@ -2489,6 +2489,322 @@ html.sepia .adhd-compact-task {
   margin-inline-end: auto;
 }
 
+.student-games-layout {
+  display: grid;
+  gap: 0.9rem;
+  border-radius: 1rem;
+}
+
+.student-games-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.student-games-header h2,
+.student-games-header p {
+  margin: 0;
+}
+
+.student-games-header h2 {
+  font-size: clamp(1.5rem, 2.2vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+.student-games-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.student-games-stat-card {
+  border: 1px solid color-mix(in srgb, var(--border) 86%, white 14%);
+  border-radius: 0.9rem;
+  padding: 0.95rem 1rem;
+  display: grid;
+  gap: 0.3rem;
+  min-height: 116px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 95%, white 5%), color-mix(in srgb, var(--card) 84%, var(--primary) 16%));
+}
+
+.student-games-stat-card.is-completed {
+  border-color: color-mix(in srgb, var(--secondary) 54%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, white 6%), color-mix(in srgb, var(--card) 78%, var(--secondary) 22%));
+}
+
+.student-games-stat-card.is-xp {
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, white 6%), color-mix(in srgb, var(--card) 78%, var(--accent) 22%));
+}
+
+.student-games-stat-card.is-available {
+  border-color: color-mix(in srgb, var(--primary) 56%, var(--border));
+}
+
+.student-games-stat-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 44%, var(--border));
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-games-stat-card p,
+.student-games-stat-card strong {
+  margin: 0;
+}
+
+.student-games-stat-card p {
+  color: var(--muted-foreground);
+  font-size: 0.9rem;
+}
+
+.student-games-stat-card strong {
+  font-size: clamp(1.45rem, 2.2vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+.student-games-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.student-games-filter-field {
+  width: min(100%, 260px);
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+.student-games-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.student-game-card {
+  border: 1px solid color-mix(in srgb, var(--border) 86%, white 14%);
+  border-radius: 1rem;
+  padding: 1rem;
+  display: grid;
+  gap: 0.65rem;
+  background: color-mix(in srgb, var(--card) 90%, white 10%);
+}
+
+.student-game-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 48%, var(--border));
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-game-icon .ui-prefix-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.student-game-card h3,
+.student-game-card p {
+  margin: 0;
+}
+
+.student-game-card h3 {
+  font-size: clamp(1.25rem, 1.9vw, 1.75rem);
+  letter-spacing: -0.01em;
+}
+
+.student-game-card p {
+  color: var(--muted-foreground);
+  font-size: 0.98rem;
+}
+
+.student-game-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.student-game-chip {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  color: color-mix(in srgb, var(--primary) 84%, white 16%);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.35rem 0.62rem;
+}
+
+.student-game-start-btn {
+  width: 100%;
+  margin-top: 0.15rem;
+}
+
+.spelling-game-layout {
+  display: grid;
+  gap: 0.9rem;
+  border-radius: 1rem;
+}
+
+.spelling-game-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.spelling-game-head h2,
+.spelling-game-head p {
+  margin: 0;
+}
+
+.spelling-game-head h2 {
+  font-size: clamp(1.45rem, 2vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+.spelling-game-head-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.spelling-slot-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.spelling-slot {
+  width: 52px;
+  min-height: 52px;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 42%, var(--border));
+  background: color-mix(in srgb, var(--card) 88%, white 12%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.spelling-slot-hint {
+  opacity: 0.6;
+}
+
+.spelling-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.spelling-keyboard-block {
+  border: 1px solid color-mix(in srgb, var(--border) 84%, white 16%);
+  border-radius: 0.95rem;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.75rem;
+  background: color-mix(in srgb, var(--card) 90%, white 10%);
+}
+
+.spelling-keyboard-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.spelling-keyboard-toggle-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.spelling-toggle-btn {
+  min-height: 38px;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--foreground);
+}
+
+.spelling-toggle-btn.is-active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  color: color-mix(in srgb, var(--primary) 88%, white 12%);
+}
+
+.spelling-keyboard-rows {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.spelling-keyboard-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.spelling-key {
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, white 20%);
+  background: color-mix(in srgb, var(--card) 84%, white 16%);
+  color: var(--foreground);
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+}
+
+.spelling-key:hover {
+  border-color: color-mix(in srgb, var(--primary) 52%, var(--border));
+}
+
+.spelling-keyboard-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.spelling-action-btn {
+  width: 100%;
+}
+
+.spelling-result-card {
+  border: 1px solid color-mix(in srgb, var(--secondary) 46%, var(--border));
+  border-radius: 0.95rem;
+  padding: 0.95rem;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, white 6%), color-mix(in srgb, var(--card) 80%, var(--secondary) 20%));
+}
+
+.spelling-result-card h3,
+.spelling-result-card p {
+  margin: 0;
+}
+
+.spelling-result-card p + p {
+  margin-top: 0.45rem;
+}
+
 .course-v2-layout {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
@@ -2731,6 +3047,32 @@ html.sepia .adhd-compact-task {
 
   .student-courses-more-grid {
     grid-template-columns: 1fr;
+  }
+
+  .student-games-stats,
+  .student-games-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-games-filter-field {
+    width: 100%;
+  }
+
+  .spelling-slot {
+    width: 46px;
+    min-height: 46px;
+  }
+
+  .spelling-keyboard-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .spelling-game-head-actions {
+    width: 100%;
+  }
+
+  .spelling-game-head-actions > * {
+    width: 100%;
   }
 
   .course-v2-layout {

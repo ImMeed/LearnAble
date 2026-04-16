@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Award, Brain, Flame, Rocket, ShieldCheck, Star, type LucideIcon } from "lucide-react";
 
 import { apiClient } from "../../api/client";
 import { CLASSROOM_SYSTEM_ENABLED, READING_LAB_ENABLED } from "../features";
@@ -35,13 +36,22 @@ type BadgeItem = {
   code: string;
   title: string;
   description: string;
+  threshold_xp: number;
   unlocked: boolean;
 };
 
-type Progression = {
+type ProgressSummary = {
+  completed_sessions: number;
+  total_rounds_completed: number;
+  games_completed: number;
+  quizzes_completed: number;
   total_xp: number;
   current_level: number;
   next_level_xp: number;
+  streak_days: number;
+  tracked_course_minutes: number;
+  estimated_course_minutes: number;
+  total_course_minutes: number;
   badges: BadgeItem[];
 };
 
@@ -139,8 +149,19 @@ function badgeVariantForCode(code: string): BadgeIconVariant {
   if (key.includes("streak")) return "streak";
   if (key.includes("quiz")) return "quiz";
   if (key.includes("focus")) return "focus";
+  if (key.includes("champion")) return "xp";
   if (key.includes("xp") || key.includes("level")) return "xp";
   return "default";
+}
+
+function badgeIconForCode(code: string): LucideIcon {
+  const key = code.toLowerCase();
+  if (key.includes("streak")) return Flame;
+  if (key.includes("quiz")) return Award;
+  if (key.includes("focus")) return Brain;
+  if (key.includes("champion")) return ShieldCheck;
+  if (key.includes("xp") || key.includes("level")) return Rocket;
+  return Star;
 }
 
 function TrophyIcon() {
@@ -242,13 +263,12 @@ function PlusIcon() {
   );
 }
 
-function BadgeIcon({ variant }: { variant: BadgeIconVariant }) {
+function BadgeIcon({ code }: { code: string }) {
+  const variant = badgeVariantForCode(code);
+  const Icon = badgeIconForCode(code);
   const className = `student-v2-badge-svg ${variant}`;
   return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
-      <path d="M12 7v10M7 12h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
+    <Icon className={className} aria-hidden="true" />
   );
 }
 
@@ -259,7 +279,7 @@ export function StudentDashboardPageV2() {
 
   const [status, setStatus] = useState("");
   const [coursesAndLessons, setCoursesAndLessons] = useState<CourseOrLesson[]>([]);
-  const [progression, setProgression] = useState<Progression | null>(null);
+  const [progressSummary, setProgressSummary] = useState<ProgressSummary | null>(null);
   const [goals, setGoals] = useState<GoalItem[]>([]);
   const [showTodoList, setShowTodoList] = useState(true);
   const [showAIChat, setShowAIChat] = useState(false);
@@ -291,11 +311,17 @@ export function StudentDashboardPageV2() {
   const lessons = coursesAndLessons.filter((i) => i.type === "lesson") as Array<LessonSummary & { type: "lesson" }>;
   const visibleLessons = lessons.slice(0, 6);
   const shouldGateCourses = CLASSROOM_SYSTEM_ENABLED && studentClassrooms.length === 0;
-  const xpCurrent = progression?.total_xp ?? 0;
-  const xpTarget = progression?.next_level_xp ?? 200;
+  const xpCurrent = progressSummary?.total_xp ?? 0;
+  const xpTarget = progressSummary?.next_level_xp ?? 200;
   const xpPercent = Math.max(0, Math.min(100, Math.round((xpCurrent / Math.max(xpTarget, 1)) * 100)));
-  const currentLevel = progression?.current_level ?? 1;
-  const streakDays = 7;
+  const currentLevel = progressSummary?.current_level ?? 1;
+  const streakDays = progressSummary?.streak_days ?? 0;
+  const sortedBadges = useMemo(() => {
+    const badges = progressSummary?.badges || [];
+    return [...badges].sort((left, right) => {
+      return left.threshold_xp - right.threshold_xp;
+    });
+  }, [progressSummary?.badges]);
   const readingLabProminenceLabel =
     readingLabSummary?.prominence === "HIGHLY_PROMINENT"
       ? t("readingLab.highlyProminent")
@@ -483,9 +509,9 @@ export function StudentDashboardPageV2() {
       ? apiClient.get<{ items: StudentClassroomItem[] }>("/classrooms/student/me", requestConfig)
       : Promise.resolve({ data: { items: [] as StudentClassroomItem[] } });
 
-    const [lessonsResult, progressionResult, classroomResult] = await Promise.allSettled([
+    const [lessonsResult, progressSummaryResult, classroomResult] = await Promise.allSettled([
       apiClient.get<{ items: LessonSummary[] }>("/study/lessons", requestConfig),
-      apiClient.get<Progression>("/gamification/progression/me", requestConfig),
+      apiClient.get<ProgressSummary>("/gamification/progress-summary/me", requestConfig),
       classroomPromise,
     ]);
 
@@ -537,8 +563,10 @@ export function StudentDashboardPageV2() {
     // Courses now come from classroom data — no separate flat fetch needed
     setCoursesAndLessons([...lessons]);
 
-    if (progressionResult.status === "fulfilled") {
-      setProgression(progressionResult.value.data);
+    if (progressSummaryResult.status === "fulfilled") {
+      setProgressSummary(progressSummaryResult.value.data);
+    } else {
+      setProgressSummary(null);
     }
     setGoals(fallbackGoals);
 
@@ -1106,17 +1134,18 @@ export function StudentDashboardPageV2() {
                 <h2 className="text-[clamp(1.2rem,1.7vw,1.55rem)] font-semibold tracking-[-0.03em] text-foreground">
                   {t("dashboards.studentV2.achievements")}
                 </h2>
-                <div className="student-v2-badges-grid">
-                  {(progression?.badges || []).map((badge) => (
+                <div className="student-v2-badges-grid checkpoint-block">
+                  {sortedBadges.map((badge) => (
                     <article
                       key={badge.code}
                       className={`student-v2-badge ${badge.unlocked ? "unlocked" : "locked"}`}
                       title={badge.description}
                     >
-                      <BadgeIcon variant={badgeVariantForCode(badge.code)} />
+                      <BadgeIcon code={badge.code} />
                       <p>{badge.title}</p>
                     </article>
                   ))}
+                  {sortedBadges.length === 0 ? <p className="muted">{t("dashboards.common.none")}</p> : null}
                 </div>
               </article>
             ) : null}
@@ -1125,16 +1154,40 @@ export function StudentDashboardPageV2() {
               <h3>{t("dashboards.studentV2.progressSnapshotTitle")}</h3>
               <div className="metrics-grid checkpoint-block">
                 <article className="card metric-pill">
-                  <p>{t("dashboards.studentV2.level", { level: currentLevel })}</p>
-                  <strong>{xpPercent}%</strong>
+                  <p>{t("dashboards.studentV2.progressCompletedSessions")}</p>
+                  <strong>{progressSummary?.completed_sessions ?? 0}</strong>
                 </article>
                 <article className="card metric-pill">
-                  <p>{t("dashboards.studentV2.streak", { days: streakDays })}</p>
-                  <strong>{xpCurrent}</strong>
+                  <p>{t("dashboards.studentV2.progressTotalRounds")}</p>
+                  <strong>{progressSummary?.total_rounds_completed ?? 0}</strong>
                 </article>
                 <article className="card metric-pill">
-                  <p>{t("dashboards.studentV2.progressLessons")}</p>
-                  <strong>{visibleLessons.length}</strong>
+                  <p>{t("dashboards.studentV2.progressGames")}</p>
+                  <strong>{progressSummary?.games_completed ?? 0}</strong>
+                </article>
+                <article className="card metric-pill">
+                  <p>{t("dashboards.studentV2.progressQuizzes")}</p>
+                  <strong>{progressSummary?.quizzes_completed ?? 0}</strong>
+                </article>
+                <article className="card metric-pill">
+                  <p>{t("dashboards.studentV2.progressCurrentLevel")}</p>
+                  <strong>{currentLevel}</strong>
+                </article>
+                <article className="card metric-pill">
+                  <p>{t("dashboards.studentV2.progressStreakDays")}</p>
+                  <strong>{streakDays}</strong>
+                </article>
+                <article className="card metric-pill">
+                  <p>{t("dashboards.studentV2.progressTimeInCourses")}</p>
+                  <strong>
+                    {progressSummary?.total_course_minutes ?? 0} {t("dashboards.studentV2.minutesShort")}
+                  </strong>
+                  <p className="muted">
+                    {t("dashboards.studentV2.progressTimeSplit", {
+                      tracked: progressSummary?.tracked_course_minutes ?? 0,
+                      estimated: progressSummary?.estimated_course_minutes ?? 0,
+                    })}
+                  </p>
                 </article>
               </div>
             </article>

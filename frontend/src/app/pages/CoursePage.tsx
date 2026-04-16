@@ -344,9 +344,15 @@ export function CoursePageV2() {
               <button
                 type="button"
                 className={actionClass()}
-                onClick={() => {
+                onClick={async () => {
+                  if (!lessonId) return;
                   setShowCompletionModal(false);
-                  setStatus(t("dashboards.course.completed"));
+                  try {
+                    await apiClient.post(`/study/lessons/${lessonId}/complete`, {}, requestConfig);
+                    setStatus(t("dashboards.course.completed"));
+                  } catch (error) {
+                    setStatus(errorMessage(error));
+                  }
                 }}
               >
                 {t("dashboards.course.confirmComplete")}

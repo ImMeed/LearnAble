@@ -8,6 +8,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { READING_LAB_ENABLED } from "./features";
 import { StudentOnboardingPageV2 } from "./pages/StudentOnboarding";
 import { StudentDashboardPageV2 } from "./pages/StudentDashboard";
+import { StudentGamesPageV2 } from "./pages/StudentGamesPage";
+import { SpellingGamePageV2 } from "./pages/SpellingGamePage";
 import { CoursePageV2 } from "./pages/CoursePage";
 import { ReadingLabPageV2 } from "./pages/ReadingLab";
 import { TeacherDashboardPageV2 } from "./pages/TeacherDashboard";
@@ -71,6 +73,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute roles={["ROLE_STUDENT"]}>
         <CoursePageV2 />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/student/spelling-game",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+        <SpellingGamePageV2 />
       </ProtectedRoute>
     ),
   },
@@ -148,6 +158,14 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/ar/student/spelling-game",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+        <SpellingGamePageV2 />
+      </ProtectedRoute>
+    ),
+  },
   ...(READING_LAB_ENABLED
     ? [{
         path: "/ar/student/reading-lab",
@@ -222,6 +240,14 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/en/student/spelling-game",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+        <SpellingGamePageV2 />
+      </ProtectedRoute>
+    ),
+  },
   ...(READING_LAB_ENABLED
     ? [{
         path: "/en/student/reading-lab",
@@ -275,12 +301,26 @@ export const router = createBrowserRouter([
   { path: "/en/student/courses/:courseId", element: <ProtectedRoute roles={["ROLE_STUDENT"]}><StudentCoursePage /></ProtectedRoute> },
   { path: "/ar/forum", element: <PlaceholderPage titleKey="nav.forum" /> },
   { path: "/ar/quizzes", element: <PlaceholderPage titleKey="nav.quizzes" /> },
-  { path: "/ar/games", element: <PlaceholderPage titleKey="nav.games" /> },
+  {
+    path: "/ar/games",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+        <StudentGamesPageV2 />
+      </ProtectedRoute>
+    ),
+  },
   { path: "/ar/library", element: <PlaceholderPage titleKey="nav.library" /> },
   { path: "/ar/checkpoint", element: <PhaseCheckpointPage /> },
   { path: "/en/forum", element: <PlaceholderPage titleKey="nav.forum" /> },
   { path: "/en/quizzes", element: <PlaceholderPage titleKey="nav.quizzes" /> },
-  { path: "/en/games", element: <PlaceholderPage titleKey="nav.games" /> },
+  {
+    path: "/en/games",
+    element: (
+      <ProtectedRoute roles={["ROLE_STUDENT"]}>
+        <StudentGamesPageV2 />
+      </ProtectedRoute>
+    ),
+  },
   { path: "/en/library", element: <PlaceholderPage titleKey="nav.library" /> },
   { path: "/en/checkpoint", element: <PhaseCheckpointPage /> },
 ]);

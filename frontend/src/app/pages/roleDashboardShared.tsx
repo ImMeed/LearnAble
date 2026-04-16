@@ -123,15 +123,18 @@ export function formatDate(value: string | null, locale: "ar" | "en", emptyLabel
 
 export function DashboardShell({
   title,
+  subtitle,
   children,
 }: {
   title: string;
+  subtitle?: string;
   children: ReactNode;
 }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const isStudentLikeRoute = /\/(ar|en)?\/?student\//.test(location.pathname);
+  const headerSubtitle = subtitle ?? title;
 
   const onLogout = () => {
     clearSession();
@@ -154,7 +157,7 @@ export function DashboardShell({
                 <h1 className="text-[clamp(1.8rem,2.4vw,2.5rem)] font-semibold tracking-[-0.04em] text-foreground">
                   {t("appTitle")}
                 </h1>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">{title}</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{headerSubtitle}</p>
               </div>
             </div>
           </Link>
