@@ -239,8 +239,6 @@ def get_published_course(session: Session, course_id: UUID, locale: str):
     course = repository.get_course_by_id(session, course_id)
     if course is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "COURSE_NOT_FOUND", locale)
-    if course.status != CourseStatus.PUBLISHED:
-        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "COURSE_NOT_PUBLISHED", locale)
     return course
 
 
@@ -289,7 +287,7 @@ def mark_progress(
     locale: str,
 ) -> SectionProgress:
     course = repository.get_course_by_id(session, course_id)
-    if course is None or course.status != CourseStatus.PUBLISHED:
+    if course is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "COURSE_NOT_FOUND", locale)
     try:
         record = repository.mark_section_complete(
@@ -310,7 +308,7 @@ def unmark_progress(
     locale: str,
 ) -> None:
     course = repository.get_course_by_id(session, course_id)
-    if course is None or course.status != CourseStatus.PUBLISHED:
+    if course is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "COURSE_NOT_FOUND", locale)
     repository.unmark_section_complete(
         session, student_user_id=student_user_id, course_id=course_id, section_id=section_id
@@ -332,7 +330,7 @@ def update_last_visited(
     session: Session, course_id: UUID, section_id: str, student_user_id: UUID, locale: str
 ) -> None:
     course = repository.get_course_by_id(session, course_id)
-    if course is None or course.status != CourseStatus.PUBLISHED:
+    if course is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "COURSE_NOT_FOUND", locale)
     repository.upsert_last_visited(
         session, student_user_id=student_user_id, course_id=course_id, section_id=section_id
@@ -344,7 +342,7 @@ def record_quiz_attempt(
     session: Session, course_id: UUID, score: int, total: int, student_user_id: UUID, locale: str
 ) -> CourseQuizAttempt:
     course = repository.get_course_by_id(session, course_id)
-    if course is None or course.status != CourseStatus.PUBLISHED:
+    if course is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "COURSE_NOT_FOUND", locale)
     attempt = repository.save_quiz_attempt(
         session, student_user_id=student_user_id, course_id=course_id, score=score, total=total

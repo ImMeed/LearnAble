@@ -44,6 +44,7 @@ export function useWebRTC({
   const [isMuted, setIsMuted] = useState(false);
   const [isCamOff, setIsCamOff] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
+  const cameraRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +55,8 @@ export function useWebRTC({
         { video: true, audio: true },
         { video: false, audio: true },
       ];
+      let videoUnavailable = false;
+      let videoBusy = false;
 
       for (const constraint of constraints) {
         try {
@@ -64,6 +67,11 @@ export function useWebRTC({
           }
           streamRef.current = stream;
           setLocalStream(stream);
+          setIsCamOff(!constraint.video);
+          // If we had to fall back to audio-only, surface a soft warning state.
+          if (!constraint.video && videoUnavailable) {
+            setMediaError(videoBusy ? "CAMERA_BUSY" : "NO_DEVICE");
+          }
           return;
         } catch (err: unknown) {
           if (cancelled) return;
@@ -74,7 +82,13 @@ export function useWebRTC({
             return;
           }
           // Device not found or in use — try audio-only next iteration
-          if (constraint.video) continue;
+          if (constraint.video) {
+            if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+              videoBusy = true;
+            }
+            videoUnavailable = true;
+            continue;
+          }
           // Audio-only also failed
           if (error.name === "NotFoundError") {
             setMediaError("NO_DEVICE");
@@ -100,19 +114,115 @@ export function useWebRTC({
     setIsMuted((prev) => !prev);
   }, []);
 
-  const toggleCamera = useCallback(() => {
-    if (!streamRef.current) return;
-    streamRef.current.getVideoTracks().forEach((t) => {
-      t.enabled = !t.enabled;
-    });
-    setIsCamOff((prev) => !prev);
+  const tryAttachCameraTrack = useCallback(async (): Promise<boolean> => {
+    const stream = streamRef.current;
+    if (!stream) return false;
+
+    const hasLiveTrack = stream.getVideoTracks().some((t) => t.readyState === "live");
+    if (hasLiveTrack) {
+      setMediaError(null);
+      setIsCamOff(false);
+      return true;
+    }
+
+    try {
+      const videoOnly = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const [track] = videoOnly.getVideoTracks();
+      if (!track) {
+        setMediaError("NO_DEVICE");
+        return false;
+      }
+
+      stream.addTrack(track);
+      if (peerRef.current) {
+        try {
+          peerRef.current.addTrack(track, stream);
+        } catch {
+          // Some peers may not accept dynamic track add at this stage.
+        }
+      }
+
+      setMediaError(null);
+      setIsCamOff(false);
+      // Touch state so UI re-renders after dynamic track add.
+      setLocalStream(stream);
+      return true;
+    } catch (err: unknown) {
+      const error = err as DOMException;
+      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+        setMediaError("CAMERA_DENIED");
+        return false;
+      }
+      if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+        setMediaError("CAMERA_BUSY");
+        return false;
+      }
+      if (error.name === "NotFoundError") {
+        setMediaError("NO_DEVICE");
+        return false;
+      }
+      setMediaError("MEDIA_ERROR");
+      return false;
+    }
   }, []);
+
+  const toggleCamera = useCallback(() => {
+    const stream = streamRef.current;
+    if (!stream) return;
+
+    const videoTracks = stream.getVideoTracks();
+    if (videoTracks.length === 0) {
+      // Audio-only fallback path: try to acquire camera when user asks for it.
+      void tryAttachCameraTrack();
+      return;
+    }
+
+    const shouldEnable = !videoTracks.some((t) => t.enabled);
+    videoTracks.forEach((t) => {
+      t.enabled = shouldEnable;
+    });
+    setIsCamOff(!shouldEnable);
+  }, [tryAttachCameraTrack]);
+
+  useEffect(() => {
+    if (mediaError !== "CAMERA_BUSY" || !streamRef.current) {
+      if (cameraRetryTimerRef.current) {
+        clearTimeout(cameraRetryTimerRef.current);
+        cameraRetryTimerRef.current = null;
+      }
+      return;
+    }
+
+    let cancelled = false;
+
+    const retryAttach = async () => {
+      if (cancelled) return;
+      const attached = await tryAttachCameraTrack();
+      if (attached) return;
+      cameraRetryTimerRef.current = setTimeout(() => {
+        void retryAttach();
+      }, 1500);
+    };
+
+    cameraRetryTimerRef.current = setTimeout(() => {
+      void retryAttach();
+    }, 1200);
+
+    return () => {
+      cancelled = true;
+      if (cameraRetryTimerRef.current) {
+        clearTimeout(cameraRetryTimerRef.current);
+        cameraRetryTimerRef.current = null;
+      }
+    };
+  }, [mediaError, tryAttachCameraTrack]);
 
   const stopAllTracks = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
       setLocalStream(null);
+      setIsCamOff(false);
     }
   }, []);
 
@@ -125,7 +235,12 @@ export function useWebRTC({
   const signalQueueRef = useRef<any[]>([]);
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const negotiationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const negotiationRetryRef = useRef(0);
+  const [peerCycle, setPeerCycle] = useState(0);
   const MAX_PEER_RETRIES = 3;
+  const MAX_NEGOTIATION_RETRIES = 3;
+  const NEGOTIATION_TIMEOUT_MS = 9000;
 
   const destroyPeer = useCallback(() => {
     if (peerRef.current) {
@@ -152,10 +267,17 @@ export function useWebRTC({
   };
 
   useEffect(() => {
-    if (!localStream || isInitiator === null) return;
+    // Wait for two things before creating the peer:
+    //   1. isInitiator is known (set by the signaling server on WS connect)
+    //   2. getUserMedia has settled — either localStream is set (camera works)
+    //      OR mediaError is set (camera failed). This guarantees we include the
+    //      stream in the peer if it's available, without a race condition.
+    if (isInitiator === null) return;
+    if (!localStream && !mediaError) return; // getUserMedia still in progress
 
-    const shouldCreate =
-      isInitiator === true || (peerJoinCount > 0 && isInitiator === false);
+    // Create the peer as soon as role is known. Non-initiator peers can safely
+    // exist before receiving an offer; incoming signals are queued and applied.
+    const shouldCreate = isInitiator === true || isInitiator === false;
 
     if (!shouldCreate) return;
 
@@ -170,7 +292,9 @@ export function useWebRTC({
 
     const peer = new Peer({
       initiator: isInitiator === true,
-      stream: localStream,
+      // Include stream only when camera is available. If camera was denied or
+      // unavailable, we still create the peer — we just won't send video/audio.
+      ...(localStream ? { stream: localStream } : {}),
       trickle: true,
       config: {
         iceServers: getIceServers(),
@@ -191,10 +315,51 @@ export function useWebRTC({
 
     peer.on("stream", (stream) => {
       setRemoteStream(stream);
+      setPeerConnected(true);
+      negotiationRetryRef.current = 0;
+      if (negotiationTimerRef.current) {
+        clearTimeout(negotiationTimerRef.current);
+        negotiationTimerRef.current = null;
+      }
+    });
+
+    // Some browser/driver combinations are more reliable with track events.
+    peer.on("track", (track, stream) => {
+      const firstStream = stream && stream.length > 0 ? stream[0] : null;
+      if (firstStream) {
+        setRemoteStream(firstStream);
+        setPeerConnected(true);
+        negotiationRetryRef.current = 0;
+        if (negotiationTimerRef.current) {
+          clearTimeout(negotiationTimerRef.current);
+          negotiationTimerRef.current = null;
+        }
+        return;
+      }
+      setRemoteStream((prev) => {
+        if (prev) {
+          if (!prev.getTracks().some((t) => t.id === track.id)) {
+            prev.addTrack(track);
+          }
+          return prev;
+        }
+        return new MediaStream([track]);
+      });
+      setPeerConnected(true);
+      negotiationRetryRef.current = 0;
+      if (negotiationTimerRef.current) {
+        clearTimeout(negotiationTimerRef.current);
+        negotiationTimerRef.current = null;
+      }
     });
 
     peer.on("connect", () => {
       setPeerConnected(true);
+      negotiationRetryRef.current = 0;
+      if (negotiationTimerRef.current) {
+        clearTimeout(negotiationTimerRef.current);
+        negotiationTimerRef.current = null;
+      }
     });
 
     peer.on("close", () => {
@@ -226,10 +391,35 @@ export function useWebRTC({
 
     peerRef.current = peer;
 
+    if (negotiationTimerRef.current) {
+      clearTimeout(negotiationTimerRef.current);
+      negotiationTimerRef.current = null;
+    }
+    negotiationTimerRef.current = setTimeout(() => {
+      if (peerRef.current !== peer || peerConnected || remoteStream) return;
+      if (negotiationRetryRef.current >= MAX_NEGOTIATION_RETRIES) {
+        setPeerError("Negotiation timeout");
+        return;
+      }
+      negotiationRetryRef.current += 1;
+      try {
+        peer.destroy();
+      } catch {
+        // best effort cleanup
+      }
+      if (peerRef.current === peer) {
+        peerRef.current = null;
+      }
+      setPeerConnected(false);
+      setRemoteStream(null);
+      setPeerError(null);
+      setPeerCycle((c) => c + 1);
+    }, NEGOTIATION_TIMEOUT_MS);
+
     // Drain any signals that arrived before the peer was ready
     signalQueueRef.current.forEach((s) => peer.signal(s));
     signalQueueRef.current = [];
-  }, [localStream, isInitiator, peerJoinCount, sendMessage]);
+  }, [localStream, mediaError, isInitiator, peerJoinCount, sendMessage, peerCycle, peerConnected, remoteStream]);
 
   useEffect(() => {
     if (!incomingSignal) return;
@@ -249,6 +439,12 @@ export function useWebRTC({
 
   useEffect(() => {
     return () => {
+      if (cameraRetryTimerRef.current) {
+        clearTimeout(cameraRetryTimerRef.current);
+      }
+      if (negotiationTimerRef.current) {
+        clearTimeout(negotiationTimerRef.current);
+      }
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       destroyPeer();
       stopAllTracks();

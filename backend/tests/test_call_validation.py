@@ -121,3 +121,26 @@ def test_unknown_message_type_is_ignored():
 
             msg = ws_a.receive_json()
             assert msg["type"] == "media_state"
+
+
+def test_same_user_reconnect_replaces_old_socket_not_room_full():
+    """A reconnect from the same user should replace prior socket and still allow one peer."""
+    token_a = _make_token("00000000-0000-0000-0000-000000000007")
+    token_b = _make_token("00000000-0000-0000-0000-000000000008")
+    client = TestClient(app)
+    room_id = _create_room(client, token_a)
+
+    # First connection from user A.
+    with client.websocket_connect(f"/ws/call/{room_id}?token={token_a}") as ws_a1:
+        joined_a1 = ws_a1.receive_json()
+        assert joined_a1["type"] == "joined"
+
+        # Reconnect from same user A should replace ws_a1, not consume extra slot.
+        with client.websocket_connect(f"/ws/call/{room_id}?token={token_a}") as ws_a2:
+            joined_a2 = ws_a2.receive_json()
+            assert joined_a2["type"] == "joined"
+
+            # Different user B should still be able to join as second peer.
+            with client.websocket_connect(f"/ws/call/{room_id}?token={token_b}") as ws_b:
+                joined_b = ws_b.receive_json()
+                assert joined_b["type"] == "joined"

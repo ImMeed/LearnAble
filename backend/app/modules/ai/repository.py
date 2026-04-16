@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import base64
+import time
 from typing import Final
 
 import httpx
@@ -13,6 +14,7 @@ from app.core.config import settings
 _GEMINI_MODEL: Final[str] = "gemini-2.5-flash"
 _GEMINI_COURSE_MODEL: Final[str] = "gemini-2.5-flash"
 _GEMINI_BASE_URL: Final[str] = "https://generativelanguage.googleapis.com/v1beta/models"
+_RETRYABLE_STATUS_CODES: Final[set[int]] = {429, 500, 503, 504}
 
 
 class GeminiError(Exception):
@@ -75,6 +77,287 @@ def _strip_json_fence(text: str) -> str:
     if text.endswith("```"):
         text = text.rsplit("```", 1)[0]
     return text.strip()
+
+
+def _extract_candidate_text(data: dict) -> str:
+    candidates = data.get("candidates") or []
+    if not candidates:
+        return ""
+    parts = (candidates[0].get("content") or {}).get("parts") or []
+    return "\n".join(p.get("text", "") for p in parts if p.get("text")).strip()
+
+
+def _post_gemini_with_retries(
+    *,
+    endpoint: str,
+    api_key: str,
+    payload: dict,
+    timeout_seconds: float,
+    max_attempts: int = 4,
+) -> dict:
+    last_exc: Exception | None = None
+
+    for attempt in range(max_attempts):
+        try:
+            with httpx.Client(timeout=timeout_seconds) as client:
+                response = client.post(endpoint, params={"key": api_key}, json=payload)
+
+            if response.status_code in _RETRYABLE_STATUS_CODES and attempt < max_attempts - 1:
+                time.sleep(2 ** attempt)
+                continue
+
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as exc:
+            last_exc = exc
+            code = exc.response.status_code
+            if code in _RETRYABLE_STATUS_CODES and attempt < max_attempts - 1:
+                time.sleep(2 ** attempt)
+                continue
+            raise GeminiError(f"Gemini API HTTP error: {code}") from exc
+        except httpx.RequestError as exc:
+            last_exc = exc
+            if attempt < max_attempts - 1:
+                time.sleep(2 ** attempt)
+                continue
+            raise GeminiError(f"Gemini API request error: {exc}") from exc
+
+    raise GeminiError(f"Gemini API unavailable after retries: {last_exc}")
+
+
+def _fallback_flashcards(locale: str) -> list[dict[str, str]]:
+    if locale == "ar":
+        return [
+            {"front": "ما الفكرة الرئيسية لهذا الدرس؟", "back": "الفكرة الرئيسية تركز على فهم الأساسيات ثم تطبيقها بشكل عملي."},
+            {"front": "لماذا هذا الموضوع مهم؟", "back": "لأنه يساعدك على بناء فهم واضح يمكن استخدامه في مواقف دراسية مختلفة."},
+            {"front": "ما أول خطوة للتطبيق؟", "back": "ابدأ بتحديد المفهوم الأساسي ثم اربطه بمثال بسيط من الواقع."},
+            {"front": "كيف أتأكد أنني فهمت؟", "back": "اشرح الفكرة بكلماتك الخاصة وحاول حل سؤال تطبيقي قصير."},
+            {"front": "ما الخطأ الشائع؟", "back": "الانتقال للتفاصيل قبل تثبيت المفاهيم الأساسية."},
+            {"front": "ما أفضل طريقة للمراجعة؟", "back": "قسم المحتوى إلى نقاط قصيرة وراجعها على فترات متباعدة."},
+            {"front": "كيف أطبق الفكرة في الحياة اليومية؟", "back": "ابحث عن موقف مشابه واستخدم نفس خطوات التحليل التي تعلمتها."},
+            {"front": "متى أطلب المساعدة؟", "back": "إذا تكرر الالتباس بعد المراجعة الذاتية، اسأل المعلم أو المساعد فوراً."},
+        ]
+    return [
+        {"front": "What is the lesson's main idea?", "back": "The main idea is to understand the core concept first, then apply it in practice."},
+        {"front": "Why is this topic important?", "back": "It builds a clear foundation you can reuse in different learning situations."},
+        {"front": "What is the first application step?", "back": "Identify the core concept and connect it to one simple real-life example."},
+        {"front": "How can I check my understanding?", "back": "Explain the idea in your own words and solve one short practice question."},
+        {"front": "What is a common mistake?", "back": "Jumping to details before mastering the fundamentals."},
+        {"front": "What is the best review method?", "back": "Break content into short points and review them in spaced intervals."},
+        {"front": "How can I apply this daily?", "back": "Find a similar situation and reuse the same analysis steps."},
+        {"front": "When should I ask for help?", "back": "If confusion repeats after review, ask your teacher or tutor assistant early."},
+    ]
+
+
+def _fallback_quiz(locale: str) -> list[dict[str, str | list[str]]]:
+    if locale == "ar":
+        return [
+            {
+                "question": "ما أفضل طريقة لبدء فهم موضوع جديد؟",
+                "options": ["التركيز على الفكرة الأساسية", "حفظ التفاصيل مباشرة", "تجاهل الأمثلة", "قراءة سريعة فقط"],
+                "correct": "التركيز على الفكرة الأساسية",
+                "explanation": "ابدأ دائماً بالمفهوم الأساسي قبل التفاصيل.",
+            },
+            {
+                "question": "متى تكون المراجعة أكثر فعالية؟",
+                "options": ["مرة واحدة فقط", "على فترات متباعدة", "قبل الاختبار فقط", "بدون كتابة ملاحظات"],
+                "correct": "على فترات متباعدة",
+                "explanation": "المراجعة المتباعدة تحسن التذكر على المدى الطويل.",
+            },
+            {
+                "question": "ما الخطوة التي تثبت الفهم؟",
+                "options": ["شرح الفكرة بكلماتك", "نسخ النص حرفياً", "تجاوز الأسئلة", "حفظ الإجابات"],
+                "correct": "شرح الفكرة بكلماتك",
+                "explanation": "إعادة الصياغة دليل قوي على الفهم الحقيقي.",
+            },
+            {
+                "question": "كيف تتعامل مع صعوبة مستمرة؟",
+                "options": ["تجاهلها", "طلب المساعدة", "الانتقال لموضوع آخر", "إيقاف الدراسة"],
+                "correct": "طلب المساعدة",
+                "explanation": "طلب المساعدة المبكر يمنع تراكم الفجوات.",
+            },
+            {
+                "question": "ما الهدف من الأمثلة العملية؟",
+                "options": ["ربط النظرية بالتطبيق", "زيادة الحفظ فقط", "إطالة الدرس", "استبدال الفهم"],
+                "correct": "ربط النظرية بالتطبيق",
+                "explanation": "الأمثلة تساعدك على تحويل المفهوم إلى استخدام فعلي.",
+            },
+            {
+                "question": "ما أفضل ترتيب للتعلم؟",
+                "options": ["أساسيات ثم تطبيق", "تفاصيل ثم أساسيات", "اختبار قبل فهم", "مراجعة بلا قراءة"],
+                "correct": "أساسيات ثم تطبيق",
+                "explanation": "التدرج من الأساسيات إلى التطبيق هو الأكثر ثباتاً.",
+            },
+        ]
+
+    return [
+        {
+            "question": "What is the best way to start a new topic?",
+            "options": ["Focus on the core idea", "Memorize details first", "Skip examples", "Read quickly only"],
+            "correct": "Focus on the core idea",
+            "explanation": "Start with the central concept before diving into details.",
+        },
+        {
+            "question": "When is review most effective?",
+            "options": ["Only once", "At spaced intervals", "Only before exams", "Without notes"],
+            "correct": "At spaced intervals",
+            "explanation": "Spaced review improves long-term retention.",
+        },
+        {
+            "question": "Which action confirms understanding?",
+            "options": ["Explain in your own words", "Copy text exactly", "Skip questions", "Memorize answers"],
+            "correct": "Explain in your own words",
+            "explanation": "Rephrasing is strong evidence of real understanding.",
+        },
+        {
+            "question": "How should you handle persistent difficulty?",
+            "options": ["Ignore it", "Ask for help", "Switch topics immediately", "Stop studying"],
+            "correct": "Ask for help",
+            "explanation": "Early help prevents learning gaps from growing.",
+        },
+        {
+            "question": "Why are practical examples useful?",
+            "options": ["Connect theory to use", "Only increase memorization", "Make lessons longer", "Replace understanding"],
+            "correct": "Connect theory to use",
+            "explanation": "Examples turn abstract ideas into actionable understanding.",
+        },
+        {
+            "question": "What is the strongest learning sequence?",
+            "options": ["Basics then application", "Details then basics", "Quiz before understanding", "Review without reading"],
+            "correct": "Basics then application",
+            "explanation": "A fundamentals-first sequence leads to better outcomes.",
+        },
+    ]
+
+
+def _normalize_flashcards(raw_value: object, locale: str) -> list[dict[str, str]]:
+    data = raw_value
+    if isinstance(data, dict):
+        for key in ("items", "cards", "flashcards", "data"):
+            candidate = data.get(key)
+            if isinstance(candidate, list):
+                data = candidate
+                break
+
+    if not isinstance(data, list):
+        return _fallback_flashcards(locale)
+
+    cards: list[dict[str, str]] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        front = str(item.get("front", "")).strip()
+        back = str(item.get("back", "")).strip()
+        if not front or not back:
+            continue
+        cards.append({"front": front, "back": back})
+        if len(cards) >= 8:
+            break
+
+    if not cards:
+        return _fallback_flashcards(locale)
+    if len(cards) < 8:
+        for fallback in _fallback_flashcards(locale):
+            if len(cards) >= 8:
+                break
+            cards.append(fallback)
+    return cards[:8]
+
+
+def _resolve_correct_option(correct_value: str, options: list[str]) -> str:
+    normalized = correct_value.strip()
+    if not normalized:
+        return options[0]
+
+    # Already an option text.
+    if normalized in options:
+        return normalized
+
+    compact = normalized.upper().strip()
+    if compact.endswith(")") or compact.endswith("."):
+        compact = compact[:-1].strip()
+
+    # Letter forms: A / B / C / D.
+    if compact in {"A", "B", "C", "D"}:
+        index = ord(compact) - ord("A")
+        if 0 <= index < len(options):
+            return options[index]
+
+    # Numeric forms: 1..4.
+    if compact.isdigit():
+        index = int(compact) - 1
+        if 0 <= index < len(options):
+            return options[index]
+
+    # Mixed forms like "A) option" or "B. option".
+    lead = compact[:1]
+    if lead in {"A", "B", "C", "D"}:
+        index = ord(lead) - ord("A")
+        if 0 <= index < len(options):
+            return options[index]
+
+    return options[0]
+
+
+def _normalize_quiz_questions(raw_value: object, locale: str) -> list[dict[str, str | list[str]]]:
+    data = raw_value
+    if isinstance(data, dict):
+        for key in ("questions", "items", "quiz", "data"):
+            candidate = data.get(key)
+            if isinstance(candidate, list):
+                data = candidate
+                break
+
+    if not isinstance(data, list):
+        return _fallback_quiz(locale)
+
+    questions: list[dict[str, str | list[str]]] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+
+        question = str(item.get("question", "")).strip()
+        options_raw = item.get("options")
+        explanation = str(item.get("explanation", "")).strip()
+        correct_raw = str(item.get("correct", "")).strip()
+
+        if not question or not isinstance(options_raw, list):
+            continue
+
+        options = [str(option).strip() for option in options_raw if str(option).strip()]
+        if len(options) < 2:
+            continue
+
+        if len(options) > 4:
+            options = options[:4]
+
+        questions.append(
+            {
+                "question": question,
+                "options": options,
+                "correct": _resolve_correct_option(correct_raw, options),
+                "explanation": explanation or ("راجع الفكرة الأساسية في الدرس." if locale == "ar" else "Review the core idea in the lesson."),
+            }
+        )
+        if len(questions) >= 6:
+            break
+
+    if not questions:
+        return _fallback_quiz(locale)
+    if len(questions) < 6:
+        for fallback in _fallback_quiz(locale):
+            if len(questions) >= 6:
+                break
+            questions.append(fallback)
+    return questions[:6]
+
+
+def _fallback_assist_response(locale: str) -> str:
+    return (
+        "عذرًا، حدث ضغط على خدمة الذكاء الاصطناعي. حاول مرة أخرى بعد قليل، أو اطرح السؤال بصيغة أقصر."
+        if locale == "ar"
+        else "The AI service is currently busy. Please try again in a moment, or ask a shorter question."
+    )
 
 
 def _extract_text_from_pdf(pdf_bytes: bytes) -> tuple[str, int]:
@@ -257,15 +540,29 @@ def extract_course_structure(pdf_bytes: bytes, language: str) -> dict:
         },
     }
 
-    try:
-        with httpx.Client(timeout=120.0) as client:
-            response = client.post(endpoint, params={"key": api_key}, json=payload)
-            response.raise_for_status()
-            data = response.json()
-    except httpx.HTTPStatusError as exc:
-        raise GeminiError(f"Gemini API HTTP error: {exc.response.status_code}") from exc
-    except httpx.RequestError as exc:
-        raise GeminiError(f"Gemini API request error: {exc}") from exc
+    last_exc: Exception | None = None
+    data = None
+    for attempt in range(4):
+        try:
+            with httpx.Client(timeout=120.0) as client:
+                response = client.post(endpoint, params={"key": api_key}, json=payload)
+                if response.status_code in (429, 500, 503, 504) and attempt < 3:
+                    time.sleep(2 ** attempt)
+                    continue
+                response.raise_for_status()
+                data = response.json()
+                break
+        except httpx.HTTPStatusError as exc:
+            last_exc = exc
+            raise GeminiError(f"Gemini API HTTP error: {exc.response.status_code}") from exc
+        except httpx.RequestError as exc:
+            last_exc = exc
+            if attempt < 3:
+                time.sleep(2 ** attempt)
+                continue
+            raise GeminiError(f"Gemini API request error: {exc}") from exc
+    if data is None:
+        raise GeminiError(f"Gemini API unavailable after retries: {last_exc}")
 
     candidates = data.get("candidates") or []
     if not candidates:
@@ -287,32 +584,11 @@ def generate_flashcards(course_title: str, course_content: str, locale: str) -> 
     """Generate exactly 8 flashcards from course content."""
     # Return mock flashcards if mock mode is enabled
     if settings.gemini_mock:
-        if locale == "ar":
-            return [
-                {"front": "ما هي المفاهيم الرئيسية؟", "back": "المفاهيم الأساسية للدرس."},
-                {"front": "كيف نطبق هذا؟", "back": "نحتاج إلى فهم الأساسيات أولاً."},
-                {"front": "ما الفرق بين الأنواع؟", "back": "لكل نوع خصائصه الفريدة."},
-                {"front": "متى نستخدم هذا؟", "back": "في الحالات التي تتطلب هذه المهارة."},
-                {"front": "ما الفوائد؟", "back": "يحسن من الفهم والقدرة على التطبيق."},
-                {"front": "هل هناك أمثلة؟", "back": "نعم، هناك عدة أمثلة عملية."},
-                {"front": "كيف نتذكر هذا؟", "back": "بالممارسة المستمرة والمراجعة."},
-                {"front": "ما التطبيقات المتقدمة؟", "back": "تطبيقات أكثر تعقيداً من الأساسيات."}
-            ]
-        else:
-            return [
-                {"front": "What are the main concepts?", "back": "The fundamental concepts of the lesson."},
-                {"front": "How do we apply this?", "back": "We need to understand the basics first."},
-                {"front": "What's the difference between types?", "back": "Each type has its unique characteristics."},
-                {"front": "When do we use this?", "back": "In cases that require this skill."},
-                {"front": "What are the benefits?", "back": "It improves understanding and application ability."},
-                {"front": "Are there examples?", "back": "Yes, there are several practical examples."},
-                {"front": "How do we remember this?", "back": "Through continuous practice and review."},
-                {"front": "What are advanced applications?", "back": "More complex applications than basics."}
-            ]
+        return _fallback_flashcards(locale)
     
     api_key = settings.gemini_api_key.strip()
     if not api_key:
-        return [{"front": "Sample question?", "back": "Sample answer."} for _ in range(8)]
+        return _fallback_flashcards(locale)
 
     truncated = course_content[:6000]
     prompt = (
@@ -334,111 +610,30 @@ def generate_flashcards(course_title: str, course_content: str, locale: str) -> 
     }
 
     try:
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(endpoint, params={"key": api_key}, json=payload)
-            response.raise_for_status()
-            data = response.json()
+        data = _post_gemini_with_retries(
+            endpoint=endpoint,
+            api_key=api_key,
+            payload=payload,
+            timeout_seconds=30.0,
+        )
+        raw = _extract_candidate_text(data)
+        if not raw:
+            return _fallback_flashcards(locale)
+        parsed = json.loads(_strip_json_fence(raw))
+        return _normalize_flashcards(parsed, locale)
     except Exception:
-        return [{"front": "Review question", "back": "Review answer"} for _ in range(8)]
-
-    candidates = data.get("candidates") or []
-    if not candidates:
-        return [{"front": "Review question", "back": "Review answer"} for _ in range(8)]
-
-    parts = (candidates[0].get("content") or {}).get("parts") or []
-    raw = "\n".join(p.get("text", "") for p in parts if p.get("text")).strip()
-    try:
-        return json.loads(_strip_json_fence(raw))
-    except Exception:
-        return [{"front": "Review question", "back": "Review answer"} for _ in range(8)]
+        return _fallback_flashcards(locale)
 
 
 def generate_quiz(course_title: str, course_content: str, locale: str) -> list:
     """Generate exactly 6 MCQ questions from course content."""
     # Return mock quiz if mock mode is enabled
     if settings.gemini_mock:
-        if locale == "ar":
-            return [
-                {
-                    "question": "ما هو التعريف الصحيح؟",
-                    "options": ["أ) المفهوم الأول", "ب) المفهوم الثاني", "ج) المفهوم الثالث", "د) جميع ما سبق"],
-                    "correct": "ب",
-                    "explanation": "المفهوم الثاني هو الأصح بناءً على المحتوى المدروس."
-                },
-                {
-                    "question": "أي من التالي يعتبر تطبيق صحيح؟",
-                    "options": ["أ) الطريقة الأولى", "ب) الطريقة الثانية", "ج) الطريقة الثالثة", "د) لا توجد طريقة صحيحة"],
-                    "correct": "أ",
-                    "explanation": "الطريقة الأولى هي الأكثر فعالية."
-                },
-                {
-                    "question": "متى يجب استخدام هذا المفهوم؟",
-                    "options": ["أ) دائماً", "ب) أحياناً", "ج) في حالات محددة", "د) أبداً"],
-                    "correct": "ج",
-                    "explanation": "يجب استخدامه فقط في الحالات المحددة."
-                },
-                {
-                    "question": "ما هو التأثير الرئيسي؟",
-                    "options": ["أ) تأثير إيجابي", "ب) تأثير سلبي", "ج) لا يوجد تأثير", "د) تأثير محايد"],
-                    "correct": "أ",
-                    "explanation": "التأثير الإيجابي هو النتيجة الرئيسية."
-                },
-                {
-                    "question": "أي من الخيارات يمثل الاستثناء؟",
-                    "options": ["أ) الحالة الأولى", "ب) الحالة الثانية", "ج) الحالة الثالثة", "د) الحالة الرابعة"],
-                    "correct": "د",
-                    "explanation": "الحالة الرابعة تمثل استثناءً للقاعدة العامة."
-                },
-                {
-                    "question": "ما هي النتيجة المتوقعة؟",
-                    "options": ["أ) نتيجة أولى", "ب) نتيجة ثانية", "ج) نتيجة ثالثة", "د) لا توجد نتائج"],
-                    "correct": "ب",
-                    "explanation": "النتيجة الثانية هي الأكثر احتمالاً بناءً على المعطيات."
-                }
-            ]
-        else:
-            return [
-                {
-                    "question": "What is the correct definition?",
-                    "options": ["A) First concept", "B) Second concept", "C) Third concept", "D) All of the above"],
-                    "correct": "B",
-                    "explanation": "The second concept is correct based on the learning material."
-                },
-                {
-                    "question": "Which of the following is a correct application?",
-                    "options": ["A) First method", "B) Second method", "C) Third method", "D) No correct method"],
-                    "correct": "A",
-                    "explanation": "The first method is the most effective."
-                },
-                {
-                    "question": "When should this concept be used?",
-                    "options": ["A) Always", "B) Sometimes", "C) In specific cases", "D) Never"],
-                    "correct": "C",
-                    "explanation": "It should only be used in specific cases."
-                },
-                {
-                    "question": "What is the primary impact?",
-                    "options": ["A) Positive impact", "B) Negative impact", "C) No impact", "D) Neutral impact"],
-                    "correct": "A",
-                    "explanation": "The positive impact is the main result."
-                },
-                {
-                    "question": "Which option represents the exception?",
-                    "options": ["A) First case", "B) Second case", "C) Third case", "D) Fourth case"],
-                    "correct": "D",
-                    "explanation": "The fourth case is an exception to the general rule."
-                },
-                {
-                    "question": "What is the expected outcome?",
-                    "options": ["A) First outcome", "B) Second outcome", "C) Third outcome", "D) No outcomes"],
-                    "correct": "B",
-                    "explanation": "The second outcome is most likely based on the given information."
-                }
-            ]
+        return _fallback_quiz(locale)
     
     api_key = settings.gemini_api_key.strip()
     if not api_key:
-        return []
+        return _fallback_quiz(locale)
 
     truncated = course_content[:6000]
     prompt = (
@@ -461,23 +656,19 @@ def generate_quiz(course_title: str, course_content: str, locale: str) -> list:
     }
 
     try:
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(endpoint, params={"key": api_key}, json=payload)
-            response.raise_for_status()
-            data = response.json()
+        data = _post_gemini_with_retries(
+            endpoint=endpoint,
+            api_key=api_key,
+            payload=payload,
+            timeout_seconds=30.0,
+        )
+        raw = _extract_candidate_text(data)
+        if not raw:
+            return _fallback_quiz(locale)
+        parsed = json.loads(_strip_json_fence(raw))
+        return _normalize_quiz_questions(parsed, locale)
     except Exception:
-        return []
-
-    candidates = data.get("candidates") or []
-    if not candidates:
-        return []
-
-    parts = (candidates[0].get("content") or {}).get("parts") or []
-    raw = "\n".join(p.get("text", "") for p in parts if p.get("text")).strip()
-    try:
-        return json.loads(_strip_json_fence(raw))
-    except Exception:
-        return []
+        return _fallback_quiz(locale)
 
 
 def generate_course_assist(
@@ -497,7 +688,7 @@ def generate_course_assist(
     
     api_key = settings.gemini_api_key.strip()
     if not api_key:
-        return "Simplified explanation." if locale == "en" else "شرح مبسط."
+        return _fallback_assist_response(locale)
 
     system_context = (
         f"You are a helpful tutor for the course '{course_title}'.\n"
@@ -519,16 +710,13 @@ def generate_course_assist(
     }
 
     try:
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(endpoint, params={"key": api_key}, json=payload)
-            response.raise_for_status()
-            data = response.json()
+        data = _post_gemini_with_retries(
+            endpoint=endpoint,
+            api_key=api_key,
+            payload=payload,
+            timeout_seconds=30.0,
+        )
+        answer = _extract_candidate_text(data)
+        return answer or _fallback_assist_response(locale)
     except Exception:
-        return "Could not get a response." if locale == "en" else "تعذر الحصول على رد."
-
-    candidates = data.get("candidates") or []
-    if not candidates:
-        return ""
-
-    parts = (candidates[0].get("content") or {}).get("parts") or []
-    return "\n".join(p.get("text", "") for p in parts if p.get("text")).strip()
+        return _fallback_assist_response(locale)

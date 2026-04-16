@@ -91,12 +91,19 @@ type StudentLinkIdResponse = {
   student_link_id: string;
 };
 
+type ClassroomCourseRef = {
+  id: string;
+  title: string;
+  language: string;
+  kind: "course" | "lesson";
+};
+
 type StudentClassroomItem = {
   classroom_id: string;
   classroom_name: string;
   teacher_name: string;
   joined_at: string;
-  courses: string[];
+  courses: ClassroomCourseRef[];
 };
 
 type ClassroomJoinPreview = {
@@ -267,6 +274,7 @@ export function StudentDashboardPageV2() {
   const [showReadingLab, setShowReadingLab] = useState(true);
   const [readingLabVisibilityInitialized, setReadingLabVisibilityInitialized] = useState(false);
   const [studentClassrooms, setStudentClassrooms] = useState<StudentClassroomItem[]>([]);
+  const [courseProgressMap, setCourseProgressMap] = useState<Record<string, number>>({});
   const [classroomInviteCode, setClassroomInviteCode] = useState("");
   const [joinPreview, setJoinPreview] = useState<ClassroomJoinPreview | null>(null);
   const [joiningClassroom, setJoiningClassroom] = useState(false);
@@ -280,7 +288,6 @@ export function StudentDashboardPageV2() {
     { id: "goal-minutes", title: t("dashboards.studentV2.goalMinutes"), current: 22, target: 30 },
     { id: "goal-xp", title: t("dashboards.studentV2.goalXp"), current: 150, target: 200 },
   ];
-  const courses = coursesAndLessons.filter((i) => i.type === "course") as Array<CourseListItem & { type: "course" }>;
   const lessons = coursesAndLessons.filter((i) => i.type === "lesson") as Array<LessonSummary & { type: "lesson" }>;
   const visibleLessons = lessons.slice(0, 6);
   const shouldGateCourses = CLASSROOM_SYSTEM_ENABLED && studentClassrooms.length === 0;
@@ -305,43 +312,25 @@ export function StudentDashboardPageV2() {
     return status;
   };
 
-  const coursePreviewCards = useMemo<CoursePreviewCard[]>(() => {
+  const lessonPreviewCards = useMemo<CoursePreviewCard[]>(() => {
     const nextTopics = [
       t("dashboards.studentV2.courseNextTopic1"),
       t("dashboards.studentV2.courseNextTopic2"),
       t("dashboards.studentV2.courseNextTopic3"),
     ];
-
-    const courseCards: CoursePreviewCard[] = courses.slice(0, 3).map((course, index) => {
-      const seeded = course.title.length % 12;
-      return {
-        id: course.id,
-        title: course.title,
-        subject: t("dashboards.studentV2.subjectPdfCourse"),
-        nextTopic: nextTopics[index] ?? nextTopics[nextTopics.length - 1],
-        minutes: 20 + index * 5,
-        completion: Math.max(10, Math.min(80, 30 + seeded * 3)),
-        itemType: "course",
-      };
-    });
-
-    const remainingSlots = Math.max(0, 3 - courseCards.length);
-    const lessonCards: CoursePreviewCard[] = visibleLessons.slice(0, remainingSlots).map((lesson, index) => {
+    return visibleLessons.slice(0, 3).map((lesson, index) => {
       const seeded = lesson.title.length % 12;
-      const overallIndex = courseCards.length + index;
       return {
         id: lesson.id,
         title: lesson.title,
         subject: lesson.difficulty || t("dashboards.studentV2.subjectGeneral"),
-        nextTopic: nextTopics[overallIndex] ?? nextTopics[nextTopics.length - 1],
-        minutes: 20 + overallIndex * 5,
-        completion: Math.max(28, Math.min(94, 82 - overallIndex * 18 + seeded)),
-        itemType: "lesson",
+        nextTopic: nextTopics[index] ?? nextTopics[nextTopics.length - 1],
+        minutes: 20 + index * 5,
+        completion: Math.max(28, Math.min(94, 82 - index * 18 + seeded)),
+        itemType: "lesson" as const,
       };
     });
-
-    return [...courseCards, ...lessonCards];
-  }, [t, visibleLessons, courses]);
+  }, [t, visibleLessons]);
 
   const forumHighlights = useMemo<ForumHighlight[]>(() => {
     const highlights: ForumHighlight[] = [];
@@ -494,16 +483,29 @@ export function StudentDashboardPageV2() {
       ? apiClient.get<{ items: StudentClassroomItem[] }>("/classrooms/student/me", requestConfig)
       : Promise.resolve({ data: { items: [] as StudentClassroomItem[] } });
 
-    const [lessonsResult, coursesResult, progressionResult, classroomResult] = await Promise.allSettled([
+    const [lessonsResult, progressionResult, classroomResult] = await Promise.allSettled([
       apiClient.get<{ items: LessonSummary[] }>("/study/lessons", requestConfig),
-      apiClient.get<CourseListItem[]>("/courses/", requestConfig),
       apiClient.get<Progression>("/gamification/progression/me", requestConfig),
       classroomPromise,
     ]);
 
-    setStudentClassrooms(classroomResult.status === "fulfilled" ? classroomResult.value.data.items || [] : []);
+    const classrooms = classroomResult.status === "fulfilled" ? classroomResult.value.data.items || [] : [];
+    setStudentClassrooms(classrooms);
     if (!CLASSROOM_SYSTEM_ENABLED) {
       setJoinPreview(null);
+    }
+
+    // Fetch real progress for all classroom courses in one batch
+    const allCourseIds = classrooms.flatMap(c => c.courses.map(cr => cr.id));
+    if (allCourseIds.length > 0) {
+      const batchRes = await apiClient.post<Array<{ course_id: string; percent: number }>>(
+        "/courses/progress/batch",
+        { course_ids: allCourseIds },
+        requestConfig,
+      ).catch(() => ({ data: [] as Array<{ course_id: string; percent: number }> }));
+      const map: Record<string, number> = {};
+      batchRes.data.forEach(item => { map[item.course_id] = item.percent; });
+      setCourseProgressMap(map);
     }
 
     if (READING_LAB_ENABLED) {
@@ -531,25 +533,16 @@ export function StudentDashboardPageV2() {
       lessonsResult.status === "fulfilled"
         ? (lessonsResult.value.data.items || []).map(l => ({ ...l, type: "lesson" as const }))
         : [];
-    const courses =
-      coursesResult.status === "fulfilled" && Array.isArray(coursesResult.value.data)
-        ? coursesResult.value.data.map(c => ({ ...c, type: "course" as const }))
-        : [];
 
-    // Courses first so they always appear, then lessons
-    setCoursesAndLessons([...courses, ...lessons]);
+    // Courses now come from classroom data — no separate flat fetch needed
+    setCoursesAndLessons([...lessons]);
 
     if (progressionResult.status === "fulfilled") {
       setProgression(progressionResult.value.data);
     }
     setGoals(fallbackGoals);
 
-    if (coursesResult.status === "rejected") {
-      console.error("Courses load error:", coursesResult.reason);
-      setStatus(errorMessage(coursesResult.reason));
-    } else {
-      setStatus(t("dashboards.studentV2.loaded"));
-    }
+    setStatus(t("dashboards.studentV2.loaded"));
 
     // Load teacher presence and assistance requests independently so failures don't block the dashboard
     try {
@@ -688,30 +681,69 @@ export function StudentDashboardPageV2() {
             </div>
 
             <div className="student-courses-list checkpoint-block">
-              {shouldGateCourses ? <p className="muted">{t("classroom.student.mustJoinClassroom")}</p> : null}
-              {!shouldGateCourses ? coursePreviewCards.map((course) => {
-                const url = course.itemType === "course"
-                  ? `${prefix}/student/courses/${course.id}`
-                  : `${prefix}/student/course/${course.id}`;
-                return (
-                  <Link className="student-course-card" to={url} key={`${course.itemType}-${course.id}`}>
-                    <div className="student-course-head">
-                      <span className="student-course-subject">{course.subject}</span>
-                      <span className="student-course-chevron" aria-hidden="true">{">"}</span>
-                    </div>
-                    <h3>{course.title}</h3>
-                    <p className="student-course-next">{t("dashboards.studentV2.courseNext", { topic: course.nextTopic })}</p>
-                    <div className="student-course-meta">
-                      <span>{course.minutes} min</span>
-                      <span>{course.completion}% {t("dashboards.studentV2.courseComplete")}</span>
-                    </div>
-                    <div className="progress-track">
-                      <span className="progress-fill" style={{ width: `${course.completion}%` }} />
-                    </div>
-                  </Link>
-                );
-              }) : null}
-              {!shouldGateCourses && coursePreviewCards.length === 0 ? <p className="muted">{t("classroom.student.noCoursesYet")}</p> : null}
+              {shouldGateCourses ? (
+                <p className="muted">{t("classroom.student.mustJoinClassroom")}</p>
+              ) : studentClassrooms.length === 0 ? (
+                <p className="muted">{t("classroom.student.noCoursesYet")}</p>
+              ) : (
+                studentClassrooms.map((classroom) => (
+                  <div key={classroom.classroom_id}>
+                    <h3 className="classroom-group-label">{classroom.classroom_name}</h3>
+                    {classroom.courses.length === 0 ? (
+                      <p className="muted" style={{ marginBottom: "0.75rem" }}>{t("classroom.student.noCoursesYet")}</p>
+                    ) : (
+                      classroom.courses.map((course) => {
+                        const pct = Math.round(courseProgressMap[course.id] ?? 0);
+                        const courseUrl = course.kind === "lesson"
+                          ? `${prefix}/student/course/${course.id}`
+                          : `${prefix}/student/courses/${course.id}`;
+                        return (
+                          <Link
+                            className="student-course-card"
+                            to={courseUrl}
+                            key={course.id}
+                          >
+                            <div className="student-course-head">
+                              <span className="student-course-subject">{t("dashboards.studentV2.subjectPdfCourse", { defaultValue: "PDF Course" })}</span>
+                              <span className="student-course-chevron" aria-hidden="true">{">"}</span>
+                            </div>
+                            <h3>{course.title}</h3>
+                            <div className="student-course-meta">
+                              <span>{course.language.toUpperCase()}</span>
+                              <span>{pct}% {t("dashboards.studentV2.courseComplete")}</span>
+                            </div>
+                            <div className="progress-track">
+                              <span className="progress-fill" style={{ width: `${pct}%` }} />
+                            </div>
+                          </Link>
+                        );
+                      })
+                    )}
+                  </div>
+                ))
+              )}
+              {/* Lesson cards (from non-classroom lessons) */}
+              {!shouldGateCourses && lessonPreviewCards.length > 0 && (
+                <div>
+                  <h3 className="classroom-group-label">{t("dashboards.studentV2.moreWaysToLearn")}</h3>
+                  {lessonPreviewCards.map((lesson) => (
+                    <Link className="student-course-card" to={`${prefix}/student/course/${lesson.id}`} key={lesson.id}>
+                      <div className="student-course-head">
+                        <span className="student-course-subject">{lesson.subject}</span>
+                        <span className="student-course-chevron" aria-hidden="true">{">"}</span>
+                      </div>
+                      <h3>{lesson.title}</h3>
+                      <div className="student-course-meta">
+                        <span>{lesson.minutes} min</span>
+                        <span>{lesson.completion}% {t("dashboards.studentV2.courseComplete")}</span>
+                      </div>
+                      <div className="progress-track">
+                        <span className="progress-fill" style={{ width: `${lesson.completion}%` }} />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="checkpoint-block">
@@ -796,7 +828,7 @@ export function StudentDashboardPageV2() {
                         </div>
                         <p className="muted">{t("classroom.student.teacher", { teacher: classroom.teacher_name })}</p>
                         {classroom.courses.length > 0 ? (
-                          <p className="muted">{t("classroom.student.availableCourses", { courses: classroom.courses.join(", ") })}</p>
+                          <p className="muted">{t("classroom.student.availableCourses", { courses: classroom.courses.map(c => c.title).join(", ") })}</p>
                         ) : (
                           <p className="muted">{t("classroom.student.noCoursesYet")}</p>
                         )}

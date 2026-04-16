@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
     define: {
       __READING_LAB_ENABLED__: JSON.stringify(env.READING_LAB_ENABLED === "true"),
       __CLASSROOM_SYSTEM_ENABLED__: JSON.stringify(env.CLASSROOM_SYSTEM_ENABLED === "true"),
+      __ATTENTION_CALL_ENABLED__: JSON.stringify(env.ATTENTION_CALL_ENABLED === "true"),
     },
     plugins: [
       tailwindcss(),

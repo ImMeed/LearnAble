@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.core.i18n import localized_http_exception
 from app.core.roles import UserRole
 from app.core.security import CurrentUser
-from app.modules.classrooms.scope import ensure_teacher_student_scope, get_teacher_scoped_student_ids
+from app.modules.classrooms.scope import get_teacher_scoped_student_ids
 from app.modules.teacher import repository
 from app.modules.teacher.schemas import (
     AssistanceActionResponse,
@@ -103,10 +103,9 @@ def create_assistance_request(
 
 def list_assistance_requests(session: Session, current_user: CurrentUser) -> AssistanceRequestListResponse:
     if current_user.role == UserRole.ROLE_TUTOR:
+        # Assistance requests are not classroom-scoped — any teacher can see and
+        # respond to any student's help request regardless of classroom membership.
         records = repository.list_requests_for_tutor(session, current_user.user_id)
-        if settings.classroom_system_enabled:
-            scoped_student_ids = get_teacher_scoped_student_ids(session, current_user.user_id)
-            records = [record for record in records if record.student_user_id in scoped_student_ids]
     elif current_user.role == UserRole.ROLE_STUDENT:
         records = repository.list_requests_for_student(session, current_user.user_id)
     else:
@@ -126,9 +125,6 @@ def schedule_assistance_request(
     if record is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "ASSISTANCE_REQUEST_NOT_FOUND", locale)
 
-    if settings.classroom_system_enabled:
-        ensure_teacher_student_scope(session, current_user.user_id, record.student_user_id, locale)
-
     record.tutor_user_id = current_user.user_id
     record.status = AssistanceRequestStatus.SCHEDULED
     record.scheduled_at = scheduled_at
@@ -147,9 +143,6 @@ def complete_assistance_request(
     record = repository.get_assistance_request(session, request_id)
     if record is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "ASSISTANCE_REQUEST_NOT_FOUND", locale)
-
-    if settings.classroom_system_enabled:
-        ensure_teacher_student_scope(session, current_user.user_id, record.student_user_id, locale)
 
     if record.tutor_user_id not in (None, current_user.user_id):
         raise localized_http_exception(status.HTTP_403_FORBIDDEN, "FORBIDDEN", locale)

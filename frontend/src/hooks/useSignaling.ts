@@ -47,13 +47,16 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
   const connect = useCallback(() => {
     if (!roomId) return;
 
+    // Any new connect attempt is user-intended (not a teardown close).
+    intentionalCloseRef.current = false;
+
     const host = window.location.hostname;
     const isSecure = window.location.protocol === "https:";
     const wsScheme = isSecure ? "wss" : "ws";
     const apiBase = import.meta.env.VITE_API_BASE_URL || `http://${host}:8000`;
     const wsBase = apiBase.replace(/^https?/, wsScheme);
     const session = getSession();
-    const tokenParam = session?.accessToken ? `?token=${session.accessToken}` : "";
+    const tokenParam = session?.accessToken ? `?token=${encodeURIComponent(session.accessToken)}` : "";
     const wsUrl = `${wsBase}/ws/call/${roomId}${tokenParam}`;
 
     const ws = new WebSocket(wsUrl);
@@ -114,8 +117,18 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
     ws.onclose = (event) => {
       setIsConnected(false);
 
+      if (event.reason?.toLowerCase().includes("replaced by newer connection")) {
+        setConnectionError("SESSION_REPLACED");
+        return;
+      }
+
       if (event.code === 4001) {
         setConnectionError("AUTH_REQUIRED");
+        return;
+      }
+
+      if (event.code === 4003) {
+        setConnectionError("ROOM_NOT_FOUND");
         return;
       }
 
@@ -150,15 +163,25 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
   useEffect(() => {
     connect();
 
+    const socketAtMount = wsRef.current;
+
     return () => {
       intentionalCloseRef.current = true;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
-      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
-        wsRef.current.close(1000);
+      // Avoid closing a newer socket when effects rerun quickly.
+      if (socketAtMount && socketAtMount.readyState === WebSocket.OPEN) {
+        socketAtMount.close(1000);
+      } else if (socketAtMount && socketAtMount.readyState === WebSocket.CONNECTING) {
+        // Let the handshake complete, then close gracefully to reduce noisy browser warnings.
+        socketAtMount.onopen = () => {
+          socketAtMount.close(1000);
+        };
       }
-      wsRef.current = null;
+      if (wsRef.current === socketAtMount) {
+        wsRef.current = null;
+      }
     };
   }, [connect]);
 

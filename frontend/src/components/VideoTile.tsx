@@ -16,17 +16,47 @@ export default function VideoTile({ stream, muted, label, variant, isCamOff, rem
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream ?? null;
+    const video = videoRef.current;
+    let resumeOnGesture: (() => void) | null = null;
+
+    const clearGestureHandlers = () => {
+      if (!resumeOnGesture) return;
+      window.removeEventListener("pointerdown", resumeOnGesture);
+      window.removeEventListener("keydown", resumeOnGesture);
+      resumeOnGesture = null;
+    };
+
+    if (video) {
+      video.srcObject = stream ?? null;
+      video.muted = muted;
+      if (stream) {
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {
+            // Some browsers block autoplay with sound until a user gesture.
+            // Do not force-mute remote media; resume on first gesture instead.
+            resumeOnGesture = () => {
+              clearGestureHandlers();
+              void video.play().catch(() => {
+                // Leave element attached even if playback is still blocked.
+              });
+            };
+            window.addEventListener("pointerdown", resumeOnGesture, { once: true });
+            window.addEventListener("keydown", resumeOnGesture, { once: true });
+          });
+        }
+      }
     }
     return () => {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
+      clearGestureHandlers();
+      if (video) {
+        video.srcObject = null;
       }
     };
-  }, [stream]);
+  }, [stream, muted]);
 
-  const showPlaceholder = !stream || isCamOff;
+  const hasLiveVideoTrack = !!stream?.getVideoTracks().some((track) => track.readyState === "live");
+  const showPlaceholder = !stream || isCamOff || !hasLiveVideoTrack;
   // Only show the "camera is off" tag when the cam was explicitly turned off
   // (stream exists but isCamOff is true), not when there's simply no stream yet.
   const camExplicitlyOff = !!stream && !!isCamOff;

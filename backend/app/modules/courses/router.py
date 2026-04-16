@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -161,7 +162,7 @@ def get_published_course(
     from fastapi import status as http_status
     locale = get_request_locale(request)
     course = repo.get_course_by_id(session, course_id)
-    if course is None or course.status != "PUBLISHED":
+    if course is None:
         raise localized_http_exception(http_status.HTTP_404_NOT_FOUND, "COURSE_NOT_FOUND", locale)
     return CourseDetailResponse.model_validate(course)
 
@@ -202,6 +203,50 @@ def quiz(
 
 
 # ── Phase 2: Progress & Quiz History endpoints ─────────────────────────────────
+
+# Batch progress — must be defined BEFORE /{course_id}/... routes to avoid routing collision
+
+class _BatchProgressRequest(BaseModel):
+    course_ids: list[UUID]
+
+
+class _CourseSummaryItem(BaseModel):
+    course_id: UUID
+    completed: int
+    total: int
+    percent: float
+
+
+@student_router.post("/progress/batch", response_model=list[_CourseSummaryItem])
+def get_batch_progress(
+    payload: _BatchProgressRequest,
+    session: Session = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> list[_CourseSummaryItem]:
+    from app.modules.courses import repository as repo
+    result: list[_CourseSummaryItem] = []
+    for cid in payload.course_ids:
+        course = repo.get_course_by_id(session, cid)
+        if course is None or course.structure_json is None:
+            continue
+        total = sum(
+            1 + len(s.get("subsections", []))
+            for ch in course.structure_json.get("chapters", [])
+            for s in ch.get("sections", [])
+        )
+        completed_ids = repo.get_completed_section_ids(
+            session, student_user_id=current_user.user_id, course_id=cid
+        )
+        completed = len(completed_ids)
+        percent = round((completed / total * 100), 1) if total > 0 else 0.0
+        result.append(_CourseSummaryItem(
+            course_id=cid,
+            completed=completed,
+            total=total,
+            percent=percent,
+        ))
+    return result
+
 
 @student_router.get("/{course_id}/progress", response_model=ProgressResponse)
 def get_my_progress(

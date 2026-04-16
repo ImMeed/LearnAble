@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { v4 as uuidv4 } from "uuid";
 
 import {
   createAssistanceRequest,
+  fetchCallRoomStatus,
   fetchActiveTeachers,
   fetchMyAssistanceRequests,
 } from "../../api/callApi";
 import type { AssistanceRequestItem, TeacherPresenceItem } from "../pages/roleDashboardShared";
 
 const POLL_MS = 6000;
+const SCHEDULED_MAX_AGE_MINUTES = 30;
 
 function statusChipClass(status: string): string {
   if (status === "SCHEDULED") return "scf-chip scf-chip--scheduled";
@@ -28,6 +29,38 @@ export function StudentCallFlow({ lang }: { lang?: string }) {
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const extractRoomIdFromMeetingUrl = (meetingUrl: string | null): string | null => {
+    if (!meetingUrl) return null;
+    const match = meetingUrl.match(/\/call\/([^/?#]+)/i);
+    return match?.[1] ?? null;
+  };
+
+  const isScheduledRequestJoinable = async (request: AssistanceRequestItem): Promise<boolean> => {
+    if (request.status !== "SCHEDULED" || !request.meeting_url) return false;
+
+    if (request.scheduled_at) {
+      const scheduledMs = new Date(request.scheduled_at).getTime();
+      if (!Number.isNaN(scheduledMs)) {
+        const ageMinutes = (Date.now() - scheduledMs) / 60_000;
+        if (ageMinutes > SCHEDULED_MAX_AGE_MINUTES) return false;
+      }
+    }
+
+    const roomId = extractRoomIdFromMeetingUrl(request.meeting_url);
+    if (!roomId) {
+      // External meeting URLs are considered valid.
+      return true;
+    }
+
+    try {
+      const status = await fetchCallRoomStatus(roomId);
+      return status.exists;
+    } catch {
+      // If status check fails (network hiccup), do not force-join stale links.
+      return false;
+    }
+  };
+
   const loadTeachers = async () => {
     try {
       const items = await fetchActiveTeachers(lang);
@@ -40,9 +73,28 @@ export function StudentCallFlow({ lang }: { lang?: string }) {
   const loadLatestRequest = async () => {
     try {
       const items = await fetchMyAssistanceRequests(lang);
-      if (items.length > 0) {
-        // backend returns requests ordered by created_at desc — first item is most recent
-        setLatestRequest(items[0]);
+      if (items.length === 0) {
+        setLatestRequest(null);
+        setJoined(false);
+        return;
+      }
+
+      // Pick the first truly active request.
+      let candidate: AssistanceRequestItem | null = null;
+      for (const item of items.slice(0, 8)) {
+        if (item.status === "REQUESTED") {
+          candidate = item;
+          break;
+        }
+        if (item.status === "SCHEDULED" && await isScheduledRequestJoinable(item)) {
+          candidate = item;
+          break;
+        }
+      }
+
+      setLatestRequest(candidate);
+      if (!candidate) {
+        setJoined(false);
       }
     } catch {
       // silently ignore
@@ -91,37 +143,27 @@ export function StudentCallFlow({ lang }: { lang?: string }) {
   const hasCallReady =
     latestRequest?.status === "SCHEDULED" && !!latestRequest.meeting_url;
 
+  // COMPLETED with no meeting_url = teacher rejected (never scheduled a room)
+  // COMPLETED with a meeting_url = call actually happened
+  const wasRejected =
+    latestRequest?.status === "COMPLETED" && !latestRequest.meeting_url;
+
   return (
     <article className="card checkpoint-block scf-root" aria-label={t("callFlow.sectionLabel")}>
       <h3 className="scf-title">{t("callFlow.sectionTitle")}</h3>
 
-      {/* ── Step 1: pick a teacher ── */}
+      {/* ── Step 1: request a call ── */}
       {!latestRequest && (
         <section className="scf-step" aria-label={t("callFlow.step1Label")}>
-          <p className="muted scf-hint">{t("callFlow.pickTeacherHint")}</p>
-          {teachers.length === 0 ? (
-            <p className="muted">{t("callFlow.noTeachers")}</p>
-          ) : (
-            <div className="scf-teacher-list">
-              {teachers.map((_, i) => (
-                <article key={i} className="scf-teacher-card">
-                  <span className="scf-teacher-name">
-                    {t("callFlow.teacherName", { n: i + 1 })}
-                  </span>
-                  <span className="scf-online-dot" aria-hidden="true" />
-                  <button
-                    type="button"
-                    className="scf-request-btn"
-                    disabled={sending}
-                    onClick={() => void requestCall(i)}
-                    aria-label={t("callFlow.requestCallAria", { n: i + 1 })}
-                  >
-                    {sending ? t("callFlow.sending") : t("callFlow.requestCall")}
-                  </button>
-                </article>
-              ))}
-            </div>
-          )}
+          <button
+            type="button"
+            className="scf-request-btn"
+            disabled={sending || teachers.length === 0}
+            onClick={() => void requestCall(0)}
+          >
+            {sending ? t("callFlow.sending") : t("callFlow.requestCall")}
+          </button>
+          {teachers.length === 0 && <p className="muted">{t("callFlow.noTeachers")}</p>}
           {statusMsg && <p className="scf-status-msg">{statusMsg}</p>}
         </section>
       )}
@@ -177,8 +219,25 @@ export function StudentCallFlow({ lang }: { lang?: string }) {
         </section>
       )}
 
-      {/* ── Rejected / completed ── */}
-      {latestRequest && latestRequest.status === "COMPLETED" && !hasCallReady && !joined && (
+      {/* ── Rejected (completed with no meeting_url) ── */}
+      {wasRejected && !joined && (
+        <section className="scf-step" aria-live="polite">
+          <span className="scf-chip scf-chip--completed">
+            {t("callFlow.statusRejected")}
+          </span>
+          <p className="muted scf-hint">{t("callFlow.rejectedHint")}</p>
+          <button
+            type="button"
+            className="secondary scf-new-btn"
+            onClick={() => setLatestRequest(null)}
+          >
+            {t("callFlow.newRequest")}
+          </button>
+        </section>
+      )}
+
+      {/* ── Completed (call actually happened) ── */}
+      {latestRequest?.status === "COMPLETED" && !!latestRequest.meeting_url && !joined && (
         <section className="scf-step" aria-live="polite">
           <span className={statusChipClass(latestRequest.status)}>
             {t("callFlow.statusCompleted")}

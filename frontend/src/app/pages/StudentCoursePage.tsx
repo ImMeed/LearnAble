@@ -108,18 +108,27 @@ export function StudentCoursePage() {
       setLoading(true);
       setStatus(t("dashboards.common.loading"));
       try {
-        const [courseRes, progressRes] = await Promise.all([
-          apiClient.get<CourseDetail>(`/courses/${courseId}`, requestConfig),
-          apiClient.get<{ completed_section_ids: string[]; last_section_id: string | null }>(
-            `/courses/${courseId}/progress`, requestConfig
-          ),
-        ]);
+        // Load course first — this is mandatory
+        const courseRes = await apiClient.get<CourseDetail>(`/courses/${courseId}`, requestConfig);
         setCourse(courseRes.data);
-        setCompletedIds(new Set(progressRes.data.completed_section_ids));
+
+        // Load progress separately — failure here should not block the course from showing
+        let completedSectionIds: string[] = [];
+        let lastSectionId: string | null = null;
+        try {
+          const progressRes = await apiClient.get<{ completed_section_ids: string[]; last_section_id: string | null }>(
+            `/courses/${courseId}/progress`, requestConfig
+          );
+          completedSectionIds = progressRes.data.completed_section_ids;
+          lastSectionId = progressRes.data.last_section_id;
+        } catch {
+          // progress load failing is non-fatal — continue with empty state
+        }
+
+        setCompletedIds(new Set(completedSectionIds));
         const chapters = courseRes.data.structure_json?.chapters ?? [];
-        const last = progressRes.data.last_section_id;
-        setActiveSectionId(last ?? chapters[0]?.sections[0]?.id ?? null);
-        setStatus(t("dashboards.course.loaded"));
+        setActiveSectionId(lastSectionId ?? chapters[0]?.sections[0]?.id ?? null);
+        setStatus("");
       } catch (err) {
         setStatus(errorMessage(err));
       } finally {
@@ -163,6 +172,18 @@ export function StudentCoursePage() {
 
   const activeNode = flatSections.find(s => s.id === activeSectionId) ?? null;
   const activeIdx  = flatSections.findIndex(s => s.id === activeSectionId);
+
+  // Chapter context for color-coded hero + sidebar
+  const activeChapter = course?.structure_json?.chapters.find(ch =>
+    ch.sections.some(s => s.id === activeSectionId || s.subsections.some(sub => sub.id === activeSectionId))
+  ) ?? null;
+  const activeChapterIndex = (course?.structure_json?.chapters ?? []).indexOf(activeChapter!);
+  const chColorClass = `ch-color-${Math.max(0, activeChapterIndex) % 6}`;
+
+  // Real progress derived from completedIds
+  const totalSections   = flatSections.length;
+  const completedCount  = completedIds.size;
+  const progressPercent = totalSections > 0 ? Math.round((completedCount / totalSections) * 100) : 0;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -288,28 +309,47 @@ export function StudentCoursePage() {
         {/* Left: content + AI chat */}
         <section className="course-v2-content">
 
-          {/* Reading card */}
+          {/* Reading card — dyslexia/ADHD optimised */}
           <article className={cx(surfaceClass, "p-5 sm:p-6")}>
-            <div className="section-title-row">
-              <h2 className="text-[clamp(1.35rem,2vw,1.9rem)] font-semibold tracking-[-0.03em] text-foreground">
+
+            {/* Course-level progress bar */}
+            <div className="course-reader-progress-bar">
+              <div className="course-reader-progress-fill" style={{ width: `${progressPercent}%` }} />
+            </div>
+            <p style={{ fontSize: "0.8rem", color: "var(--muted-foreground)", marginBottom: "1.25rem" }}>
+              {completedCount} / {totalSections} {t("dashboards.course.sectionsComplete", { defaultValue: "sections complete" })} — {progressPercent}%
+            </p>
+
+            {/* Chapter-colour hero banner */}
+            <div className={`course-reader-hero ${chColorClass}`}>
+              <p className="course-reader-chapter-badge">{activeChapter?.title ?? ""}</p>
+              <h2 className="course-reader-section-title">
                 {activeNode?.title ?? t("dashboards.course.loading")}
               </h2>
+              {completedIds.has(activeSectionId ?? "") && (
+                <span className="course-reader-complete-stamp">✓ {t("pdfCourse.done", { defaultValue: "Done" })}</span>
+              )}
+            </div>
+
+            {/* Content split into readable chunks */}
+            <div>
+              {(activeNode?.content ?? "").split(/\n\n+/).filter(Boolean).map((chunk, i) => (
+                <p key={i} className="course-reader-chunk">{chunk}</p>
+              ))}
+            </div>
+
+            {/* Read aloud + mark done */}
+            <div className="inline-actions checkpoint-block">
               <button type="button" className={actionClass("soft")} onClick={() => setIsReading(r => !r)}>
                 {isReading ? t("dashboards.course.stopReading") : t("dashboards.course.readAloud")}
               </button>
-            </div>
-            <p className="muted">{t("pdfCourse.courseReaderTitle")}</p>
-            <article className="course-v2-reading-card">
-              <h3>{activeNode?.title}</h3>
-              <p>{activeNode?.content}</p>
-            </article>
-            <div className="inline-actions checkpoint-block">
               <button type="button" className={actionClass("soft")} onClick={onToggleDone}>
                 {completedIds.has(activeSectionId ?? "")
                   ? t("pdfCourse.markIncomplete")
                   : t("dashboards.course.markSectionDone")}
               </button>
             </div>
+
             {/* Prev / Next navigation */}
             <div className="inline-actions checkpoint-block" style={{ justifyContent: "space-between" }}>
               <button
@@ -395,9 +435,9 @@ export function StudentCoursePage() {
               {t("dashboards.course.sections")}
             </h3>
             <div className="stack-list">
-              {course?.structure_json?.chapters.map(ch => (
+              {course?.structure_json?.chapters.map((ch, chIdx) => (
                 <div key={ch.id}>
-                  <p style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted-foreground)", marginBottom: 4 }}>
+                  <p className={`course-sidebar-chapter ch-color-${chIdx % 6}`} style={{ background: `var(--chapter-color)` }}>
                     {ch.title}
                   </p>
                   {ch.sections.map(sec => (
@@ -506,7 +546,17 @@ export function StudentCoursePage() {
               <button
                 type="button"
                 className={actionClass()}
-                onClick={() => { setShowCompletionModal(false); setStatus(t("dashboards.course.completed")); }}
+                onClick={async () => {
+                  setShowCompletionModal(false);
+                  const unmarked = flatSections.filter(s => !completedIds.has(s.id));
+                  for (const sec of unmarked) {
+                    await apiClient.post(
+                      `/courses/${courseId}/progress/sections/${sec.id}`, {}, requestConfig
+                    ).catch(() => {});
+                  }
+                  setCompletedIds(new Set(flatSections.map(s => s.id)));
+                  setStatus(t("dashboards.course.completed"));
+                }}
               >
                 {t("dashboards.course.confirmComplete")}
               </button>

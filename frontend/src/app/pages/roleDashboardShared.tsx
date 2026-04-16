@@ -3,13 +3,13 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   BookOpen,
-  CalendarDays,
   ClipboardList,
   FlaskConical,
   LayoutDashboard,
   LogOut,
   MessageSquare,
   School,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 
@@ -188,7 +188,7 @@ export function TeacherTabs({ active, onChange }: { active: TeacherTab; onChange
     { id: "attendance", Icon: ClipboardList },
     ...(CLASSROOM_SYSTEM_ENABLED ? [{ id: "classrooms" as TeacherTab, Icon: School }] : []),
     { id: "courses", Icon: BookOpen },
-    { id: "schedule", Icon: CalendarDays },
+    { id: "schedule", Icon: Video },
     { id: "messages", Icon: MessageSquare },
     ...(READING_LAB_ENABLED ? [{ id: "readingLab" as TeacherTab, Icon: FlaskConical }] : []),
   ];

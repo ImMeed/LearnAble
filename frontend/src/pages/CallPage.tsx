@@ -9,6 +9,7 @@ import { useConnectionQuality } from "../hooks/useConnectionQuality";
 import { ConnectionBadge } from "../components/ConnectionBadge";
 import VideoTile from "../components/VideoTile";
 import CallControls from "../components/CallControls";
+import { ATTENTION_CALL_ENABLED } from "../app/features";
 import type { UserRole } from '../features/attention/types/attention';
 import { useAttentionProcessor } from '../features/attention/hooks/useAttentionProcessor';
 import { useAttentionReceiver } from '../features/attention/hooks/useAttentionReceiver';
@@ -41,6 +42,7 @@ export default function CallPage() {
   const [callState, setCallState] = useState<CallState>("idle");
   const [copied, setCopied] = useState(false);
   const [role] = useState<UserRole | null>(() => deriveRole());
+  const showDevDiagnostics = import.meta.env.DEV;
   
   const actionBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -127,20 +129,20 @@ export default function CallPage() {
   useEffect(() => {
     if (roomFull) {
       setCallState("room_full");
-    } else if (mediaError) {
-      setCallState("error");
     } else if (peerLeft) {
       setCallState("peer_left");
     } else if (peerError || connectionError) {
       setCallState("error");
-    } else if (peerConnected) {
+    } else if (peerConnected || !!remoteStream) {
       setCallState("connected");
-    } else if (localStream && isConnected) {
+    } else if (isConnected) {
+      // Camera/mic errors are soft warnings — the call can still proceed
+      // (user receives remote stream even without a local one).
       setCallState("waiting");
     } else {
       setCallState("idle");
     }
-  }, [roomFull, mediaError, peerLeft, peerError, connectionError, peerConnected, localStream, isConnected]);
+  }, [roomFull, peerLeft, peerError, connectionError, peerConnected, remoteStream, isConnected]);
 
   useEffect(() => {
     if (peerLeft) {
@@ -181,13 +183,13 @@ export default function CallPage() {
   // Mount attention processor on the student side only
   const { latestScore, blinkDetector, loadFailed } = useAttentionProcessor({
     localStream,
-    enabled: role === 'student' && !!localStream,
+    enabled: ATTENTION_CALL_ENABLED && role === 'student' && !!localStream,
     sendMessage: signaling.sendMessage,
   });
 
   const attentionState = useAttentionReceiver({
     incomingMetrics: signaling.incomingAttentionMetrics,
-    enabled: role === 'teacher',
+    enabled: ATTENTION_CALL_ENABLED && role === 'teacher',
   });
 
   if (!roomId) return null;
@@ -208,6 +210,12 @@ export default function CallPage() {
         </div>
       )}
 
+      {mediaError && callState !== "error" && (
+        <div className="call-reconnecting-banner">
+          <span>⚠️ {mediaError === "CAMERA_BUSY" ? t("call.cameraBusyWarn") : t("call.noCameraWarn")}</span>
+        </div>
+      )}
+
       {callState === "connected" && <ConnectionBadge quality={connectionQuality} />}
 
       {callState === "idle" && (
@@ -219,7 +227,14 @@ export default function CallPage() {
 
       {callState === "waiting" && (
         <>
-          <VideoTile stream={null} muted={false} label="Remote" variant="main" />
+          <VideoTile
+            stream={remoteStream}
+            muted={false}
+            label="Remote"
+            variant="main"
+            isCamOff={remoteMediaState ? !remoteMediaState.video : false}
+            remoteMuted={remoteMediaState ? !remoteMediaState.audio : false}
+          />
           <VideoTile stream={localStream} muted={true} label="You" variant="pip" isCamOff={isCamOff} />
 
           <div className="call-overlay">
@@ -229,6 +244,12 @@ export default function CallPage() {
                 {t("call.waitingForPeer")}
               </div>
               <p className="call-overlay__text">{t("call.waitingHint")}</p>
+              {showDevDiagnostics ? (
+                <p className="call-overlay__text" style={{ marginTop: "0.5rem", opacity: 0.8 }}>
+                  room:{roomId?.slice(0, 8)} | role:{role ?? "none"} | ws:{isConnected ? "up" : "down"} |
+                  init:{String(signaling.isInitiator)} | peer:{peerConnected ? "up" : "down"}
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -238,7 +259,7 @@ export default function CallPage() {
             onToggleMute={toggleMute}
             onToggleCam={toggleCamera}
             onEndCall={handleEndCall}
-            disabled={true}
+            disabled={false}
           />
         </>
       )}
@@ -264,16 +285,18 @@ export default function CallPage() {
             disabled={false}
           />
 
-          <AttentionWidget
-            currentScore={attentionState.currentScore}
-            currentLabel={attentionState.currentLabel}
-            hasData={attentionState.hasData}
-            isStale={attentionState.isStale}
-            isDistracted={attentionState.isDistracted}
-            timeline={attentionState.timeline}
-            active={role === 'teacher'}
-            unavailable={loadFailed.current}
-          />
+          {ATTENTION_CALL_ENABLED ? (
+            <AttentionWidget
+              currentScore={attentionState.currentScore}
+              currentLabel={attentionState.currentLabel}
+              hasData={attentionState.hasData}
+              isStale={attentionState.isStale}
+              isDistracted={attentionState.isDistracted}
+              timeline={attentionState.timeline}
+              active={role === 'teacher'}
+              unavailable={loadFailed.current}
+            />
+          ) : null}
         </>
       )}
 
@@ -311,10 +334,16 @@ export default function CallPage() {
             <div className="call-overlay__title">
               {connectionError === "AUTH_REQUIRED"
                 ? t("call.authRequired")
+                : connectionError === "SESSION_REPLACED"
+                ? t("call.sessionReplaced")
+                : connectionError === "ROOM_NOT_FOUND"
+                ? t("call.roomNotFound")
                 : connectionError === "CONNECTION_LOST"
                 ? t("call.connectionLost")
                 : mediaError === "CAMERA_DENIED"
                 ? t("call.cameraDenied")
+                : mediaError === "CAMERA_BUSY"
+                ? t("call.cameraBusy")
                 : mediaError === "NO_DEVICE"
                 ? t("call.noDevice")
                 : t("call.genericError")}
@@ -322,10 +351,16 @@ export default function CallPage() {
             <p className="call-overlay__text">
               {connectionError === "AUTH_REQUIRED"
                 ? t("call.authRequired")
+                : connectionError === "SESSION_REPLACED"
+                ? t("call.sessionReplaced")
+                : connectionError === "ROOM_NOT_FOUND"
+                ? t("call.roomNotFound")
                 : connectionError === "CONNECTION_LOST"
                 ? t("call.connectionLost")
                 : mediaError === "CAMERA_DENIED"
                 ? t("call.cameraDenied")
+                : mediaError === "CAMERA_BUSY"
+                ? t("call.cameraBusy")
                 : mediaError === "NO_DEVICE"
                 ? t("call.noDevice")
                 : peerError
