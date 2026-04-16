@@ -25,12 +25,24 @@ function deriveRole(): UserRole | null {
   return "teacher";
 }
 
+function getDashboardRoute(): string {
+  const session = getSession();
+  if (!session) return "/";
+  switch (session.role) {
+    case "ROLE_STUDENT": return "/student/dashboard";
+    case "ROLE_TUTOR": return "/teacher/dashboard";
+    case "ROLE_PSYCHOLOGIST": return "/psychologist/dashboard";
+    case "ROLE_PARENT": return "/parent/dashboard";
+    default: return "/";
+  }
+}
+
 export function CallRedirect() {
   const navigate = useNavigate();
   useEffect(() => {
     createCallRoom()
       .then((roomId) => navigate(`/call/${roomId}`, { replace: true }))
-      .catch(() => navigate("/", { replace: true }));
+      .catch(() => navigate(getDashboardRoute(), { replace: true }));
   }, [navigate]);
   return null;
 }
@@ -48,7 +60,7 @@ export default function CallPage() {
 
   useEffect(() => {
     if (!roomId) {
-      navigate("/", { replace: true });
+      navigate(getDashboardRoute(), { replace: true });
     }
   }, [roomId, navigate]);
 
@@ -119,7 +131,7 @@ export default function CallPage() {
       if (e.key === "Escape") {
         destroyPeer();
         stopAllTracks();
-        navigate("/");
+        navigate(getDashboardRoute());
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -160,7 +172,7 @@ export default function CallPage() {
   const handleEndCall = useCallback(() => {
     destroyPeer();
     stopAllTracks();
-    navigate("/");
+    navigate(getDashboardRoute());
   }, [destroyPeer, stopAllTracks, navigate]);
 
   useEffect(() => {
@@ -307,7 +319,7 @@ export default function CallPage() {
             <p className="call-overlay__text">
               {t("call.roomFullDesc")}
             </p>
-            <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate("/")}>
+            <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate(getDashboardRoute())}>
               {t("call.returnHome")}
             </button>
           </div>
@@ -321,7 +333,7 @@ export default function CallPage() {
             <p className="call-overlay__text">
               {t("call.peerLeft")}
             </p>
-            <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate("/")}>
+            <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate(getDashboardRoute())}>
               {t("call.returnHome")}
             </button>
           </div>
@@ -368,11 +380,11 @@ export default function CallPage() {
                 : t("call.genericError")}
             </p>
             {connectionError === "AUTH_REQUIRED" ? (
-              <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate("/")}>
+              <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate(getDashboardRoute())}>
                 {t("call.signIn")}
               </button>
             ) : (
-              <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate("/")}>
+              <button ref={actionBtnRef} className="call-overlay__btn" onClick={() => navigate(getDashboardRoute())}>
                 {t("call.returnHome")}
               </button>
             )}
