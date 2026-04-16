@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 60
     database_url: str = "postgresql+psycopg://learnable:learnable@localhost:5433/learnable"
     gemini_api_key: str = ""
+    gemini_mock: bool = False
     require_call_auth: bool = True
     reading_lab_enabled: bool = False
     classroom_system_enabled: bool = False

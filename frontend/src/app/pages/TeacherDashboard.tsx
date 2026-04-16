@@ -1,9 +1,8 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { v4 as uuidv4 } from "uuid";
 
 import { apiClient } from "../../api/client";
-import { scheduleRequest, completeRequest } from "../../api/callApi";
+import { scheduleRequest, completeRequest, createCallRoom } from "../../api/callApi";
 import { CLASSROOM_SYSTEM_ENABLED, READING_LAB_ENABLED } from "../features";
 import {
   AssistanceRequestItem,
@@ -17,6 +16,8 @@ import {
   TeacherTab,
   TeacherTabs,
 } from "./roleDashboardShared";
+
+import { TeacherCoursesTab } from "./TeacherCoursesTab";
 
 const POLL_MS = 8000;
 
@@ -55,6 +56,18 @@ export function TeacherDashboardPageV2() {
     title: string;
     difficulty: string;
     classroom_names: string[];
+  };
+
+  type TeacherCreatedCourse = {
+    id: string;
+    title: string;
+    status: string;
+  };
+
+  type ClassroomAssignableCourse = {
+    id: string;
+    title: string;
+    isDemo: boolean;
   };
 
   type TeacherClassroom = {
@@ -140,6 +153,7 @@ export function TeacherDashboardPageV2() {
   const [classroomSaving, setClassroomSaving] = useState(false);
   const [classroomCourseToAssign, setClassroomCourseToAssign] = useState<string>("");
   const [courseAssignments, setCourseAssignments] = useState<TeacherCourseAssignment[]>([]);
+  const [teacherCreatedCourses, setTeacherCreatedCourses] = useState<TeacherCreatedCourse[]>([]);
 
   const readingLabTools = [
     {
@@ -166,7 +180,16 @@ export function TeacherDashboardPageV2() {
   ];
 
   const pendingRequests = useMemo(() => requests.filter((item) => item.status === "REQUESTED"), [requests]);
-  const scheduledRequests = useMemo(() => requests.filter((item) => item.scheduled_at), [requests]);
+  const scheduledRequests = useMemo(() => {
+    const nowMs = Date.now();
+    return requests
+      .filter((item) => item.status === "SCHEDULED" && !!item.scheduled_at)
+      .filter((item) => {
+        const scheduledMs = Date.parse(item.scheduled_at ?? "");
+        return !Number.isNaN(scheduledMs) && scheduledMs >= nowMs;
+      })
+      .sort((a, b) => Date.parse(a.scheduled_at ?? "") - Date.parse(b.scheduled_at ?? ""));
+  }, [requests]);
 
   const topicCards = useMemo(() => {
     const topicCount = new Map<string, number>();
@@ -180,6 +203,26 @@ export function TeacherDashboardPageV2() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 3);
   }, [requests]);
+
+  const classroomAssignableCourses = useMemo<ClassroomAssignableCourse[]>(() => {
+    const liveCourses = teacherCreatedCourses
+      .filter((course) => course.status === "PUBLISHED")
+      .map((course) => ({ id: course.id, title: course.title, isDemo: false }));
+
+    if (liveCourses.length > 0) {
+      return liveCourses;
+    }
+
+    return [
+      { id: "demo-course-1", title: `${t("dashboards.teacher.course1")} (demo)`, isDemo: true },
+      { id: "demo-course-2", title: `${t("dashboards.teacher.course2")} (demo)`, isDemo: true },
+    ];
+  }, [teacherCreatedCourses, t]);
+
+  const selectedAssignableCourse = useMemo(
+    () => classroomAssignableCourses.find((course) => course.id === classroomCourseToAssign) ?? null,
+    [classroomAssignableCourses, classroomCourseToAssign],
+  );
 
   const statusLabel = (supportStatus: "INACTIVE" | "ACTIVE" | "PAUSED") => {
     if (supportStatus === "ACTIVE") return t("readingLab.supportActive");
@@ -454,6 +497,21 @@ export function TeacherDashboardPageV2() {
     }
   }, [requestConfig]);
 
+  const loadTeacherCreatedCourses = useCallback(async () => {
+    if (!CLASSROOM_SYSTEM_ENABLED) {
+      setTeacherCreatedCourses([]);
+      return;
+    }
+
+    try {
+      const response = await apiClient.get<TeacherCreatedCourse[]>("/teacher/courses", requestConfig);
+      setTeacherCreatedCourses(response.data || []);
+    } catch (error) {
+      setTeacherCreatedCourses([]);
+      setStatus(errorMessage(error));
+    }
+  }, [requestConfig]);
+
   const createClassroom = async () => {
     if (!CLASSROOM_SYSTEM_ENABLED) return;
     const payload = {
@@ -592,6 +650,7 @@ export function TeacherDashboardPageV2() {
       setNotifications(notificationsRes.data.items || []);
       await loadClassrooms();
       await loadCourseAssignments();
+      await loadTeacherCreatedCourses();
       await loadReadingLabStudents();
       setStatus(t("dashboards.teacher.loaded"));
     } catch (error) {
@@ -624,9 +683,9 @@ export function TeacherDashboardPageV2() {
   }, [i18n.resolvedLanguage]);
 
   const acceptNow = async (requestId: string) => {
-    const roomId = uuidv4();
-    const meetingUrl = `${window.location.origin}/call/${roomId}`;
     try {
+      const roomId = await createCallRoom();
+      const meetingUrl = `/call/${roomId}`;
       await scheduleRequest(requestId, new Date().toISOString(), meetingUrl, i18n.resolvedLanguage);
       setStatus(t("callFlow.teacher.accepted"));
       await loadAll();
@@ -638,9 +697,9 @@ export function TeacherDashboardPageV2() {
 
   const confirmSchedule = async (requestId: string) => {
     if (!scheduleDate) return;
-    const roomId = uuidv4();
-    const meetingUrl = `${window.location.origin}/call/${roomId}`;
     try {
+      const roomId = await createCallRoom();
+      const meetingUrl = `/call/${roomId}`;
       await scheduleRequest(requestId, new Date(scheduleDate).toISOString(), meetingUrl, i18n.resolvedLanguage);
       setStatus(t("callFlow.teacher.scheduled"));
       setSchedulingId(null);
@@ -806,17 +865,16 @@ export function TeacherDashboardPageV2() {
           </div>
 
           <div className="stack-list checkpoint-block">
-            {(scheduledRequests.length > 0 ? scheduledRequests.slice(0, 1) : [{
-              id: "example-attendance",
-              topic: t("dashboards.teacher.course1"),
-              scheduled_at: new Date().toISOString(),
-              message: t("dashboards.teacher.readingLabToolGuidedHint"),
-            } as unknown as AssistanceRequestItem]).map((item) => (
-              <article className="notification-item" key={item.id}>
-                <strong>{item.topic}</strong>
-                <p>{t("dashboards.teacher.scheduledOn", { date: formatDate(item.scheduled_at, locale) })}</p>
-              </article>
-            ))}
+            {scheduledRequests.length === 0 ? (
+              <p className="muted">{t("dashboards.teacher.videoCallsNoScheduled")}</p>
+            ) : (
+              scheduledRequests.slice(0, 1).map((item) => (
+                <article className="notification-item" key={item.id}>
+                  <strong>{item.topic}</strong>
+                  <p>{t("dashboards.teacher.scheduledOn", { date: formatDate(item.scheduled_at, locale) })}</p>
+                </article>
+              ))
+            )}
           </div>
         </section>
       ) : null}
@@ -919,14 +977,22 @@ export function TeacherDashboardPageV2() {
                           onChange={(event) => setClassroomCourseToAssign(event.target.value)}
                         >
                           <option value="">{t("classroom.teacher.selectCourse")}</option>
-                          {lessons.map((lesson) => (
-                            <option key={lesson.id} value={lesson.id}>{lesson.title}</option>
+                          {classroomAssignableCourses.map((course) => (
+                            <option key={course.id} value={course.id} disabled={course.isDemo}>{course.title}</option>
                           ))}
                         </select>
-                        <button type="button" className="secondary" onClick={() => void assignCourseToClassroom()} disabled={!classroomCourseToAssign || classroomSaving}>
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => void assignCourseToClassroom()}
+                          disabled={!classroomCourseToAssign || classroomSaving || selectedAssignableCourse?.isDemo}
+                        >
                           {t("classroom.teacher.assignCourse")}
                         </button>
                       </div>
+                      {!teacherCreatedCourses.some((course) => course.status === "PUBLISHED") ? (
+                        <p className="muted">{t("dashboards.teacher.courseEmpty")}</p>
+                      ) : null}
                       <div className="stack-list checkpoint-block">
                         {classroomDetail.courses.map((course) => (
                           <article key={`${classroomDetail.classroom.id}-${course.course_id}`} className="notification-item">
@@ -999,66 +1065,120 @@ export function TeacherDashboardPageV2() {
       ) : null}
 
       {activeTab === "courses" ? (
-        <section className="card portal-main-card">
-          <h3>{t("dashboards.teacher.coursesTitle")}</h3>
-          <div className="subject-grid">
-            {(lessons.length > 0
-              ? lessons.slice(0, 6).map((lesson, index) => ({
-                  key: lesson.id,
-                  title: lesson.title,
-                  meta: lesson.difficulty,
-                  active: index === 0,
-                }))
-              : [{
-                  key: "example-course",
-                  title: t("dashboards.teacher.course1"),
-                  meta: t("dashboards.teacher.courseMeta", { lessons: 1 }),
-                  active: true,
-                }]
-            ).map((course) => (
-              <article className={course.active ? "subject-card active" : "subject-card"} key={course.key}>
-                <strong>{course.title}</strong>
-                <span>{course.meta}</span>
-                {CLASSROOM_SYSTEM_ENABLED ? (
-                  <span className="muted">
-                    {(() => {
-                      const assignment = courseAssignments.find((item) => item.course_id === course.key);
-                      if (!assignment || assignment.classroom_names.length === 0) {
-                        return t("classroom.teacher.notAssigned");
-                      }
-                      return t("classroom.teacher.assignedTo", { classrooms: assignment.classroom_names.join(", ") });
-                    })()}
-                  </span>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        </section>
+        <TeacherCoursesTab />
       ) : null}
 
       {activeTab === "schedule" ? (
-        <section className="card portal-main-card">
-          <h3>{t("dashboards.teacher.scheduleTitle")}</h3>
-          <div className="stack-list">
-            {(scheduledRequests.length > 0 ? scheduledRequests : [{
-              id: "example-schedule",
-              student_user_id: "00000000-0000-0000-0000-000000000000",
-              tutor_user_id: null,
-              lesson_id: null,
-              topic: t("dashboards.teacher.course2"),
-              message: "",
-              preferred_at: null,
-              status: "SCHEDULED",
-              scheduled_at: new Date().toISOString(),
-              meeting_url: null,
-            } as AssistanceRequestItem])
-              .map((item) => (
-                <article className="notification-item" key={item.id}>
-                  <strong>{item.topic}</strong>
-                  <p>{t("dashboards.teacher.scheduledOn", { date: formatDate(item.scheduled_at, locale) })}</p>
+        <section className="portal-grid">
+          {/* ── Pending requests ── */}
+          <article className="card portal-main-card">
+            <div className="request-head-row checkpoint-block">
+              <h3>{t("dashboards.teacher.videoCallsPending")}</h3>
+              {pendingRequests.length > 0 && (
+                <span className="status-chip status-accent">{pendingRequests.length}</span>
+              )}
+            </div>
+
+            {pendingRequests.length === 0 && (
+              <p className="muted">{t("dashboards.teacher.videoCallsNoPending")}</p>
+            )}
+
+            <div className="stack-list">
+              {pendingRequests.map((item) => (
+                <article className="request-card" key={item.id}>
+                  <div className="request-head-row">
+                    <div>
+                      <strong>{item.topic}</strong>
+                      <p className="muted">{t("dashboards.teacher.videoCallsFrom")}: {item.student_user_id.slice(0, 8)}…</p>
+                      {item.message && <p className="muted">{item.message}</p>}
+                    </div>
+                    <span className="status-chip">{item.status}</span>
+                  </div>
+
+                  {/* inline date picker when scheduling */}
+                  {schedulingId === item.id ? (
+                    <div className="inline-actions checkpoint-block">
+                      <input
+                        type="datetime-local"
+                        value={scheduleDate}
+                        onChange={(e) => setScheduleDate(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void confirmSchedule(item.id)}
+                        disabled={!scheduleDate}
+                      >
+                        {t("callFlow.teacher.confirmDate")}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => { setSchedulingId(null); setScheduleDate(""); }}
+                      >
+                        {t("callFlow.teacher.cancel")}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="inline-actions checkpoint-block">
+                      <button type="button" onClick={() => void acceptNow(item.id)}>
+                        {t("callFlow.teacher.acceptNow")}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => { setSchedulingId(item.id); setScheduleDate(""); }}
+                      >
+                        {t("callFlow.teacher.setDate")}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => void rejectRequest(item.id)}
+                      >
+                        {t("callFlow.teacher.reject")}
+                      </button>
+                    </div>
+                  )}
                 </article>
               ))}
-          </div>
+            </div>
+          </article>
+
+          {/* ── Scheduled / upcoming sessions ── */}
+          <aside className="portal-side-column">
+            <article className="card portal-inner-card">
+              <h4>{t("dashboards.teacher.videoCallsScheduled")}</h4>
+
+              {scheduledRequests.length === 0 && (
+                <p className="muted">{t("dashboards.teacher.videoCallsNoScheduled")}</p>
+              )}
+
+              <div className="stack-list checkpoint-block">
+                {scheduledRequests.map((item) => (
+                  <article className="notification-item" key={item.id}>
+                    <strong>{item.topic}</strong>
+                    <p className="muted">{t("dashboards.teacher.scheduledOn", { date: formatDate(item.scheduled_at, locale) })}</p>
+                    {item.meeting_url && (
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => window.open(item.meeting_url!, "_blank", "noopener,noreferrer")}
+                      >
+                        {t("callFlow.teacher.openCall")}
+                      </button>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </article>
+
+            <article className="card portal-inner-card">
+              <p className="status-line">{status || t("dashboards.common.idle")}</p>
+              <button type="button" className="secondary" onClick={() => void loadAll()}>
+                {t("dashboards.common.refresh")}
+              </button>
+            </article>
+          </aside>
         </section>
       ) : null}
 

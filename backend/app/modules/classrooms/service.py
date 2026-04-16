@@ -16,6 +16,7 @@ from app.modules.classrooms.schemas import (
     ClassroomAssignedCourseListResponse,
     ClassroomAssignCourseRequest,
     ClassroomArchiveRequest,
+    ClassroomCourseRef,
     ClassroomCreateRequest,
     ClassroomDetailResponse,
     ClassroomItem,
@@ -78,6 +79,31 @@ def _issue_invite_code(session: Session) -> str:
         if existing is None:
             return normalized
     raise RuntimeError("invite code generation exhausted")
+
+
+def _resolve_course_summary(
+    session: Session,
+    *,
+    course_id: UUID,
+    locale: str,
+    teacher_id: UUID,
+    include_unpublished_course: bool,
+) -> tuple[str, str] | None:
+    from app.modules.study import repository as study_repository
+
+    lesson = study_repository.get_lesson(session, course_id)
+    if lesson is not None:
+        return (lesson.title_en if locale == "en" else lesson.title_ar, lesson.difficulty)
+
+    from app.modules.courses import repository as courses_repository
+
+    course = courses_repository.get_course_by_id(session, course_id)
+    if course is None or course.owner_user_id != teacher_id:
+        return None
+    if not include_unpublished_course and course.status != "PUBLISHED":
+        return None
+
+    return (course.title, "CUSTOM")
 
 
 def list_teacher_classrooms(
@@ -268,15 +294,44 @@ def list_student_classrooms(
             continue
         teacher = repository.get_user(session, classroom.teacher_id)
         teacher_name = teacher.email.split("@", 1)[0] if teacher is not None else str(classroom.teacher_id)
-        lessons = repository.list_active_lessons_for_classroom(session, classroom.id)
-        course_titles = [lesson.title_en if locale == "en" else lesson.title_ar for lesson in lessons]
+        course_refs: list[ClassroomCourseRef] = []
+        links = repository.list_classroom_course_links(session, classroom.id)
+        for link in links:
+            # Try PDF course first (has navigable ID)
+            from app.modules.courses import repository as courses_repository
+            course = courses_repository.get_course_by_id(session, link.course_id)
+            if course is not None:
+                course_refs.append(ClassroomCourseRef(
+                    id=course.id,
+                    title=course.title,
+                    language=course.language,
+                    kind="course",
+                ))
+                continue
+            # Fall back to legacy lesson lookup
+            summary = _resolve_course_summary(
+                session,
+                course_id=link.course_id,
+                locale=locale,
+                teacher_id=classroom.teacher_id,
+                include_unpublished_course=False,
+            )
+            if summary is None:
+                continue
+            title, _ = summary
+            course_refs.append(ClassroomCourseRef(
+                id=link.course_id,
+                title=title,
+                language="ar",
+                kind="lesson",
+            ))
         items.append(
             StudentClassroomItem(
                 classroom_id=classroom.id,
                 classroom_name=classroom.name,
                 teacher_name=teacher_name,
                 joined_at=enrollment.joined_at,
-                courses=course_titles,
+                courses=course_refs,
             )
         )
 
@@ -387,12 +442,27 @@ def assign_course_to_teacher_classroom(
     if classroom is None:
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "CLASSROOM_NOT_FOUND", locale)
 
+    summary = _resolve_course_summary(
+        session,
+        course_id=payload.course_id,
+        locale=locale,
+        teacher_id=current_user.user_id,
+        include_unpublished_course=True,
+    )
+
+    if summary is None:
+        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "LESSON_NOT_FOUND", locale)
+
+    from app.modules.courses import repository as courses_repository
     from app.modules.study import repository as study_repository
 
     lesson = study_repository.get_lesson(session, payload.course_id)
-
     if lesson is None:
-        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "LESSON_NOT_FOUND", locale)
+        teacher_course = courses_repository.get_course_by_id(session, payload.course_id)
+        if teacher_course is None or teacher_course.owner_user_id != current_user.user_id:
+            raise localized_http_exception(status.HTTP_404_NOT_FOUND, "LESSON_NOT_FOUND", locale)
+        if teacher_course.status != "PUBLISHED":
+            raise localized_http_exception(status.HTTP_409_CONFLICT, "COURSE_NOT_PUBLISHED", locale)
 
     repository.assign_course_to_classroom(session, classroom.id, payload.course_id)
     session.commit()
@@ -413,18 +483,23 @@ def get_teacher_classroom_courses(
         raise localized_http_exception(status.HTTP_404_NOT_FOUND, "CLASSROOM_NOT_FOUND", locale)
 
     links = repository.list_classroom_course_links(session, classroom.id)
-    from app.modules.study import repository as study_repository
-
     items: list[ClassroomAssignedCourseItem] = []
     for link in links:
-        lesson = study_repository.get_lesson(session, link.course_id)
-        if lesson is None:
+        summary = _resolve_course_summary(
+            session,
+            course_id=link.course_id,
+            locale=locale,
+            teacher_id=current_user.user_id,
+            include_unpublished_course=True,
+        )
+        if summary is None:
             continue
+        title, difficulty = summary
         items.append(
             ClassroomAssignedCourseItem(
-                course_id=lesson.id,
-                title=lesson.title_en if locale == "en" else lesson.title_ar,
-                difficulty=lesson.difficulty,
+                course_id=link.course_id,
+                title=title,
+                difficulty=difficulty,
                 assigned_at=link.assigned_at,
             )
         )
@@ -462,24 +537,29 @@ def list_teacher_course_assignments(
     _ensure_enabled(locale)
     _require_teacher(current_user, locale)
 
-    from app.modules.study import repository as study_repository
-
     classrooms = repository.list_teacher_classrooms(session, current_user.user_id)
     by_course: dict[UUID, TeacherCourseAssignmentItem] = {}
 
     for classroom in classrooms:
         links = repository.list_classroom_course_links(session, classroom.id)
         for link in links:
-            lesson = study_repository.get_lesson(session, link.course_id)
-            if lesson is None:
+            summary = _resolve_course_summary(
+                session,
+                course_id=link.course_id,
+                locale=locale,
+                teacher_id=current_user.user_id,
+                include_unpublished_course=True,
+            )
+            if summary is None:
                 continue
+            title, difficulty = summary
 
-            existing = by_course.get(lesson.id)
+            existing = by_course.get(link.course_id)
             if existing is None:
-                by_course[lesson.id] = TeacherCourseAssignmentItem(
-                    course_id=lesson.id,
-                    title=lesson.title_en if locale == "en" else lesson.title_ar,
-                    difficulty=lesson.difficulty,
+                by_course[link.course_id] = TeacherCourseAssignmentItem(
+                    course_id=link.course_id,
+                    title=title,
+                    difficulty=difficulty,
                     classroom_names=[classroom.name],
                 )
             elif classroom.name not in existing.classroom_names:

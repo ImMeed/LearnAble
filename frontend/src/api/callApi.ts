@@ -6,6 +6,11 @@ export async function createCallRoom(): Promise<string> {
   return res.data.room_id;
 }
 
+export async function fetchCallRoomStatus(roomId: string): Promise<{ exists: boolean; occupancy: number }> {
+  const res = await apiClient.get<{ room_id: string; exists: boolean; occupancy: number }>(`/calls/rooms/${roomId}/status`);
+  return { exists: !!res.data.exists, occupancy: Number(res.data.occupancy ?? 0) };
+}
+
 function cfg(lang: string | undefined) {
   return { headers: { "x-lang": lang === "en" ? "en" : "ar" } };
 }

@@ -3093,3 +3093,107 @@ html.sepia .adhd-compact-task {
     transform: none;
   }
 }
+
+/* ── Course reader: dyslexia/ADHD optimized ────────────────────────────────── */
+
+.course-reader-hero {
+  background: var(--chapter-color, var(--accent));
+  border-radius: 1rem;
+  padding: 2rem 2.5rem;
+  margin-bottom: 2rem;
+}
+
+.course-reader-chapter-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  margin-bottom: 0.5rem;
+}
+
+.course-reader-section-title {
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+.course-reader-chunk {
+  font-size: 1.2rem;
+  line-height: 1.85;
+  letter-spacing: 0.01em;
+  margin-bottom: 1.5rem;
+  max-width: 66ch;
+}
+
+.course-reader-progress-bar {
+  height: 10px;
+  border-radius: 99px;
+  background: var(--muted);
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.course-reader-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--primary);
+  transition: width 0.4s ease;
+}
+
+.course-reader-complete-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #22c55e22;
+  color: #16a34a;
+  border-radius: 99px;
+  padding: 0.35rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-top: 0.75rem;
+}
+
+/* Sidebar chapter group headers */
+.course-sidebar-chapter {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.5rem;
+  color: var(--muted-foreground);
+  border-top: 1px solid var(--border);
+  margin-top: 0.75rem;
+  border-radius: 4px;
+}
+
+.course-sidebar-chapter:first-child {
+  border-top: none;
+  margin-top: 0;
+}
+
+/* Chapter color bands — 6 rotating colors */
+.ch-color-0 { --chapter-color: #ede9fe; }
+.ch-color-1 { --chapter-color: #fef3c7; }
+.ch-color-2 { --chapter-color: #dcfce7; }
+.ch-color-3 { --chapter-color: #fee2e2; }
+.ch-color-4 { --chapter-color: #dbeafe; }
+.ch-color-5 { --chapter-color: #fce7f3; }
+
+/* Classroom group label on dashboard */
+.classroom-group-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin: 1.5rem 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.classroom-group-label:first-child {
+  margin-top: 0;
+}

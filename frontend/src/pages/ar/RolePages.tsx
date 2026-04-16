@@ -518,6 +518,17 @@ export function TeacherDashboardPage() {
   const [activeTab, setActiveTab] = useState<TeacherTab>("overview");
   const [attendanceNote, setAttendanceNote] = useState("");
 
+  const scheduledRequests = useMemo(() => {
+    const nowMs = Date.now();
+    return requests
+      .filter((item) => item.status === "SCHEDULED" && !!item.scheduled_at)
+      .filter((item) => {
+        const scheduledMs = Date.parse(item.scheduled_at ?? "");
+        return !Number.isNaN(scheduledMs) && scheduledMs >= nowMs;
+      })
+      .sort((a, b) => Date.parse(a.scheduled_at ?? "") - Date.parse(b.scheduled_at ?? ""));
+  }, [requests]);
+
   const loadAll = async () => {
     setStatus(t("dashboards.common.loading"));
     try {
@@ -722,14 +733,13 @@ export function TeacherDashboardPage() {
         <section className="card portal-main-card">
           <h3>{t("dashboards.teacher.scheduleTitle")}</h3>
           <div className="stack-list">
-            {requests
-              .filter((item) => item.scheduled_at)
-              .map((item) => (
+            {scheduledRequests.map((item) => (
                 <article className="notification-item" key={item.id}>
                   <strong>{item.topic}</strong>
                   <p>{t("dashboards.teacher.scheduledOn", { date: formatDate(item.scheduled_at, locale) })}</p>
                 </article>
               ))}
+            {scheduledRequests.length === 0 ? <p className="muted">{t("dashboards.teacher.videoCallsNoScheduled")}</p> : null}
           </div>
         </section>
       ) : null}

@@ -112,12 +112,19 @@ class TeacherCourseAssignmentListResponse(BaseModel):
     items: list[TeacherCourseAssignmentItem] = []
 
 
+class ClassroomCourseRef(BaseModel):
+    id: UUID
+    title: str
+    language: str
+    kind: str = "course"  # "course" = PDF course, "lesson" = legacy lesson
+
+
 class StudentClassroomItem(BaseModel):
     classroom_id: UUID
     classroom_name: str
     teacher_name: str
     joined_at: datetime
-    courses: list[str] = []
+    courses: list[ClassroomCourseRef] = []
 
 
 class StudentClassroomListResponse(BaseModel):

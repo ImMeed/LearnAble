@@ -16,6 +16,9 @@ import { PsychologistDashboardPageV2 } from "./pages/PsychologistDashboard";
 import { AdminDashboardPageV2 } from "./pages/AdminDashboard";
 import { PhaseCheckpointPage } from "../pages/checkpoint/PhaseCheckpointPage";
 import { AuthenticatedHomePage } from "../pages/AuthenticatedHomePage";
+import { TeacherCourseReviewPage } from "./pages/TeacherCourseReviewPage";
+import { StudentCoursesListPage } from "./pages/StudentCoursesListPage";
+import { StudentCoursePage } from "./pages/StudentCoursePage";
 
 function PlaceholderPage({ titleKey }: { titleKey: string }) {
   const { t } = useTranslation();
@@ -261,6 +264,15 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  // Teacher course review
+  { path: "/ar/teacher/courses/:courseId/review", element: <ProtectedRoute roles={["ROLE_TUTOR"]}><TeacherCourseReviewPage /></ProtectedRoute> },
+  { path: "/en/teacher/courses/:courseId/review", element: <ProtectedRoute roles={["ROLE_TUTOR"]}><TeacherCourseReviewPage /></ProtectedRoute> },
+  // Student course list
+  { path: "/ar/student/courses", element: <ProtectedRoute roles={["ROLE_STUDENT"]}><StudentCoursesListPage /></ProtectedRoute> },
+  { path: "/en/student/courses", element: <ProtectedRoute roles={["ROLE_STUDENT"]}><StudentCoursesListPage /></ProtectedRoute> },
+  // Student course reader
+  { path: "/ar/student/courses/:courseId", element: <ProtectedRoute roles={["ROLE_STUDENT"]}><StudentCoursePage /></ProtectedRoute> },
+  { path: "/en/student/courses/:courseId", element: <ProtectedRoute roles={["ROLE_STUDENT"]}><StudentCoursePage /></ProtectedRoute> },
   { path: "/ar/forum", element: <PlaceholderPage titleKey="nav.forum" /> },
   { path: "/ar/quizzes", element: <PlaceholderPage titleKey="nav.quizzes" /> },
   { path: "/ar/games", element: <PlaceholderPage titleKey="nav.games" /> },

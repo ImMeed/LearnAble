@@ -43,6 +43,12 @@ class RoomResponse(BaseModel):
     room_id: str
 
 
+class RoomStatusResponse(BaseModel):
+    room_id: str
+    exists: bool
+    occupancy: int
+
+
 async def _cleanup_stale_rooms() -> None:
     """Background task: delete rooms with 0 active peers that have been idle too long."""
     while True:
@@ -71,6 +77,14 @@ async def create_room(current_user: CurrentUser = Depends(get_current_user)) -> 
     }
     logger.info("Room created", extra={"room_id": room_id, "owner": str(current_user.user_id)})
     return RoomResponse(room_id=room_id)
+
+
+@http_router.get("/rooms/{room_id}/status", response_model=RoomStatusResponse)
+async def get_room_status(room_id: str, current_user: CurrentUser = Depends(get_current_user)) -> RoomStatusResponse:
+    _ = current_user
+    exists = room_id in room_registry
+    occupancy = len(rooms.get(room_id, [])) if exists else 0
+    return RoomStatusResponse(room_id=room_id, exists=exists, occupancy=occupancy)
 
 
 # ── WebSocket router ───────────────────────────────────────────────────────────
@@ -107,13 +121,31 @@ async def call_websocket(websocket: WebSocket, room_id: str, token: str = Query(
     if room_id not in rooms:
         rooms[room_id] = []
 
+    # Reconnect-safe behavior: if the same authenticated user opens a new socket
+    # (e.g., tab refresh / strict mode / flaky network), replace the old socket.
+    if user_id is not None:
+        replaced: list[WebSocket] = []
+        retained: list[Tuple[WebSocket, Optional[str]]] = []
+        for sock, uid in rooms[room_id]:
+            if uid == user_id:
+                replaced.append(sock)
+            else:
+                retained.append((sock, uid))
+        rooms[room_id] = retained
+        for old_sock in replaced:
+            try:
+                await old_sock.close(code=1000, reason="Replaced by newer connection")
+            except Exception:
+                pass
+
     if len(rooms[room_id]) >= 2:
         logger.warning("Room full, rejecting connection", extra={"room_id": room_id})
         await websocket.send_json({"type": "room_full"})
         await websocket.close()
         return
 
-    is_initiator = len(rooms[room_id]) == 1
+    # First peer in the room is initiator.
+    is_initiator = len(rooms[room_id]) == 0
     rooms[room_id].append((websocket, user_id))
 
     logger.info("User joined room", extra={"room_id": room_id, "user_id": user_id, "occupancy": len(rooms[room_id])})
@@ -166,9 +198,20 @@ async def call_websocket(websocket: WebSocket, room_id: str, token: str = Query(
                     continue
 
                 logger.debug("Relaying signal", extra={"room_id": room_id, "type": msg_type})
+                disconnected_sockets: list[WebSocket] = []
                 for peer_socket, _ in rooms[room_id]:
                     if peer_socket != websocket:
-                        await peer_socket.send_text(data)
+                        try:
+                            await peer_socket.send_text(data)
+                        except Exception:
+                            disconnected_sockets.append(peer_socket)
+
+                if disconnected_sockets and room_id in rooms:
+                    rooms[room_id] = [
+                        (sock, uid)
+                        for sock, uid in rooms[room_id]
+                        if sock not in disconnected_sockets
+                    ]
             except json.JSONDecodeError:
                 logger.warning("Invalid JSON received", extra={"room_id": room_id})
 
@@ -178,11 +221,13 @@ async def call_websocket(websocket: WebSocket, room_id: str, token: str = Query(
             rooms[room_id] = [(sock, uid) for sock, uid in rooms[room_id] if sock != websocket]
 
             if len(rooms[room_id]) == 1:
-                remaining_peer_socket, _ = rooms[room_id][0]
-                try:
-                    await remaining_peer_socket.send_json({"type": "peer_left"})
-                except Exception:
-                    pass
+                remaining_peer_socket, remaining_uid = rooms[room_id][0]
+                # Do not emit peer_left on same-user reconnect replacement.
+                if remaining_uid != user_id:
+                    try:
+                        await remaining_peer_socket.send_json({"type": "peer_left"})
+                    except Exception:
+                        pass
 
             if len(rooms[room_id]) == 0:
                 del rooms[room_id]
