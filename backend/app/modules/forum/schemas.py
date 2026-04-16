@@ -126,3 +126,73 @@ class ForumModerationResponse(BaseModel):
     target_id: UUID
     target_status: ForumPostStatus | None
     is_locked: bool | None
+
+
+class ForumCategory(StrEnum):
+    TIPS = "tips"
+    ASK = "ask"
+    RESOURCES = "resources"
+
+
+class ForumAuthorItem(BaseModel):
+    id: UUID
+    role: str
+    display_name: str
+
+
+class ForumFeedPostCreateRequest(BaseModel):
+    category: ForumCategory
+    title: str = Field(min_length=3, max_length=220)
+    content: str = Field(min_length=3, max_length=4000)
+
+
+class ForumReplyCreateRequest(BaseModel):
+    content: str = Field(min_length=2, max_length=2000)
+
+
+class ForumFeedPostItem(BaseModel):
+    id: UUID
+    category: ForumCategory
+    title: str
+    content: str
+    status: ForumPostStatus
+    is_pinned: bool
+    is_locked: bool
+    upvotes: int
+    downvotes: int
+    reply_count: int
+    can_pin: bool
+    author: ForumAuthorItem
+    created_at: datetime
+
+
+class ForumReplyItem(BaseModel):
+    id: UUID
+    content: str
+    status: ForumPostStatus
+    upvotes: int
+    downvotes: int
+    author: ForumAuthorItem
+    created_at: datetime
+
+
+class ForumFeedPostListResponse(BaseModel):
+    items: list[ForumFeedPostItem]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class ForumPostDetailResponse(BaseModel):
+    post: ForumFeedPostItem
+    replies: list[ForumReplyItem]
+
+
+class ForumPinRequest(BaseModel):
+    is_pinned: bool
+
+
+class ForumPinResponse(BaseModel):
+    post_id: UUID
+    is_pinned: bool

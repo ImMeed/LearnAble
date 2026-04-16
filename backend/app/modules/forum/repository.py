@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models.forum import (
@@ -14,6 +14,7 @@ from app.db.models.forum import (
     ForumTargetType,
     ForumVote,
 )
+from app.db.models.users import User
 
 
 def list_spaces(session: Session, active_only: bool = True) -> list[ForumSpace]:
@@ -48,6 +49,25 @@ def get_space_by_id(session: Session, space_id: UUID) -> ForumSpace | None:
     return session.get(ForumSpace, space_id)
 
 
+def get_space_by_slug(session: Session, slug: str) -> ForumSpace | None:
+    stmt = select(ForumSpace).where(ForumSpace.slug == slug, ForumSpace.is_active.is_(True))
+    return session.scalar(stmt)
+
+
+def list_spaces_by_slugs(session: Session, slugs: list[str]) -> list[ForumSpace]:
+    if not slugs:
+        return []
+    stmt = select(ForumSpace).where(ForumSpace.slug.in_(slugs), ForumSpace.is_active.is_(True))
+    return list(session.scalars(stmt))
+
+
+def list_spaces_by_ids(session: Session, space_ids: list[UUID]) -> list[ForumSpace]:
+    if not space_ids:
+        return []
+    stmt = select(ForumSpace).where(ForumSpace.id.in_(space_ids))
+    return list(session.scalars(stmt))
+
+
 def list_posts(session: Session, space_id: UUID, include_moderated: bool) -> list[ForumPost]:
     stmt = select(ForumPost).where(ForumPost.space_id == space_id).order_by(ForumPost.created_at.desc())
     if not include_moderated:
@@ -73,11 +93,53 @@ def get_post_by_id(session: Session, post_id: UUID) -> ForumPost | None:
     return session.get(ForumPost, post_id)
 
 
+def list_posts_for_spaces(
+    session: Session,
+    space_ids: list[UUID],
+    *,
+    include_moderated: bool,
+    limit: int,
+    offset: int,
+) -> list[ForumPost]:
+    if not space_ids:
+        return []
+    stmt = select(ForumPost).where(ForumPost.space_id.in_(space_ids))
+    if not include_moderated:
+        stmt = stmt.where(ForumPost.status == ForumPostStatus.ACTIVE)
+    stmt = stmt.order_by(ForumPost.is_pinned.desc(), ForumPost.created_at.desc()).limit(limit).offset(offset)
+    return list(session.scalars(stmt))
+
+
+def count_posts_for_spaces(session: Session, space_ids: list[UUID], *, include_moderated: bool) -> int:
+    if not space_ids:
+        return 0
+    stmt = select(func.count(ForumPost.id)).where(ForumPost.space_id.in_(space_ids))
+    if not include_moderated:
+        stmt = stmt.where(ForumPost.status == ForumPostStatus.ACTIVE)
+    return int(session.scalar(stmt) or 0)
+
+
 def list_comments(session: Session, post_id: UUID, include_moderated: bool) -> list[ForumComment]:
     stmt = select(ForumComment).where(ForumComment.post_id == post_id).order_by(ForumComment.created_at.asc())
     if not include_moderated:
         stmt = stmt.where(ForumComment.status == ForumPostStatus.ACTIVE)
     return list(session.scalars(stmt))
+
+
+def count_comments_for_posts(
+    session: Session,
+    post_ids: list[UUID],
+    *,
+    include_moderated: bool,
+) -> dict[UUID, int]:
+    if not post_ids:
+        return {}
+    stmt = select(ForumComment.post_id, func.count(ForumComment.id)).where(ForumComment.post_id.in_(post_ids))
+    if not include_moderated:
+        stmt = stmt.where(ForumComment.status == ForumPostStatus.ACTIVE)
+    stmt = stmt.group_by(ForumComment.post_id)
+    rows = session.execute(stmt).all()
+    return {row[0]: int(row[1]) for row in rows}
 
 
 def create_comment(session: Session, post_id: UUID, author_user_id: UUID, content: str) -> ForumComment:
@@ -94,6 +156,13 @@ def create_comment(session: Session, post_id: UUID, author_user_id: UUID, conten
 
 def get_comment_by_id(session: Session, comment_id: UUID) -> ForumComment | None:
     return session.get(ForumComment, comment_id)
+
+
+def list_users_by_ids(session: Session, user_ids: list[UUID]) -> dict[UUID, User]:
+    if not user_ids:
+        return {}
+    stmt = select(User).where(User.id.in_(user_ids))
+    return {user.id: user for user in session.scalars(stmt)}
 
 
 def get_vote(session: Session, user_id: UUID, target_type: ForumTargetType, target_id: UUID) -> ForumVote | None:
@@ -131,6 +200,13 @@ def upsert_vote(
 def update_post_vote_totals(session: Session, post: ForumPost, up_delta: int, down_delta: int) -> ForumPost:
     post.upvotes = max(0, post.upvotes + up_delta)
     post.downvotes = max(0, post.downvotes + down_delta)
+    session.add(post)
+    session.flush()
+    return post
+
+
+def set_post_pin(session: Session, post: ForumPost, is_pinned: bool) -> ForumPost:
+    post.is_pinned = is_pinned
     session.add(post)
     session.flush()
     return post

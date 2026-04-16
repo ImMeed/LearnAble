@@ -55,6 +55,7 @@ class ForumPost(Base):
     status: Mapped[ForumPostStatus] = mapped_column(
         Enum(ForumPostStatus, name="forum_post_status"), nullable=False, default=ForumPostStatus.ACTIVE
     )
+    is_pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     upvotes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     downvotes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

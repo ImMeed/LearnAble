@@ -6,18 +6,29 @@ from sqlalchemy.orm import Session
 from app.core.i18n import localized_http_exception
 from app.core.roles import UserRole
 from app.core.security import CurrentUser
-from app.db.models.forum import ForumPostStatus, ForumReportStatus, ForumTargetType
+from app.db.models.forum import ForumPostStatus, ForumReportStatus, ForumSpace, ForumTargetType
+from app.db.models.users import User
 from app.modules.forum import repository
 from app.modules.forum.schemas import (
+    ForumAuthorItem,
+    ForumCategory,
     ForumCommentCreateRequest,
     ForumCommentItem,
     ForumCommentListResponse,
+    ForumFeedPostCreateRequest,
+    ForumFeedPostItem,
+    ForumFeedPostListResponse,
     ForumModerationAction,
     ForumModerationRequest,
     ForumModerationResponse,
+    ForumPinRequest,
+    ForumPinResponse,
     ForumPostCreateRequest,
+    ForumPostDetailResponse,
     ForumPostItem,
     ForumPostListResponse,
+    ForumReplyCreateRequest,
+    ForumReplyItem,
     ForumReportCreateRequest,
     ForumReportItem,
     ForumReportListResponse,
@@ -27,6 +38,28 @@ from app.modules.forum.schemas import (
     ForumVoteResponse,
     SpaceListResponse,
 )
+
+
+_CATEGORY_TO_SPACE_SLUG: dict[ForumCategory, str] = {
+    ForumCategory.TIPS: "tips",
+    ForumCategory.ASK: "ask",
+    ForumCategory.RESOURCES: "resources",
+}
+
+_SPACE_SLUG_TO_CATEGORY: dict[str, ForumCategory] = {slug: category for category, slug in _CATEGORY_TO_SPACE_SLUG.items()}
+
+_CATEGORY_WRITE_ROLES: dict[ForumCategory, set[UserRole]] = {
+    ForumCategory.TIPS: {UserRole.ROLE_PARENT, UserRole.ROLE_TUTOR, UserRole.ROLE_PSYCHOLOGIST},
+    ForumCategory.ASK: {
+        UserRole.ROLE_STUDENT,
+        UserRole.ROLE_PARENT,
+        UserRole.ROLE_TUTOR,
+        UserRole.ROLE_PSYCHOLOGIST,
+    },
+    ForumCategory.RESOURCES: {UserRole.ROLE_TUTOR, UserRole.ROLE_PSYCHOLOGIST},
+}
+
+_PIN_ROLES = {UserRole.ROLE_TUTOR, UserRole.ROLE_PSYCHOLOGIST}
 
 
 def _is_moderator(current_user: CurrentUser) -> bool:
@@ -84,6 +117,70 @@ def _map_report(item) -> ForumReportItem:
         created_at=item.created_at,
         reviewed_at=item.reviewed_at,
     )
+
+
+def _resolve_role(current_user: CurrentUser, locale: str) -> UserRole:
+    try:
+        return UserRole(current_user.role)
+    except ValueError as exc:
+        raise localized_http_exception(status.HTTP_403_FORBIDDEN, "FORBIDDEN", locale) from exc
+
+
+def _display_name_from_email(email: str) -> str:
+    local = email.split("@", maxsplit=1)[0].strip()
+    return local or "learnable-user"
+
+
+def _map_author(user_id: UUID, user: User | None) -> ForumAuthorItem:
+    if user is None:
+        return ForumAuthorItem(id=user_id, role="ROLE_STUDENT", display_name="learnable-user")
+    return ForumAuthorItem(id=user.id, role=str(user.role), display_name=_display_name_from_email(user.email))
+
+
+def _map_feed_post(
+    *,
+    post,
+    category: ForumCategory,
+    author: ForumAuthorItem,
+    reply_count: int,
+    can_pin: bool,
+) -> ForumFeedPostItem:
+    return ForumFeedPostItem(
+        id=post.id,
+        category=category,
+        title=post.title,
+        content=post.content,
+        status=post.status,
+        is_pinned=post.is_pinned,
+        is_locked=post.is_locked,
+        upvotes=post.upvotes,
+        downvotes=post.downvotes,
+        reply_count=reply_count,
+        can_pin=can_pin,
+        author=author,
+        created_at=post.created_at,
+    )
+
+
+def _category_from_space_slug(slug: str) -> ForumCategory | None:
+    return _SPACE_SLUG_TO_CATEGORY.get(slug)
+
+
+def _validate_category_write_access(category: ForumCategory, current_user: CurrentUser, locale: str) -> UserRole:
+    role = _resolve_role(current_user, locale)
+    if role not in _CATEGORY_WRITE_ROLES[category]:
+        raise localized_http_exception(status.HTTP_403_FORBIDDEN, "FORUM_CATEGORY_FORBIDDEN", locale)
+    return role
+
+
+def _forum_spaces_by_category(session: Session) -> dict[ForumCategory, ForumSpace]:
+    spaces = repository.list_spaces_by_slugs(session, list(_CATEGORY_TO_SPACE_SLUG.values()))
+    mapping: dict[ForumCategory, ForumSpace] = {}
+    for space in spaces:
+        category = _category_from_space_slug(space.slug)
+        if category is not None:
+            mapping[category] = space
+    return mapping
 
 
 def list_spaces(session: Session, locale: str) -> SpaceListResponse:
@@ -337,3 +434,222 @@ def moderate_report(
         target_status=target_status,
         is_locked=is_locked,
     )
+
+
+def list_feed_posts(
+    session: Session,
+    current_user: CurrentUser,
+    locale: str,
+    *,
+    category: ForumCategory | None,
+    page: int,
+    page_size: int,
+    include_moderated: bool,
+) -> ForumFeedPostListResponse:
+    role = _resolve_role(current_user, locale)
+    can_pin = role in _PIN_ROLES
+    moderated = include_moderated and _is_moderator(current_user)
+
+    spaces_by_category = _forum_spaces_by_category(session)
+    if category is not None:
+        target_space = spaces_by_category.get(category)
+        if target_space is None:
+            raise localized_http_exception(status.HTTP_404_NOT_FOUND, "FORUM_CATEGORY_NOT_FOUND", locale)
+        spaces = [target_space]
+    else:
+        spaces = list(spaces_by_category.values())
+
+    if not spaces:
+        return ForumFeedPostListResponse(items=[], total=0, page=1, page_size=page_size, total_pages=1)
+
+    space_ids = [space.id for space in spaces]
+    space_to_category = {space.id: _category_from_space_slug(space.slug) for space in spaces}
+
+    total = repository.count_posts_for_spaces(session, space_ids, include_moderated=moderated)
+    total_pages = max(1, ((total - 1) // page_size) + 1) if total > 0 else 1
+    safe_page = min(page, total_pages)
+    offset = (safe_page - 1) * page_size
+
+    posts = repository.list_posts_for_spaces(
+        session,
+        space_ids,
+        include_moderated=moderated,
+        limit=page_size,
+        offset=offset,
+    )
+    post_ids = [item.id for item in posts]
+    author_ids = list({item.author_user_id for item in posts})
+
+    comment_counts = repository.count_comments_for_posts(session, post_ids, include_moderated=moderated)
+    users_by_id = repository.list_users_by_ids(session, author_ids)
+
+    items: list[ForumFeedPostItem] = []
+    for post in posts:
+        post_category = space_to_category.get(post.space_id)
+        if post_category is None:
+            continue
+        author = _map_author(post.author_user_id, users_by_id.get(post.author_user_id))
+        items.append(
+            _map_feed_post(
+                post=post,
+                category=post_category,
+                author=author,
+                reply_count=comment_counts.get(post.id, 0),
+                can_pin=can_pin,
+            )
+        )
+
+    return ForumFeedPostListResponse(
+        items=items,
+        total=total,
+        page=safe_page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
+
+
+def create_feed_post(
+    session: Session,
+    payload: ForumFeedPostCreateRequest,
+    current_user: CurrentUser,
+    locale: str,
+) -> ForumFeedPostItem:
+    _validate_category_write_access(payload.category, current_user, locale)
+
+    slug = _CATEGORY_TO_SPACE_SLUG[payload.category]
+    space = repository.get_space_by_slug(session, slug)
+    if space is None:
+        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "FORUM_CATEGORY_NOT_FOUND", locale)
+
+    post = repository.create_post(
+        session=session,
+        space_id=space.id,
+        author_user_id=current_user.user_id,
+        title=payload.title.strip(),
+        content=payload.content.strip(),
+    )
+
+    author = repository.list_users_by_ids(session, [post.author_user_id]).get(post.author_user_id)
+    session.commit()
+
+    return _map_feed_post(
+        post=post,
+        category=payload.category,
+        author=_map_author(post.author_user_id, author),
+        reply_count=0,
+        can_pin=_resolve_role(current_user, locale) in _PIN_ROLES,
+    )
+
+
+def get_feed_post_detail(
+    session: Session,
+    post_id: UUID,
+    current_user: CurrentUser,
+    locale: str,
+    *,
+    include_moderated: bool,
+) -> ForumPostDetailResponse:
+    role = _resolve_role(current_user, locale)
+    moderated = include_moderated and _is_moderator(current_user)
+
+    post = repository.get_post_by_id(session, post_id)
+    if post is None:
+        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "FORUM_POST_NOT_FOUND", locale)
+
+    if post.status != ForumPostStatus.ACTIVE and not _is_moderator(current_user):
+        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "FORUM_POST_NOT_FOUND", locale)
+
+    space = repository.get_space_by_id(session, post.space_id)
+    if space is None:
+        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "FORUM_CATEGORY_NOT_FOUND", locale)
+    category = _category_from_space_slug(space.slug)
+    if category is None:
+        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "FORUM_CATEGORY_NOT_FOUND", locale)
+
+    replies = repository.list_comments(session, post.id, include_moderated=moderated)
+    author_ids = list({post.author_user_id, *[reply.author_user_id for reply in replies]})
+    users_by_id = repository.list_users_by_ids(session, author_ids)
+
+    mapped_post = _map_feed_post(
+        post=post,
+        category=category,
+        author=_map_author(post.author_user_id, users_by_id.get(post.author_user_id)),
+        reply_count=len(replies),
+        can_pin=role in _PIN_ROLES,
+    )
+
+    mapped_replies = [
+        ForumReplyItem(
+            id=reply.id,
+            content=reply.content,
+            status=reply.status,
+            upvotes=reply.upvotes,
+            downvotes=reply.downvotes,
+            author=_map_author(reply.author_user_id, users_by_id.get(reply.author_user_id)),
+            created_at=reply.created_at,
+        )
+        for reply in replies
+    ]
+    return ForumPostDetailResponse(post=mapped_post, replies=mapped_replies)
+
+
+def create_feed_reply(
+    session: Session,
+    post_id: UUID,
+    payload: ForumReplyCreateRequest,
+    current_user: CurrentUser,
+    locale: str,
+) -> ForumReplyItem:
+    post = repository.get_post_by_id(session, post_id)
+    if post is None or post.status != ForumPostStatus.ACTIVE:
+        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "FORUM_POST_NOT_FOUND", locale)
+    if post.is_locked:
+        raise localized_http_exception(status.HTTP_400_BAD_REQUEST, "FORUM_POST_LOCKED", locale)
+
+    space = repository.get_space_by_id(session, post.space_id)
+    if space is None:
+        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "FORUM_CATEGORY_NOT_FOUND", locale)
+    category = _category_from_space_slug(space.slug)
+    if category is None:
+        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "FORUM_CATEGORY_NOT_FOUND", locale)
+    _validate_category_write_access(category, current_user, locale)
+
+    reply = repository.create_comment(
+        session=session,
+        post_id=post_id,
+        author_user_id=current_user.user_id,
+        content=payload.content.strip(),
+    )
+
+    author = repository.list_users_by_ids(session, [reply.author_user_id]).get(reply.author_user_id)
+    session.commit()
+
+    return ForumReplyItem(
+        id=reply.id,
+        content=reply.content,
+        status=reply.status,
+        upvotes=reply.upvotes,
+        downvotes=reply.downvotes,
+        author=_map_author(reply.author_user_id, author),
+        created_at=reply.created_at,
+    )
+
+
+def set_post_pin(
+    session: Session,
+    post_id: UUID,
+    payload: ForumPinRequest,
+    current_user: CurrentUser,
+    locale: str,
+) -> ForumPinResponse:
+    role = _resolve_role(current_user, locale)
+    if role not in _PIN_ROLES:
+        raise localized_http_exception(status.HTTP_403_FORBIDDEN, "FORBIDDEN", locale)
+
+    post = repository.get_post_by_id(session, post_id)
+    if post is None:
+        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "FORUM_POST_NOT_FOUND", locale)
+
+    repository.set_post_pin(session, post, payload.is_pinned)
+    session.commit()
+    return ForumPinResponse(post_id=post.id, is_pinned=post.is_pinned)

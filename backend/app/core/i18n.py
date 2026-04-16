@@ -217,6 +217,14 @@ MESSAGES = {
         "ar": "تم قفل هذا المنشور ولا يقبل تعليقات جديدة.",
         "en": "This post is locked and does not accept new comments.",
     },
+    "FORUM_CATEGORY_NOT_FOUND": {
+        "ar": "تصنيف المنتدى غير موجود.",
+        "en": "Forum category was not found.",
+    },
+    "FORUM_CATEGORY_FORBIDDEN": {
+        "ar": "لا يمكنك النشر في هذا التصنيف.",
+        "en": "You cannot post in this category.",
+    },
     "PROGRESS_CONFLICT": {
         "ar": "هذا القسم مكتمل بالفعل.",
         "en": "This section is already marked complete.",
