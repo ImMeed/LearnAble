@@ -239,8 +239,8 @@ export function useWebRTC({
   const negotiationRetryRef = useRef(0);
   const [peerCycle, setPeerCycle] = useState(0);
   const MAX_PEER_RETRIES = 3;
-  const MAX_NEGOTIATION_RETRIES = 3;
-  const NEGOTIATION_TIMEOUT_MS = 9000;
+  const MAX_NEGOTIATION_RETRIES = 2;
+  const NEGOTIATION_TIMEOUT_MS = 4500;
 
   const destroyPeer = useCallback(() => {
     if (peerRef.current) {
@@ -275,9 +275,10 @@ export function useWebRTC({
     if (isInitiator === null) return;
     if (!localStream && !mediaError) return; // getUserMedia still in progress
 
-    // Create the peer as soon as role is known. Non-initiator peers can safely
-    // exist before receiving an offer; incoming signals are queued and applied.
-    const shouldCreate = isInitiator === true || isInitiator === false;
+    // Non-initiator can create immediately and wait for an offer.
+    // Initiator should wait until the signaling server confirms a peer joined,
+    // otherwise its first offer can be emitted before anyone is listening.
+    const shouldCreate = isInitiator === true ? peerJoinCount > 0 : isInitiator === false;
 
     if (!shouldCreate) return;
 
@@ -377,12 +378,16 @@ export function useWebRTC({
         peerRef.current?.destroy();
         peerRef.current = null;
         signalQueueRef.current = [];
+        if (negotiationTimerRef.current) {
+          clearTimeout(negotiationTimerRef.current);
+          negotiationTimerRef.current = null;
+        }
         retryTimerRef.current = setTimeout(() => {
           setPeerError(null);
           setRemoteStream(null);
           setPeerConnected(false);
-          // Re-trigger peer creation by resetting state
-          setPeerError(null);
+          // Re-trigger peer creation.
+          setPeerCycle((c) => c + 1);
         }, delay);
       } else {
         setPeerError(err.message);

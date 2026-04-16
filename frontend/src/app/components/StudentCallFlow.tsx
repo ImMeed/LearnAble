@@ -23,6 +23,7 @@ export function StudentCallFlow({ lang }: { lang?: string }) {
 
   const [teachers, setTeachers] = useState<TeacherPresenceItem[]>([]);
   const [latestRequest, setLatestRequest] = useState<AssistanceRequestItem | null>(null);
+  const [scheduledCallReady, setScheduledCallReady] = useState(false);
   const [sending, setSending] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [joined, setJoined] = useState(false);
@@ -35,29 +36,39 @@ export function StudentCallFlow({ lang }: { lang?: string }) {
     return match?.[1] ?? null;
   };
 
-  const isScheduledRequestJoinable = async (request: AssistanceRequestItem): Promise<boolean> => {
-    if (request.status !== "SCHEDULED" || !request.meeting_url) return false;
+  const evaluateScheduledRequest = async (
+    request: AssistanceRequestItem,
+  ): Promise<{ active: boolean; ready: boolean }> => {
+    if (request.status !== "SCHEDULED" || !request.meeting_url) {
+      return { active: false, ready: false };
+    }
 
     if (request.scheduled_at) {
       const scheduledMs = new Date(request.scheduled_at).getTime();
       if (!Number.isNaN(scheduledMs)) {
         const ageMinutes = (Date.now() - scheduledMs) / 60_000;
-        if (ageMinutes > SCHEDULED_MAX_AGE_MINUTES) return false;
+        if (ageMinutes > SCHEDULED_MAX_AGE_MINUTES) {
+          return { active: false, ready: false };
+        }
       }
     }
 
     const roomId = extractRoomIdFromMeetingUrl(request.meeting_url);
     if (!roomId) {
       // External meeting URLs are considered valid.
-      return true;
+      return { active: true, ready: true };
     }
 
     try {
       const status = await fetchCallRoomStatus(roomId);
-      return status.exists;
+      if (!status.exists) {
+        return { active: false, ready: false };
+      }
+      // Only show Join when someone (teacher) is already in the room.
+      return { active: true, ready: status.occupancy > 0 };
     } catch {
       // If status check fails (network hiccup), do not force-join stale links.
-      return false;
+      return { active: false, ready: false };
     }
   };
 
@@ -75,24 +86,32 @@ export function StudentCallFlow({ lang }: { lang?: string }) {
       const items = await fetchMyAssistanceRequests(lang);
       if (items.length === 0) {
         setLatestRequest(null);
+        setScheduledCallReady(false);
         setJoined(false);
         return;
       }
 
       // Pick the first truly active request.
       let candidate: AssistanceRequestItem | null = null;
+      let candidateReady = false;
       for (const item of items.slice(0, 8)) {
         if (item.status === "REQUESTED") {
           candidate = item;
+          candidateReady = false;
           break;
         }
-        if (item.status === "SCHEDULED" && await isScheduledRequestJoinable(item)) {
-          candidate = item;
-          break;
+        if (item.status === "SCHEDULED") {
+          const scheduledState = await evaluateScheduledRequest(item);
+          if (scheduledState.active) {
+            candidate = item;
+            candidateReady = scheduledState.ready;
+            break;
+          }
         }
       }
 
       setLatestRequest(candidate);
+      setScheduledCallReady(candidate?.status === "SCHEDULED" ? candidateReady : false);
       if (!candidate) {
         setJoined(false);
       }
@@ -126,6 +145,7 @@ export function StudentCallFlow({ lang }: { lang?: string }) {
         lang,
       );
       setLatestRequest(req);
+      setScheduledCallReady(false);
       setStatusMsg(t("callFlow.requestSent"));
     } catch {
       setStatusMsg(t("callFlow.requestError"));
@@ -135,13 +155,13 @@ export function StudentCallFlow({ lang }: { lang?: string }) {
   };
 
   const joinCall = () => {
-    if (!latestRequest?.meeting_url) return;
+    if (!latestRequest?.meeting_url || !scheduledCallReady) return;
     setJoined(true);
     window.open(latestRequest.meeting_url, "_blank", "noopener,noreferrer");
   };
 
   const hasCallReady =
-    latestRequest?.status === "SCHEDULED" && !!latestRequest.meeting_url;
+    latestRequest?.status === "SCHEDULED" && !!latestRequest.meeting_url && scheduledCallReady;
 
   // COMPLETED with no meeting_url = teacher rejected (never scheduled a room)
   // COMPLETED with a meeting_url = call actually happened
@@ -200,6 +220,25 @@ export function StudentCallFlow({ lang }: { lang?: string }) {
           </div>
           <button type="button" className="scf-join-btn" onClick={joinCall}>
             {t("callFlow.joinCall")}
+          </button>
+        </section>
+      )}
+
+      {/* ── Step 3a-alt: teacher accepted, waiting for teacher to open room ── */}
+      {latestRequest?.status === "SCHEDULED" && !hasCallReady && !joined && (
+        <section className="scf-step" aria-live="polite">
+          <div className="scf-request-card">
+            <span className={statusChipClass(latestRequest.status)}>
+              {t("callFlow.statusScheduled")}
+            </span>
+            <p className="muted scf-hint">{t("callFlow.waitingTeacherToJoin")}</p>
+          </div>
+          <button
+            type="button"
+            className="secondary scf-new-btn"
+            onClick={() => setLatestRequest(null)}
+          >
+            {t("callFlow.newRequest")}
           </button>
         </section>
       )}

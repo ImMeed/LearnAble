@@ -152,7 +152,7 @@ export function useSignaling(roomId: string | undefined): UseSignalingReturn {
 
     isReconnectingRef.current = true;
     setIsReconnecting(true);
-    const delay = Math.pow(2, reconnectAttemptRef.current) * 1000;
+    const delay = Math.min(3000, Math.pow(2, reconnectAttemptRef.current) * 500);
     reconnectAttemptRef.current += 1;
 
     reconnectTimeoutRef.current = setTimeout(() => {

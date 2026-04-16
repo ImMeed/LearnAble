@@ -180,7 +180,16 @@ export function TeacherDashboardPageV2() {
   ];
 
   const pendingRequests = useMemo(() => requests.filter((item) => item.status === "REQUESTED"), [requests]);
-  const scheduledRequests = useMemo(() => requests.filter((item) => item.scheduled_at), [requests]);
+  const scheduledRequests = useMemo(() => {
+    const nowMs = Date.now();
+    return requests
+      .filter((item) => item.status === "SCHEDULED" && !!item.scheduled_at)
+      .filter((item) => {
+        const scheduledMs = Date.parse(item.scheduled_at ?? "");
+        return !Number.isNaN(scheduledMs) && scheduledMs >= nowMs;
+      })
+      .sort((a, b) => Date.parse(a.scheduled_at ?? "") - Date.parse(b.scheduled_at ?? ""));
+  }, [requests]);
 
   const topicCards = useMemo(() => {
     const topicCount = new Map<string, number>();
@@ -856,17 +865,16 @@ export function TeacherDashboardPageV2() {
           </div>
 
           <div className="stack-list checkpoint-block">
-            {(scheduledRequests.length > 0 ? scheduledRequests.slice(0, 1) : [{
-              id: "example-attendance",
-              topic: t("dashboards.teacher.course1"),
-              scheduled_at: new Date().toISOString(),
-              message: t("dashboards.teacher.readingLabToolGuidedHint"),
-            } as unknown as AssistanceRequestItem]).map((item) => (
-              <article className="notification-item" key={item.id}>
-                <strong>{item.topic}</strong>
-                <p>{t("dashboards.teacher.scheduledOn", { date: formatDate(item.scheduled_at, locale) })}</p>
-              </article>
-            ))}
+            {scheduledRequests.length === 0 ? (
+              <p className="muted">{t("dashboards.teacher.videoCallsNoScheduled")}</p>
+            ) : (
+              scheduledRequests.slice(0, 1).map((item) => (
+                <article className="notification-item" key={item.id}>
+                  <strong>{item.topic}</strong>
+                  <p>{t("dashboards.teacher.scheduledOn", { date: formatDate(item.scheduled_at, locale) })}</p>
+                </article>
+              ))
+            )}
           </div>
         </section>
       ) : null}
