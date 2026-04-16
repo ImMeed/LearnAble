@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 from sqlalchemy.orm import Session
 
 from app.modules.gamification import repository
@@ -62,6 +64,11 @@ def get_games(session: Session) -> list[dict]:
             "title": "تحدي التركيز",
             "description": "جلسة قصيرة بنمط بومودورو مع تتبع الإنجاز.",
         },
+        {
+            "key": "dyslexia_spelling",
+            "title": "تهجئة سمعية",
+            "description": "اسمع الكلمة واكتبها باستخدام لوحة مفاتيح داعمة لعسر القراءة.",
+        },
     ]
 
 
@@ -112,6 +119,61 @@ def get_progression(session: Session, user_id, locale: str) -> dict:
         "current_level": current_level,
         "next_level_xp": next_level_xp,
         "badges": badges,
+    }
+
+
+def _date_streak(activity_dates: set[date]) -> int:
+    if not activity_dates:
+        return 0
+
+    streak = 1
+    cursor = max(activity_dates)
+    while True:
+        previous_day = cursor.fromordinal(cursor.toordinal() - 1)
+        if previous_day not in activity_dates:
+            break
+        streak += 1
+        cursor = previous_day
+    return streak
+
+
+def _tracked_minutes_from_windows(windows: list[tuple[datetime, datetime]]) -> int:
+    minutes = 0
+    for started_at, completed_at in windows:
+        delta_seconds = int((completed_at - started_at).total_seconds())
+        if delta_seconds <= 0:
+            continue
+        minutes += delta_seconds // 60
+    return minutes
+
+
+def get_progress_summary(session: Session, user_id, locale: str) -> dict:
+    progression = get_progression(session, user_id, locale)
+    reading_stats = repository.get_completed_reading_lab_stats_for_user(session, user_id)
+    quiz_count = repository.get_completed_quiz_count_for_user(session, user_id)
+
+    reading_windows = repository.list_completed_reading_lab_windows_for_user(session, user_id)
+    quiz_windows = repository.list_completed_quiz_windows_for_user(session, user_id)
+    tracked_course_minutes = _tracked_minutes_from_windows(reading_windows + quiz_windows)
+
+    activity_dates = {completed_at.date() for _, completed_at in reading_windows + quiz_windows}
+    streak_days = _date_streak(activity_dates)
+
+    estimated_course_minutes = repository.count_completed_courses_for_user(session, user_id) * 25
+
+    return {
+        "completed_sessions": reading_stats["completed_sessions"],
+        "total_rounds_completed": reading_stats["total_rounds_completed"],
+        "games_completed": reading_stats["completed_sessions"],
+        "quizzes_completed": quiz_count,
+        "total_xp": progression["total_xp"],
+        "current_level": progression["current_level"],
+        "next_level_xp": progression["next_level_xp"],
+        "streak_days": streak_days,
+        "tracked_course_minutes": tracked_course_minutes,
+        "estimated_course_minutes": estimated_course_minutes,
+        "total_course_minutes": tracked_course_minutes + estimated_course_minutes,
+        "badges": progression["badges"],
     }
 
 

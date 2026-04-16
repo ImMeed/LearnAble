@@ -21,6 +21,7 @@ from app.modules.notifications.router import router as notifications_router
 from app.modules.psychologist.router import router as psychologist_router
 from app.modules.quiz.router import router as quiz_router
 from app.modules.reading_lab.router import router as reading_lab_router
+from app.modules.spelling.router import router as spelling_router
 from app.modules.study.router import router as study_router
 from app.modules.teacher.router import router as teacher_router
 from app.modules.users.router import router as users_router
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(study_router)
     app.include_router(quiz_router)
     app.include_router(reading_lab_router)
+    app.include_router(spelling_router)
     app.include_router(gamification_router)
     app.include_router(forum_router)
     app.include_router(library_router)

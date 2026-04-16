@@ -133,6 +133,18 @@ MESSAGES = {
         "ar": "نشاط مختبر القراءة المطلوب غير صالح.",
         "en": "The requested Reading Lab activity is invalid.",
     },
+    "SPELLING_ACTIVITY_NOT_FOUND": {
+        "ar": "نشاط الإملاء غير موجود حالياً.",
+        "en": "Spelling activity was not found.",
+    },
+    "SPELLING_SESSION_NOT_FOUND": {
+        "ar": "جلسة الإملاء غير موجودة.",
+        "en": "Spelling session was not found.",
+    },
+    "SPELLING_SESSION_COMPLETED": {
+        "ar": "تم إنهاء جلسة الإملاء مسبقاً.",
+        "en": "This spelling session has already been completed.",
+    },
     "READING_LAB_LINK_ID_NOT_FOUND": {
         "ar": "معرف ربط الطالب غير صحيح أو غير موجود.",
         "en": "Student link ID is invalid or was not found.",

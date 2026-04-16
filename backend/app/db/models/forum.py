@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -41,6 +41,7 @@ class ForumSpace(Base):
 
 class ForumPost(Base):
     __tablename__ = "forum_posts"
+    __table_args__ = (Index("ix_forum_posts_space", "space_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     space_id: Mapped[uuid.UUID] = mapped_column(
@@ -65,6 +66,7 @@ class ForumPost(Base):
 
 class ForumComment(Base):
     __tablename__ = "forum_comments"
+    __table_args__ = (Index("ix_forum_comments_post", "post_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     post_id: Mapped[uuid.UUID] = mapped_column(
@@ -89,6 +91,7 @@ class ForumVote(Base):
     __tablename__ = "forum_votes"
     __table_args__ = (
         UniqueConstraint("user_id", "target_type", "target_id", name="uq_forum_vote_user_target"),
+        Index("ix_forum_votes_target", "target_type", "target_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -106,6 +109,7 @@ class ForumVote(Base):
 
 class ForumReport(Base):
     __tablename__ = "forum_reports"
+    __table_args__ = (Index("ix_forum_reports_status", "status"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     target_type: Mapped[ForumTargetType] = mapped_column(

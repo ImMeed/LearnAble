@@ -37,6 +37,11 @@ class LessonDetailResponse(BaseModel):
     difficulty: str
 
 
+class CourseCompletionResponse(BaseModel):
+    lesson_id: UUID
+    completed: bool
+
+
 class AssistRequest(BaseModel):
     mode: Literal["voice", "summary", "explain", "qa"]
     question: str | None = Field(default=None, max_length=300)

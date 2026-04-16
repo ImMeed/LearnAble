@@ -14,6 +14,7 @@ from app.modules.study.schemas import (
     AssistResponse,
     AwarenessResponse,
     AwarenessTopic,
+    CourseCompletionResponse,
     FlashcardItem,
     FlashcardListResponse,
     LessonDetailResponse,
@@ -204,6 +205,25 @@ def get_lesson_reading_games(
         for game in games
     ]
     return ReadingGameListResponse(items=items)
+
+
+def mark_course_completed(
+    session: Session,
+    lesson_id: UUID,
+    locale: str,
+    current_user: CurrentUser,
+) -> CourseCompletionResponse:
+    lesson = _get_scoped_lesson(session, lesson_id, current_user)
+    if lesson is None:
+        raise localized_http_exception(status.HTTP_404_NOT_FOUND, "LESSON_NOT_FOUND", locale)
+
+    repository.mark_course_completed(
+        session,
+        student_user_id=current_user.user_id,
+        lesson_id=lesson_id,
+    )
+    session.commit()
+    return CourseCompletionResponse(lesson_id=lesson_id, completed=True)
 
 
 def get_awareness(locale: str) -> AwarenessResponse:

@@ -11,6 +11,7 @@ from app.modules.study.schemas import (
 	AssistRequest,
 	AssistResponse,
 	AwarenessResponse,
+	CourseCompletionResponse,
 	FlashcardListResponse,
 	LessonDetailResponse,
 	LessonListResponse,
@@ -27,6 +28,7 @@ from app.modules.study.service import (
 	get_lesson_flashcards,
 	get_lesson_reading_games,
 	get_lessons_for_user,
+	mark_course_completed,
 	submit_screening,
 )
 
@@ -96,6 +98,16 @@ def lesson_games(
 	session: Session = Depends(get_db_session),
 ) -> ReadingGameListResponse:
 	return get_lesson_reading_games(session, lesson_id, get_request_locale(request), current_user)
+
+
+@router.post("/lessons/{lesson_id}/complete", response_model=CourseCompletionResponse)
+def complete_lesson(
+	lesson_id: UUID,
+	request: Request,
+	current_user: CurrentUser = Depends(require_roles(UserRole.ROLE_STUDENT)),
+	session: Session = Depends(get_db_session),
+) -> CourseCompletionResponse:
+	return mark_course_completed(session, lesson_id, get_request_locale(request), current_user)
 
 
 @router.get("/awareness", response_model=AwarenessResponse)

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -37,6 +37,7 @@ class Lesson(Base):
 
 class LessonFlashcard(Base):
     __tablename__ = "lesson_flashcards"
+    __table_args__ = (Index("ix_lesson_flashcards_lesson_id", "lesson_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     lesson_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
@@ -49,6 +50,7 @@ class LessonFlashcard(Base):
 
 class LessonReadingGame(Base):
     __tablename__ = "lesson_reading_games"
+    __table_args__ = (Index("ix_lesson_reading_games_lesson_id", "lesson_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     lesson_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
@@ -58,3 +60,21 @@ class LessonReadingGame(Base):
     objective_en: Mapped[str] = mapped_column(String(500), nullable=False)
     words_json: Mapped[list[str]] = mapped_column("words", JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class StudentCourseCompletion(Base):
+    __tablename__ = "student_course_completions"
+    __table_args__ = (
+        UniqueConstraint("student_user_id", "lesson_id", name="uq_student_course_completion"),
+        Index("ix_student_course_completions_student", "student_user_id"),
+        Index("ix_student_course_completions_lesson", "lesson_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    student_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False
+    )
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

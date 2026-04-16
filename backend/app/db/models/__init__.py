@@ -11,7 +11,8 @@ from app.db.models.notifications import Notification
 from app.db.models.psychologist import PsychologistSupportConfirmation, TeacherQuestionnaire
 from app.db.models.quiz import Quiz, QuizAttempt, QuizQuestion
 from app.db.models.reading_lab import ReadingLabSession, ReadingSupportProfile
-from app.db.models.study import Lesson, LessonFlashcard, LessonReadingGame, StudentScreening
+from app.db.models.spelling import SpellingActivity, SpellingSession
+from app.db.models.study import Lesson, LessonFlashcard, LessonReadingGame, StudentCourseCompletion, StudentScreening
 from app.db.models.teacher import (
     StudentFeedbackPrompt,
     TeacherAssistanceRequest,
@@ -38,6 +39,7 @@ __all__ = [
     "Lesson",
     "LessonFlashcard",
     "LessonReadingGame",
+    "StudentCourseCompletion",
     "Notification",
     "PointTransaction",
     "PointsWallet",
@@ -47,6 +49,8 @@ __all__ = [
     "QuizQuestion",
     "ReadingLabSession",
     "ReadingSupportProfile",
+    "SpellingActivity",
+    "SpellingSession",
     "StudentParentLink",
     "StudentPsychologistLink",
     "StudentFeedbackPrompt",

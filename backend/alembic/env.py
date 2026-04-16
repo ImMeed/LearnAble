@@ -12,7 +12,25 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app.core.config import settings
 from app.db.base import Base
-from app.db.models import economy, forum, library, links, notifications, psychologist, quiz, study, teacher, users  # noqa: F401
+from app.db.models import (  # noqa: F401
+    classroom,
+    course,
+    course_last_visited,
+    economy,
+    forum,
+    library,
+    links,
+    notifications,
+    psychologist,
+    quiz,
+    quiz_attempt,
+    reading_lab,
+    section_progress,
+    spelling,
+    study,
+    teacher,
+    users,
+)
 import sys
 import os
 

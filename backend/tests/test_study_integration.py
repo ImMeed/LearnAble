@@ -1,13 +1,14 @@
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.roles import UserRole
+from app.core.config import settings
 from app.core.security import create_access_token
 from app.db.base import Base
-from app.db.models.study import Lesson, LessonFlashcard, LessonReadingGame
+from app.db.models.study import Lesson, LessonFlashcard, LessonReadingGame, StudentCourseCompletion
 from app.db.models.users import User
 from app.db.session import get_db_session
 from app.main import app
@@ -27,7 +28,7 @@ def _make_client(session: Session) -> TestClient:
     return TestClient(app)
 
 
-def _seed_student_and_lesson(session: Session) -> tuple[str, UUID]:
+def _seed_student_and_lesson(session: Session) -> tuple[str, UUID, UUID]:
     user = User(
         email=f"study-student-{uuid4()}@learnable.test",
         password_hash="integration-test-hash",
@@ -69,14 +70,16 @@ def _seed_student_and_lesson(session: Session) -> tuple[str, UUID]:
 
     session.commit()
     token = create_access_token(user.id, str(user.role), user.email)
-    return token, lesson.id
+    return token, lesson.id, user.id
 
 
 def test_screening_single_submission_and_awareness() -> None:
+    previous_classroom_flag = settings.classroom_system_enabled
+    settings.classroom_system_enabled = False
     session = SessionLocal()
     client = _make_client(session)
     try:
-        token, lesson_id = _seed_student_and_lesson(session)
+        token, lesson_id, _ = _seed_student_and_lesson(session)
         headers = {"Authorization": f"Bearer {token}", "x-lang": "en"}
 
         screening_response = client.post(
@@ -119,6 +122,7 @@ def test_screening_single_submission_and_awareness() -> None:
         assert games_response.status_code == 200
         assert len(games_response.json()["items"]) == 1
     finally:
+        settings.classroom_system_enabled = previous_classroom_flag
         app.dependency_overrides.clear()
         client.close()
         session.close()
@@ -132,3 +136,34 @@ def test_study_assist_requires_auth() -> None:
     )
     assert response.status_code == 401
     client.close()
+
+
+def test_study_course_completion_is_saved_idempotently() -> None:
+    previous_classroom_flag = settings.classroom_system_enabled
+    settings.classroom_system_enabled = False
+    session = SessionLocal()
+    client = _make_client(session)
+    try:
+        token, lesson_id, student_id = _seed_student_and_lesson(session)
+        headers = {"Authorization": f"Bearer {token}", "x-lang": "en"}
+
+        first_response = client.post(f"/study/lessons/{lesson_id}/complete", headers=headers)
+        assert first_response.status_code == 200
+        assert first_response.json()["completed"] is True
+
+        second_response = client.post(f"/study/lessons/{lesson_id}/complete", headers=headers)
+        assert second_response.status_code == 200
+        assert second_response.json()["completed"] is True
+
+        completion_count = session.scalar(
+            select(func.count(StudentCourseCompletion.id)).where(
+                StudentCourseCompletion.student_user_id == student_id,
+                StudentCourseCompletion.lesson_id == lesson_id,
+            )
+        )
+        assert int(completion_count or 0) == 1
+    finally:
+        settings.classroom_system_enabled = previous_classroom_flag
+        app.dependency_overrides.clear()
+        client.close()
+        session.close()

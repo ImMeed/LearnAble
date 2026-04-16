@@ -39,3 +39,18 @@ class ProgressionResponse(BaseModel):
     current_level: int
     next_level_xp: int
     badges: list[ProgressBadgeItem] = []
+
+
+class ProgressSummaryResponse(BaseModel):
+    completed_sessions: int
+    total_rounds_completed: int
+    games_completed: int
+    quizzes_completed: int
+    total_xp: int
+    current_level: int
+    next_level_xp: int
+    streak_days: int
+    tracked_course_minutes: int
+    estimated_course_minutes: int
+    total_course_minutes: int
+    badges: list[ProgressBadgeItem] = []

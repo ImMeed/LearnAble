@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -46,6 +46,7 @@ class ReadingSupportProfile(Base):
 
 class ReadingLabSession(Base):
     __tablename__ = "reading_lab_sessions"
+    __table_args__ = (Index("ix_reading_lab_sessions_student_started", "student_user_id", "started_at"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     student_user_id: Mapped[uuid.UUID] = mapped_column(

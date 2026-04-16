@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
@@ -9,7 +10,9 @@ from app.core.security import create_access_token
 from app.db.base import Base
 from app.db.models.economy import PointTransaction, PointTransactionType, PointsWallet, XpLedger
 from app.db.models.notifications import Notification
-from app.db.models.quiz import Quiz, QuizQuestion
+from app.db.models.quiz import Quiz, QuizAttempt, QuizQuestion
+from app.db.models.reading_lab import ReadingLabSession, ReadingLabSessionStatus
+from app.db.models.study import Lesson, StudentCourseCompletion
 from app.db.models.users import User
 from app.db.session import get_db_session
 from app.main import app
@@ -241,6 +244,209 @@ def test_quiz_hint_fails_when_points_insufficient() -> None:
         assert response.status_code == 409
         data = response.json()
         assert data["code"] == "INSUFFICIENT_POINTS"
+    finally:
+        app.dependency_overrides.clear()
+        client.close()
+        session.close()
+
+
+def test_progress_summary_returns_live_metrics_and_badges() -> None:
+    session = SessionLocal()
+    client = _make_client(session)
+    try:
+        student = User(
+            email=f"progress-student-{uuid4()}@learnable.test",
+            password_hash="integration-test-hash",
+            role=UserRole.ROLE_STUDENT,
+        )
+        session.add(student)
+        session.flush()
+
+        lesson_one = Lesson(
+            title_ar="درس 1",
+            title_en="Lesson 1",
+            body_ar="نص",
+            body_en="Text",
+            difficulty="BEGINNER",
+            is_active=True,
+        )
+        lesson_two = Lesson(
+            title_ar="درس 2",
+            title_en="Lesson 2",
+            body_ar="نص",
+            body_en="Text",
+            difficulty="BEGINNER",
+            is_active=True,
+        )
+        lesson_three = Lesson(
+            title_ar="درس 3",
+            title_en="Lesson 3",
+            body_ar="نص",
+            body_en="Text",
+            difficulty="INTERMEDIATE",
+            is_active=True,
+        )
+        inactive_lesson = Lesson(
+            title_ar="درس غير نشط",
+            title_en="Inactive Lesson",
+            body_ar="نص",
+            body_en="Text",
+            difficulty="BEGINNER",
+            is_active=False,
+        )
+        session.add_all([lesson_one, lesson_two, lesson_three, inactive_lesson])
+        session.flush()
+
+        session.add_all(
+            [
+                StudentCourseCompletion(student_user_id=student.id, lesson_id=lesson_one.id),
+                StudentCourseCompletion(student_user_id=student.id, lesson_id=lesson_two.id),
+                StudentCourseCompletion(student_user_id=student.id, lesson_id=lesson_three.id),
+            ]
+        )
+
+        session.add_all(
+            [
+                XpLedger(user_id=student.id, xp_delta=120, reason="quiz_submit", metadata_json={}),
+                XpLedger(user_id=student.id, xp_delta=60, reason="reading_lab_complete", metadata_json={}),
+            ]
+        )
+
+        quiz_one = Quiz(
+            title_ar="اختبار تقدمي 1",
+            title_en="Progress Quiz 1",
+            difficulty="EASY",
+            reward_points=10,
+            reward_xp=60,
+            is_active=True,
+        )
+        quiz_two = Quiz(
+            title_ar="اختبار تقدمي 2",
+            title_en="Progress Quiz 2",
+            difficulty="MEDIUM",
+            reward_points=8,
+            reward_xp=60,
+            is_active=True,
+        )
+        session.add_all([quiz_one, quiz_two])
+        session.flush()
+
+        session.add_all(
+            [
+                QuizAttempt(
+                    user_id=student.id,
+                    quiz_id=quiz_one.id,
+                    score=100,
+                    total_questions=10,
+                    earned_points=10,
+                    earned_xp=60,
+                    answers_json={},
+                    started_at=datetime(2026, 4, 13, 9, 0, tzinfo=timezone.utc),
+                    completed_at=datetime(2026, 4, 13, 9, 15, tzinfo=timezone.utc),
+                ),
+                QuizAttempt(
+                    user_id=student.id,
+                    quiz_id=quiz_two.id,
+                    score=90,
+                    total_questions=10,
+                    earned_points=8,
+                    earned_xp=60,
+                    answers_json={},
+                    started_at=datetime(2026, 4, 14, 16, 20, tzinfo=timezone.utc),
+                    completed_at=datetime(2026, 4, 14, 16, 30, tzinfo=timezone.utc),
+                ),
+            ]
+        )
+
+        session.add_all(
+            [
+                ReadingLabSession(
+                    student_user_id=student.id,
+                    activity_key="letter_choice",
+                    activity_title_ar="مطابقة الحرف",
+                    activity_title_en="Letter Match",
+                    interaction_type="MULTIPLE_CHOICE",
+                    rounds_json=[],
+                    answers_json=[],
+                    focus_targets_json=[],
+                    support_active_at_start=False,
+                    current_round_index=0,
+                    correct_answers=3,
+                    total_rounds=3,
+                    reward_points=5,
+                    reward_xp=30,
+                    status=ReadingLabSessionStatus.COMPLETED,
+                    started_at=datetime(2026, 4, 12, 10, 0, tzinfo=timezone.utc),
+                    completed_at=datetime(2026, 4, 12, 10, 20, tzinfo=timezone.utc),
+                ),
+                ReadingLabSession(
+                    student_user_id=student.id,
+                    activity_key="word_builder",
+                    activity_title_ar="بناء الكلمات",
+                    activity_title_en="Word Builder",
+                    interaction_type="ORDERED_TILES",
+                    rounds_json=[],
+                    answers_json=[],
+                    focus_targets_json=[],
+                    support_active_at_start=True,
+                    current_round_index=0,
+                    correct_answers=4,
+                    total_rounds=4,
+                    reward_points=7,
+                    reward_xp=30,
+                    status=ReadingLabSessionStatus.COMPLETED,
+                    started_at=datetime(2026, 4, 14, 11, 0, tzinfo=timezone.utc),
+                    completed_at=datetime(2026, 4, 14, 11, 25, tzinfo=timezone.utc),
+                ),
+            ]
+        )
+
+        session.commit()
+
+        token = create_access_token(student.id, str(student.role), student.email)
+        headers = {"Authorization": f"Bearer {token}", "x-lang": "en"}
+        response = client.get("/gamification/progress-summary/me", headers=headers)
+        assert response.status_code == 200
+        payload = response.json()
+
+        assert payload["completed_sessions"] == 2
+        assert payload["total_rounds_completed"] == 7
+        assert payload["games_completed"] == 2
+        assert payload["quizzes_completed"] == 2
+        assert payload["total_xp"] == 180
+        assert payload["current_level"] == 2
+        assert payload["next_level_xp"] == 200
+        assert payload["streak_days"] == 3
+        assert payload["tracked_course_minutes"] == 70
+        assert payload["estimated_course_minutes"] == 75
+        assert payload["total_course_minutes"] == 145
+
+        unlocked_codes = {item["code"] for item in payload["badges"] if item["unlocked"]}
+        assert {"QUIZ_EXPLORER", "FOCUSED_LEARNER"}.issubset(unlocked_codes)
+    finally:
+        app.dependency_overrides.clear()
+        client.close()
+        session.close()
+
+
+def test_progress_summary_blocks_non_student_role() -> None:
+    session = SessionLocal()
+    client = _make_client(session)
+    try:
+        parent = User(
+            email=f"progress-parent-{uuid4()}@learnable.test",
+            password_hash="integration-test-hash",
+            role=UserRole.ROLE_PARENT,
+        )
+        session.add(parent)
+        session.commit()
+
+        token = create_access_token(parent.id, str(parent.role), parent.email)
+        headers = {"Authorization": f"Bearer {token}", "x-lang": "en"}
+        response = client.get("/gamification/progress-summary/me", headers=headers)
+
+        assert response.status_code == 403
+        assert response.json()["code"] == "FORBIDDEN"
     finally:
         app.dependency_overrides.clear()
         client.close()

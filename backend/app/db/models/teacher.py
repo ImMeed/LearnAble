@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,6 +34,10 @@ class TeacherPresence(Base):
 
 class TeacherAssistanceRequest(Base):
     __tablename__ = "teacher_assistance_requests"
+    __table_args__ = (
+        Index("ix_teacher_assistance_requests_status", "status"),
+        Index("ix_teacher_assistance_requests_tutor", "tutor_user_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     student_user_id: Mapped[uuid.UUID] = mapped_column(
@@ -61,6 +65,7 @@ class TeacherAssistanceRequest(Base):
 
 class StudentFeedbackPrompt(Base):
     __tablename__ = "student_feedback_prompts"
+    __table_args__ = (Index("ix_feedback_prompts_student", "student_user_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     student_user_id: Mapped[uuid.UUID] = mapped_column(
