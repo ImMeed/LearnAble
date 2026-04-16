@@ -93,6 +93,12 @@ function roleMeta(role: string, prefix: string): { icon: string; labelKey: strin
             href: `${prefix}/parent/dashboard`,
             Icon: Users,
           },
+            {
+              titleKey: "authenticatedHome.actions.parent.forum.title",
+              descriptionKey: "authenticatedHome.actions.parent.forum.description",
+              href: `${prefix}/forum`,
+              Icon: MessageSquare,
+            },
           {
             titleKey: "authenticatedHome.actions.parent.library.title",
             descriptionKey: "authenticatedHome.actions.parent.library.description",
@@ -112,6 +118,12 @@ function roleMeta(role: string, prefix: string): { icon: string; labelKey: strin
             href: `${prefix}/psychologist/dashboard`,
             Icon: Brain,
           },
+            {
+              titleKey: "authenticatedHome.actions.psychologist.forum.title",
+              descriptionKey: "authenticatedHome.actions.psychologist.forum.description",
+              href: `${prefix}/forum`,
+              Icon: MessageSquare,
+            },
           {
             titleKey: "authenticatedHome.actions.psychologist.checkpoint.title",
             descriptionKey: "authenticatedHome.actions.psychologist.checkpoint.description",

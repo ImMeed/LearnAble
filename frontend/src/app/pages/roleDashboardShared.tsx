@@ -74,7 +74,7 @@ export type TeacherDashboardMetrics = {
   active_tutors_online: number;
 };
 
-export type TeacherTab = "overview" | "attendance" | "classrooms" | "courses" | "schedule" | "messages" | "readingLab";
+export type TeacherTab = "overview" | "attendance" | "classrooms" | "courses" | "schedule" | "messages" | "forum" | "readingLab";
 
 export function errorMessage(error: unknown): string {
   if (typeof error === "object" && error && "response" in error) {
@@ -193,6 +193,7 @@ export function TeacherTabs({ active, onChange }: { active: TeacherTab; onChange
     { id: "courses", Icon: BookOpen },
     { id: "schedule", Icon: Video },
     { id: "messages", Icon: MessageSquare },
+    { id: "forum", Icon: MessageSquare },
     ...(READING_LAB_ENABLED ? [{ id: "readingLab" as TeacherTab, Icon: FlaskConical }] : []),
   ];
 

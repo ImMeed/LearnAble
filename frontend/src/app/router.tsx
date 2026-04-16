@@ -21,6 +21,7 @@ import { AuthenticatedHomePage } from "../pages/AuthenticatedHomePage";
 import { TeacherCourseReviewPage } from "./pages/TeacherCourseReviewPage";
 import { StudentCoursesListPage } from "./pages/StudentCoursesListPage";
 import { StudentCoursePage } from "./pages/StudentCoursePage";
+import { ForumPage } from "./pages/ForumPage";
 
 function PlaceholderPage({ titleKey }: { titleKey: string }) {
   const { t } = useTranslation();
@@ -299,7 +300,14 @@ export const router = createBrowserRouter([
   // Student course reader
   { path: "/ar/student/courses/:courseId", element: <ProtectedRoute roles={["ROLE_STUDENT"]}><StudentCoursePage /></ProtectedRoute> },
   { path: "/en/student/courses/:courseId", element: <ProtectedRoute roles={["ROLE_STUDENT"]}><StudentCoursePage /></ProtectedRoute> },
-  { path: "/ar/forum", element: <PlaceholderPage titleKey="nav.forum" /> },
+  {
+    path: "/ar/forum",
+    element: (
+      <ProtectedRoute>
+        <ForumPage />
+      </ProtectedRoute>
+    ),
+  },
   { path: "/ar/quizzes", element: <PlaceholderPage titleKey="nav.quizzes" /> },
   {
     path: "/ar/games",
@@ -311,7 +319,14 @@ export const router = createBrowserRouter([
   },
   { path: "/ar/library", element: <PlaceholderPage titleKey="nav.library" /> },
   { path: "/ar/checkpoint", element: <PhaseCheckpointPage /> },
-  { path: "/en/forum", element: <PlaceholderPage titleKey="nav.forum" /> },
+  {
+    path: "/en/forum",
+    element: (
+      <ProtectedRoute>
+        <ForumPage />
+      </ProtectedRoute>
+    ),
+  },
   { path: "/en/quizzes", element: <PlaceholderPage titleKey="nav.quizzes" /> },
   {
     path: "/en/games",

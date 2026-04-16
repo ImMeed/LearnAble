@@ -18,6 +18,7 @@ import {
 } from "./roleDashboardShared";
 
 import { TeacherCoursesTab } from "./TeacherCoursesTab";
+import { ForumPage } from "./ForumPage";
 
 const POLL_MS = 8000;
 
@@ -758,6 +759,16 @@ export function TeacherDashboardPageV2() {
     },
   };
 
+  const classroomStudentCount = classroomDetail?.students.length ?? 0;
+  const classroomCourseCount = classroomDetail?.courses.length ?? 0;
+  const classroomReadingLabActiveCount =
+    classroomDetail?.students.filter((student) => student.reading_support_status === "ACTIVE").length ?? 0;
+  const classroomReadingLabPausedCount =
+    classroomDetail?.students.filter((student) => student.reading_support_status === "PAUSED").length ?? 0;
+  const classroomScreeningCount =
+    classroomDetail?.students.filter((student) => student.screening_support_level !== null).length ?? 0;
+  const publishedCourseCount = teacherCreatedCourses.filter((course) => course.status === "PUBLISHED").length;
+
   return (
     <DashboardShell title={t("dashboards.teacher.title")}>
       <TeacherTabs active={activeTab} onChange={setActiveTab} />
@@ -880,187 +891,337 @@ export function TeacherDashboardPageV2() {
       ) : null}
 
       {activeTab === "classrooms" ? (
-        <section className="portal-grid">
-          <article className="card portal-main-card">
-            <h3>{t("classroom.teacher.sectionTitle")}</h3>
-            {!CLASSROOM_SYSTEM_ENABLED ? (
-              <p className="muted">{t("classroom.teacher.featureDisabled")}</p>
-            ) : (
-              <div className="stack-list checkpoint-block">
-                <article className="request-card">
-                  <div className="request-head-row">
-                    <strong>{t("classroom.teacher.createClassroom")}</strong>
-                    {classroomLoading ? <span className="status-chip">{t("dashboards.common.loading")}</span> : null}
-                  </div>
-                  <div className="stack-form">
-                    <label>
-                      <span>{t("classroom.teacher.name")}</span>
-                      <input value={classroomNameInput} onChange={(event) => setClassroomNameInput(event.target.value)} />
-                    </label>
-                    <label>
-                      <span>{t("classroom.teacher.description")}</span>
-                      <textarea
-                        rows={3}
-                        value={classroomDescriptionInput}
-                        onChange={(event) => setClassroomDescriptionInput(event.target.value)}
-                      />
-                    </label>
-                    <label>
-                      <span>{t("classroom.teacher.gradeTag")}</span>
-                      <input value={classroomGradeTagInput} onChange={(event) => setClassroomGradeTagInput(event.target.value)} />
-                    </label>
-                    <div className="inline-actions">
-                      <button type="button" onClick={() => void createClassroom()} disabled={classroomSaving || !classroomNameInput.trim()}>
-                        {classroomSaving ? t("login.pleaseWait") : t("classroom.teacher.create")}
-                      </button>
-                      {selectedClassroomId ? (
-                        <button type="button" className="secondary" onClick={() => void updateClassroom()} disabled={classroomSaving || !classroomNameInput.trim()}>
-                          {t("classroom.teacher.update")}
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                </article>
+        <section className="teacher-classrooms-page">
+          <article className="card classroom-hero-card">
+            <div className="classroom-hero-copy">
+              <p className="classroom-section-eyebrow">{t("dashboards.tabs.classrooms")}</p>
+              <h3>{t("classroom.teacher.sectionTitle")}</h3>
+              <p className="muted">{t("classroom.teacher.quickGuide2")}</p>
+            </div>
+            <div className="classroom-hero-status">
+              {status ? <p className="classroom-hero-status-text">{status}</p> : null}
+              {classroomLoading || classroomDetailLoading ? (
+                <span className="status-chip">{t("dashboards.common.loading")}</span>
+              ) : null}
+            </div>
+          </article>
 
-                <article className="card portal-inner-card">
-                  <h4>{t("classroom.teacher.classroomsList")}</h4>
-                  <div className="subject-grid checkpoint-block">
+          {!CLASSROOM_SYSTEM_ENABLED ? (
+            <article className="card portal-main-card">
+              <p className="muted">{t("classroom.teacher.featureDisabled")}</p>
+            </article>
+          ) : (
+            <>
+              <section className="classroom-metrics-row">
+                <article className="card classroom-metric-card">
+                  <p>{t("classroom.teacher.totalClassrooms")}</p>
+                  <strong>{classrooms.length}</strong>
+                </article>
+                <article className="card classroom-metric-card">
+                  <p>{t("classroom.teacher.totalStudents")}</p>
+                  <strong>{classroomStudentCount}</strong>
+                </article>
+                <article className="card classroom-metric-card">
+                  <p>{t("classroom.teacher.totalCourses")}</p>
+                  <strong>{classroomCourseCount}</strong>
+                </article>
+                <article className="card classroom-metric-card classroom-metric-card--accent">
+                  <p>{t("readingLab.title")}</p>
+                  <strong>{classroomReadingLabActiveCount}</strong>
+                </article>
+              </section>
+
+              <article className="card classroom-row-card">
+                <div className="classroom-row-card-header">
+                  <div>
+                    <p className="classroom-section-eyebrow">{t("classroom.teacher.summary")}</p>
+                    <h4>{t("classroom.teacher.classroomsList")}</h4>
+                  </div>
+                  <span className="status-chip status-success">{classrooms.length}</span>
+                </div>
+                {classrooms.length === 0 ? (
+                  <p className="muted">{t("classroom.teacher.noClassrooms")}</p>
+                ) : (
+                  <div className="classroom-cards-row">
                     {classrooms.map((item) => (
                       <button
                         type="button"
                         key={item.id}
-                        className={item.id === selectedClassroomId ? "subject-card active" : "subject-card"}
+                        className={`classroom-row-item ${item.id === selectedClassroomId ? "is-active" : ""}`}
                         onClick={() => {
                           setSelectedClassroomId(item.id);
                           void loadClassroomDetail(item.id);
                         }}
                       >
-                        <strong>{item.name}</strong>
-                        <span>{item.is_active ? t("classroom.teacher.active") : t("classroom.teacher.archived")}</span>
+                        <div className="classroom-row-item-head">
+                          <strong>{item.name}</strong>
+                          <span className={`status-chip ${item.is_active ? "status-success" : ""}`}>
+                            {item.is_active ? t("classroom.teacher.active") : t("classroom.teacher.archived")}
+                          </span>
+                        </div>
+                        <p className="muted">{item.description || t("classroom.teacher.noDescription")}</p>
+                        <div className="classroom-row-item-meta">
+                          {item.grade_tag ? <span className="status-chip">{item.grade_tag}</span> : null}
+                          <span className="status-chip">{item.invite_code}</span>
+                        </div>
                       </button>
                     ))}
-                    {classrooms.length === 0 ? <p className="muted">{t("classroom.teacher.noClassrooms")}</p> : null}
                   </div>
-                </article>
+                )}
+              </article>
 
-                {classroomDetailLoading ? <p className="muted">{t("dashboards.common.loading")}</p> : null}
-                {classroomDetail ? (
-                  <article className="card portal-inner-card">
-                    <div className="request-head-row">
-                      <strong>{classroomDetail.classroom.name}</strong>
-                      <span className={`status-chip ${classroomDetail.classroom.is_active ? "status-success" : ""}`}>
-                        {classroomDetail.classroom.is_active ? t("classroom.teacher.active") : t("classroom.teacher.archived")}
-                      </span>
-                    </div>
-                    <p className="muted">{classroomDetail.classroom.description || t("classroom.teacher.noDescription")}</p>
-                    <p className="muted">{t("classroom.teacher.inviteCode")}: {classroomDetail.classroom.invite_code}</p>
-
-                    <div className="inline-actions checkpoint-block">
-                      <button type="button" className="secondary" onClick={() => void regenerateInviteCode()} disabled={classroomSaving}>
-                        {t("classroom.teacher.regenerateInvite")}
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => void toggleClassroomActive(classroomDetail.classroom.is_active)}
-                        disabled={classroomSaving}
-                      >
-                        {classroomDetail.classroom.is_active ? t("classroom.teacher.archive") : t("classroom.teacher.activate")}
-                      </button>
+              {classroomDetail ? (
+                <article className="card classroom-focus-card">
+                  <div className="classroom-focus-head">
+                    <div>
+                      <div className="classroom-focus-title-row">
+                        <h4>{classroomDetail.classroom.name}</h4>
+                        <span className={`status-chip ${classroomDetail.classroom.is_active ? "status-success" : ""}`}>
+                          {classroomDetail.classroom.is_active ? t("classroom.teacher.active") : t("classroom.teacher.archived")}
+                        </span>
+                      </div>
+                      <p className="muted">{classroomDetail.classroom.description || t("classroom.teacher.noDescription")}</p>
+                      <div className="classroom-row-item-meta">
+                        {classroomDetail.classroom.grade_tag ? (
+                          <span className="status-chip">{classroomDetail.classroom.grade_tag}</span>
+                        ) : null}
+                        <span className="status-chip">{t("classroom.teacher.totalStudents")}: {classroomStudentCount}</span>
+                        <span className="status-chip">{t("classroom.teacher.totalCourses")}: {classroomCourseCount}</span>
+                      </div>
                     </div>
 
-                    <div className="checkpoint-block">
-                      <h4>{t("classroom.teacher.assignedCourses")}</h4>
-                      <div className="inline-actions">
-                        <select
-                          value={classroomCourseToAssign}
-                          onChange={(event) => setClassroomCourseToAssign(event.target.value)}
-                        >
-                          <option value="">{t("classroom.teacher.selectCourse")}</option>
-                          {classroomAssignableCourses.map((course) => (
-                            <option key={course.id} value={course.id} disabled={course.isDemo}>{course.title}</option>
-                          ))}
-                        </select>
+                    <div className="classroom-invite-panel">
+                      <span className="classroom-section-eyebrow">{t("classroom.teacher.inviteCode")}</span>
+                      <code className="classroom-invite-code">{classroomDetail.classroom.invite_code}</code>
+                      <div className="classroom-focus-actions">
                         <button
                           type="button"
                           className="secondary"
-                          onClick={() => void assignCourseToClassroom()}
-                          disabled={!classroomCourseToAssign || classroomSaving || selectedAssignableCourse?.isDemo}
+                          onClick={() => void regenerateInviteCode()}
+                          disabled={classroomSaving}
                         >
-                          {t("classroom.teacher.assignCourse")}
+                          {t("classroom.teacher.regenerateInvite")}
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => void toggleClassroomActive(classroomDetail.classroom.is_active)}
+                          disabled={classroomSaving}
+                        >
+                          {classroomDetail.classroom.is_active ? t("classroom.teacher.archive") : t("classroom.teacher.activate")}
                         </button>
                       </div>
-                      {!teacherCreatedCourses.some((course) => course.status === "PUBLISHED") ? (
-                        <p className="muted">{t("dashboards.teacher.courseEmpty")}</p>
-                      ) : null}
-                      <div className="stack-list checkpoint-block">
-                        {classroomDetail.courses.map((course) => (
-                          <article key={`${classroomDetail.classroom.id}-${course.course_id}`} className="notification-item">
-                            <strong>{course.title}</strong>
-                            <p>{course.difficulty}</p>
-                          </article>
-                        ))}
-                        {classroomDetail.courses.length === 0 ? <p className="muted">{t("classroom.teacher.noAssignedCourses")}</p> : null}
-                      </div>
                     </div>
+                  </div>
+                </article>
+              ) : (
+                <article className="card classroom-empty-card">
+                  <p className="muted">
+                    {classroomDetailLoading
+                      ? t("dashboards.common.loading")
+                      : classrooms.length === 0
+                        ? t("classroom.teacher.noClassrooms")
+                        : t("classroom.teacher.classroomsList")}
+                  </p>
+                </article>
+              )}
 
-                    <div className="checkpoint-block">
-                      <h4>{t("classroom.teacher.enrolledStudents")}</h4>
-                      <div className="stack-list">
-                        {classroomDetail.students.map((student) => (
-                          <article key={`${classroomDetail.classroom.id}-${student.student_id}`} className="request-card">
-                            <div className="request-head-row">
-                              <strong>{student.student_label}</strong>
-                              <button type="button" className="secondary" onClick={() => void removeClassroomStudent(student.student_id)} disabled={classroomSaving}>
-                                {t("classroom.teacher.removeStudent")}
-                              </button>
-                            </div>
-                            <p className="muted">
-                              {t("classroom.teacher.screening")}: {student.screening_support_level ?? t("dashboards.common.none")}
-                              {student.screening_composite_score !== null ? ` (${student.screening_composite_score})` : ""}
-                            </p>
-                            <p className="muted">
-                              {t("classroom.teacher.readingLabStatus")}: {student.reading_support_status ?? t("dashboards.common.none")}
-                            </p>
-                          </article>
-                        ))}
-                        {classroomDetail.students.length === 0 ? <p className="muted">{t("classroom.teacher.noStudents")}</p> : null}
-                      </div>
+              <section className="classroom-support-row">
+                <article className="card classroom-support-card">
+                  <div className="classroom-row-card-header">
+                    <div>
+                      <p className="classroom-section-eyebrow">{t("classroom.teacher.summary")}</p>
+                      <h4>{t("classroom.teacher.assignedCourses")}</h4>
                     </div>
-                  </article>
-                ) : null}
-              </div>
-            )}
-          </article>
+                    <span className="status-chip">{classroomCourseCount}</span>
+                  </div>
 
-          <aside className="portal-side-column">
-            <article className="card portal-inner-card">
-              <h4>{t("classroom.teacher.quickGuideTitle")}</h4>
-              <ul className="clean-list">
-                <li>{t("classroom.teacher.quickGuide1")}</li>
-                <li>{t("classroom.teacher.quickGuide2")}</li>
-                <li>{t("classroom.teacher.quickGuide3")}</li>
-              </ul>
-            </article>
+                  <div className="classroom-assign-toolbar">
+                    <select
+                      value={classroomCourseToAssign}
+                      onChange={(event) => setClassroomCourseToAssign(event.target.value)}
+                    >
+                      <option value="">{t("classroom.teacher.selectCourse")}</option>
+                      {classroomAssignableCourses.map((course) => (
+                        <option key={course.id} value={course.id} disabled={course.isDemo}>{course.title}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => void assignCourseToClassroom()}
+                      disabled={!classroomCourseToAssign || classroomSaving || selectedAssignableCourse?.isDemo}
+                    >
+                      {t("classroom.teacher.assignCourse")}
+                    </button>
+                  </div>
 
-            <article className="card portal-inner-card">
-              <h4>{t("classroom.teacher.summary")}</h4>
-              <div className="metrics-grid checkpoint-block">
-                <article className="card metric-pill">
-                  <p>{t("classroom.teacher.totalClassrooms")}</p>
-                  <strong>{classrooms.length}</strong>
+                  {publishedCourseCount === 0 ? (
+                    <p className="muted">{t("dashboards.teacher.courseEmpty")}</p>
+                  ) : null}
+
+                  <div className="classroom-course-grid">
+                    {classroomDetail?.courses.map((course) => (
+                      <article key={`${classroomDetail.classroom.id}-${course.course_id}`} className="classroom-course-tile">
+                        <strong>{course.title}</strong>
+                        <p className="muted">{course.difficulty}</p>
+                      </article>
+                    ))}
+                    {classroomDetail && classroomDetail.courses.length === 0 ? (
+                      <p className="muted">{t("classroom.teacher.noAssignedCourses")}</p>
+                    ) : null}
+                  </div>
                 </article>
-                <article className="card metric-pill">
-                  <p>{t("classroom.teacher.totalStudents")}</p>
-                  <strong>{classroomDetail?.students.length ?? 0}</strong>
+
+                <article className="card classroom-support-card classroom-support-card--reading">
+                  <div className="classroom-row-card-header">
+                    <div>
+                      <p className="classroom-section-eyebrow">{t("readingLab.subtitle")}</p>
+                      <h4>{t("classroom.teacher.readingLabStatus")}</h4>
+                    </div>
+                    <span className="status-chip status-accent">{classroomScreeningCount}</span>
+                  </div>
+
+                  <div className="classroom-reading-metrics">
+                    <article className="classroom-reading-stat">
+                      <p>{t("readingLab.supportActive")}</p>
+                      <strong>{classroomReadingLabActiveCount}</strong>
+                    </article>
+                    <article className="classroom-reading-stat">
+                      <p>{t("readingLab.supportPaused")}</p>
+                      <strong>{classroomReadingLabPausedCount}</strong>
+                    </article>
+                    <article className="classroom-reading-stat">
+                      <p>{t("classroom.teacher.screening")}</p>
+                      <strong>{classroomScreeningCount}</strong>
+                    </article>
+                  </div>
+
+                  <p className="muted">{t("classroom.teacher.quickGuide3")}</p>
                 </article>
-                <article className="card metric-pill">
-                  <p>{t("classroom.teacher.totalCourses")}</p>
-                  <strong>{classroomDetail?.courses.length ?? 0}</strong>
+
+                <article className="card classroom-support-card">
+                  <div className="classroom-row-card-header">
+                    <div>
+                      <p className="classroom-section-eyebrow">{t("classroom.teacher.quickGuideTitle")}</p>
+                      <h4>{t("classroom.teacher.summary")}</h4>
+                    </div>
+                    <span className="status-chip status-success">{courseAssignments.length}</span>
+                  </div>
+                  <ul className="clean-list classroom-guide-list">
+                    <li>{t("classroom.teacher.quickGuide1")}</li>
+                    <li>{t("classroom.teacher.quickGuide2")}</li>
+                    <li>{t("classroom.teacher.quickGuide3")}</li>
+                  </ul>
+                  <div className="classroom-assignment-list">
+                    {courseAssignments.slice(0, 3).map((course) => (
+                      <article key={course.course_id} className="classroom-assignment-tile">
+                        <strong>{course.title}</strong>
+                        <p className="muted">
+                          {course.classroom_names.length > 0
+                            ? t("classroom.teacher.assignedTo", { classrooms: course.classroom_names.join(", ") })
+                            : t("classroom.teacher.notAssigned")}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
                 </article>
-              </div>
-            </article>
-          </aside>
+              </section>
+
+              <article className="card classroom-students-card">
+                <div className="classroom-row-card-header">
+                  <div>
+                    <p className="classroom-section-eyebrow">{t("classroom.teacher.summary")}</p>
+                    <h4>{t("classroom.teacher.enrolledStudents")}</h4>
+                  </div>
+                  <span className="status-chip status-success">{classroomStudentCount}</span>
+                </div>
+
+                <div className="classroom-students-grid">
+                  {classroomDetail?.students.map((student) => (
+                    <article key={`${classroomDetail.classroom.id}-${student.student_id}`} className="classroom-student-tile">
+                      <div className="classroom-student-tile-head">
+                        <strong>{student.student_label}</strong>
+                        <p className="muted">{t("dashboards.admin.colJoined")}: {formatDate(student.joined_at, locale)}</p>
+                      </div>
+                      <div className="classroom-student-actions">
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => void removeClassroomStudent(student.student_id)}
+                          disabled={classroomSaving}
+                        >
+                          {t("classroom.teacher.removeStudent")}
+                        </button>
+                      </div>
+                      <div className="classroom-row-item-meta">
+                        <span className="status-chip">
+                          {t("classroom.teacher.screening")}: {student.screening_support_level ?? t("dashboards.common.none")}
+                          {student.screening_composite_score !== null ? ` (${student.screening_composite_score})` : ""}
+                        </span>
+                        <span className="status-chip">
+                          {t("classroom.teacher.readingLabStatus")}: {student.reading_support_status ?? t("dashboards.common.none")}
+                        </span>
+                      </div>
+                    </article>
+                  ))}
+                  {classroomDetail && classroomDetail.students.length === 0 ? (
+                    <p className="muted">{t("classroom.teacher.noStudents")}</p>
+                  ) : null}
+                </div>
+              </article>
+
+              <article className="card classroom-editor-card">
+                <div className="classroom-row-card-header">
+                  <div>
+                    <p className="classroom-section-eyebrow">
+                      {selectedClassroomId ? t("dashboards.common.details") : t("classroom.teacher.create")}
+                    </p>
+                    <h4>{selectedClassroomId ? t("classroom.teacher.update") : t("classroom.teacher.createClassroom")}</h4>
+                  </div>
+                </div>
+
+                <div className="classroom-editor-grid">
+                  <label className="classroom-editor-field">
+                    <span>{t("classroom.teacher.name")}</span>
+                    <input value={classroomNameInput} onChange={(event) => setClassroomNameInput(event.target.value)} />
+                  </label>
+                  <label className="classroom-editor-field classroom-editor-field--wide">
+                    <span>{t("classroom.teacher.description")}</span>
+                    <textarea
+                      rows={4}
+                      value={classroomDescriptionInput}
+                      onChange={(event) => setClassroomDescriptionInput(event.target.value)}
+                    />
+                  </label>
+                  <label className="classroom-editor-field">
+                    <span>{t("classroom.teacher.gradeTag")}</span>
+                    <input value={classroomGradeTagInput} onChange={(event) => setClassroomGradeTagInput(event.target.value)} />
+                  </label>
+                </div>
+
+                <div className="classroom-editor-actions">
+                  <button
+                    type="button"
+                    onClick={() => void createClassroom()}
+                    disabled={classroomSaving || !classroomNameInput.trim()}
+                  >
+                    {classroomSaving ? t("login.pleaseWait") : t("classroom.teacher.create")}
+                  </button>
+                  {selectedClassroomId ? (
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => void updateClassroom()}
+                      disabled={classroomSaving || !classroomNameInput.trim()}
+                    >
+                      {t("classroom.teacher.update")}
+                    </button>
+                  ) : null}
+                </div>
+              </article>
+            </>
+          )}
         </section>
       ) : null}
 
@@ -1204,6 +1365,14 @@ export function TeacherDashboardPageV2() {
               </article>
             ))}
           </div>
+        </section>
+      ) : null}
+
+      {activeTab === "forum" ? (
+        <section className="portal-grid">
+          <article className="portal-main-card">
+            <ForumPage embedded />
+          </article>
         </section>
       ) : null}
 
